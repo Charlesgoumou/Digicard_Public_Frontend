@@ -607,7 +607,7 @@ export function useCardSettings(
           spotify_url: form.spotify_url,
         };
 
-        const response = await apiClient.put("/api/profile", payload);
+        const response = await apiClient.put("/profile", payload);
 
         if (updateUserLocally) {
           updateUserLocally(response.data);

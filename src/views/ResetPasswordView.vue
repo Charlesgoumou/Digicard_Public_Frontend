@@ -209,7 +209,7 @@
 
     // Vérifier la validité du token
     try {
-      await apiClient.post("/api/password/verify-token", {
+      await apiClient.post("/password/verify-token", {
         email: email,
         token: token,
       });
@@ -238,7 +238,7 @@
     isSubmitting.value = true;
 
     try {
-      const response = await apiClient.post("/api/password/reset", form.value);
+      const response = await apiClient.post("/password/reset", form.value);
       success.value = response.data.message;
 
       // Rediriger vers la page d'accueil après 2 secondes

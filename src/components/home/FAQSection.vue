@@ -59,7 +59,7 @@ const faqItems = ref([]);
 // Fonction pour charger les FAQs
 async function loadFAQs() {
   try {
-    const res = await apiClient.get('/api/homepage');
+    const res = await apiClient.get('/homepage');
     const homepageFAQs = res.data?.homepage?.faqs || [];
     faqItems.value = homepageFAQs.length > 0 ? homepageFAQs : props.faqs;
   } catch (e) {

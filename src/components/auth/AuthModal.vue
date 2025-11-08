@@ -615,7 +615,7 @@
     loadingMessage.value = "Envoi du lien de réinitialisation...";
 
     try {
-      const response = await apiClient.post("/api/password/reset-link", {
+      const response = await apiClient.post("/password/reset-link", {
         email: forgotPasswordEmail.value,
       });
       successMessage.value = response.data.message;

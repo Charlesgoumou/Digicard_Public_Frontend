@@ -28,7 +28,7 @@ export function useOrderManagement(user) {
   // Logique de chargement des commandes
   const loadOrders = async () => {
     try {
-      const response = await apiClient.get("/api/orders");
+      const response = await apiClient.get("/orders");
       orders.value = response.data;
       return orders.value;
     } catch (error) {

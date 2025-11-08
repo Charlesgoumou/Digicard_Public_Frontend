@@ -694,7 +694,7 @@
     try {
       // ✅ Ajouter un timestamp pour éviter le cache du navigateur
       const timestamp = new Date().getTime();
-      const response = await apiClient.get(`/api/orders?_t=${timestamp}`);
+      const response = await apiClient.get(`/orders?_t=${timestamp}`);
       const orders = response.data;
       businessOrders.value = orders.filter((order) => order.order_type === "business");
       hasBusinessOrder.value = businessOrders.value.length > 0;
@@ -718,7 +718,7 @@
     try {
       // ✅ Ajouter un timestamp pour éviter le cache du navigateur
       const timestamp = new Date().getTime();
-      const response = await apiClient.get(`/api/orders/${selectedOrderId.value}?_t=${timestamp}`);
+      const response = await apiClient.get(`/orders/${selectedOrderId.value}?_t=${timestamp}`);
       const order = response.data;
 
       // Filtrer les slots pour exclure le business admin s'il s'est inclus ET les slots supprimés
@@ -798,7 +798,7 @@
       await apiClient.get("/sanctum/csrf-cookie");
       setCsrfHeader();
 
-      const response = await apiClient.post(`/api/orders/${selectedOrderId.value}/slots/${slot.slot_number}/assign`, {
+      const response = await apiClient.post(`/orders/${selectedOrderId.value}/slots/${slot.slot_number}/assign`, {
         employee_name: slot.temp_name,
         employee_email: slot.temp_email,
       });
@@ -826,7 +826,7 @@
 
     try {
       // Récupérer la commande de l'employé via OrderEmployee
-      const response = await apiClient.get("/api/orders");
+      const response = await apiClient.get("/orders");
       const orders = response.data;
 
       // Trouver la première commande où l'employé est assigné
@@ -858,7 +858,7 @@
     employeeFeedback.value = "";
     isEmployeeError.value = false;
     try {
-      const response = await apiClient.get("/api/employees");
+      const response = await apiClient.get("/employees");
       employees.value = response.data;
     } catch (error) {
       console.error("Error loading employees:", error.response?.data || error);
@@ -899,7 +899,7 @@
     isEmployeeError.value = false;
     try {
       setCsrfHeader();
-      const response = await apiClient.post("/api/employees", newEmployee);
+      const response = await apiClient.post("/employees", newEmployee);
       employees.value.push(response.data);
       newEmployee.name = "";
       newEmployee.email = "";
@@ -924,7 +924,7 @@
       isEmployeeError.value = false;
       try {
         setCsrfHeader();
-        await apiClient.delete(`/api/employees/${employeeId}`);
+        await apiClient.delete(`/employees/${employeeId}`);
         employees.value = employees.value.filter((emp) => emp.id !== employeeId);
         employeeFeedback.value = "Employé supprimé.";
       } catch (error) {
@@ -947,7 +947,7 @@
     try {
       if (selectedOrderId.value && slot.employee_id) {
         const timestamp = new Date().getTime();
-        const response = await apiClient.get(`/api/orders/${selectedOrderId.value}?_t=${timestamp}`);
+        const response = await apiClient.get(`/orders/${selectedOrderId.value}?_t=${timestamp}`);
         const order = response.data;
         
         // Chercher l'entrée order_employee correspondante pour obtenir le vrai nombre de cartes
@@ -998,7 +998,7 @@
 
     try {
       setCsrfHeader();
-      const response = await apiClient.post(`/api/employees/${selectedEmployee.value.id}/add-card`);
+      const response = await apiClient.post(`/employees/${selectedEmployee.value.id}/add-card`);
 
       // Mettre à jour l'affichage dans la modal
       selectedEmployee.value.total_cards = response.data.card_quantity || response.data.order_employee?.card_quantity || 0;
@@ -1057,7 +1057,7 @@
 
     try {
       setCsrfHeader();
-      const response = await apiClient.post(`/api/employees/${selectedEmployee.value.id}/remove-card`);
+      const response = await apiClient.post(`/employees/${selectedEmployee.value.id}/remove-card`);
 
       // Recharger les slots
       await loadOrderSlots();
@@ -1098,7 +1098,7 @@
 
     try {
       setCsrfHeader();
-      const response = await apiClient.delete(`/api/employees/${selectedEmployee.value.id}`);
+      const response = await apiClient.delete(`/employees/${selectedEmployee.value.id}`);
 
       // Afficher le message du backend (qui peut indiquer si une commande a été supprimée)
       employeeModalFeedback.value = response.data.message || "Personnel supprimé avec succès !";
@@ -1164,7 +1164,7 @@
         return;
       }
       setCsrfHeader();
-      const response = await apiClient.post("/api/user/avatar", formData, {
+      const response = await apiClient.post("/user/avatar", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       if (user.value && response.data.avatar_url) {

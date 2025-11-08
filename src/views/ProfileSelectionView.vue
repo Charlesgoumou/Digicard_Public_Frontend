@@ -324,14 +324,14 @@
 
     try {
       // Charger les commandes de l'utilisateur
-      const response = await apiClient.get("/api/orders");
+      const response = await apiClient.get("/orders");
       let allOrders = response.data;
 
       // Si c'est un business admin, charger aussi les commandes de ses employés
       if (user.value?.role === "business_admin") {
         try {
           // Récupérer la liste des employés
-          const employeesResponse = await apiClient.get("/api/employees");
+          const employeesResponse = await apiClient.get("/employees");
           const employees = employeesResponse.data;
 
           // Filtrer les commandes business du business admin

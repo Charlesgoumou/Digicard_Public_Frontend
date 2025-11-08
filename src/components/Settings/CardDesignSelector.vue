@@ -604,7 +604,7 @@
         formData.append("order_id", props.selectedOrderId);
       }
 
-      const response = await apiClient.post("/api/orders/upload-custom-design", formData, {
+      const response = await apiClient.post("/orders/upload-custom-design", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },

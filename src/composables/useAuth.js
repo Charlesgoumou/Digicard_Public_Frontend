@@ -41,7 +41,7 @@ export function useAuth() {
 
   const _fetchUser = async () => {
     try {
-      const response = await apiClient.get("/api/user");
+      const response = await apiClient.get("/user");
       user.value = response.data;
       return user.value;
     } catch (error) {
@@ -58,7 +58,7 @@ export function useAuth() {
   const register = async (credentials) => {
     try {
       setCsrfHeader();
-      const response = await apiClient.post("/api/register", credentials);
+      const response = await apiClient.post("/register", credentials);
       closeAuthModal();
       router.push({ name: "Verification", query: { email: credentials.email } });
       return response.data;
@@ -74,7 +74,7 @@ export function useAuth() {
   const login = async (credentials) => {
     try {
       setCsrfHeader();
-      const response = await apiClient.post("/api/login", credentials);
+      const response = await apiClient.post("/login", credentials);
 
       // ✅ NOUVEAU : Gérer le cas de comptes multiples
       if (response.data.multiple_accounts) {
@@ -127,7 +127,7 @@ export function useAuth() {
   const verifyCode = async (data) => {
     try {
       setCsrfHeader();
-      const response = await apiClient.post("/api/verify", data);
+      const response = await apiClient.post("/verify", data);
       user.value = response.data.user; // Met à jour l'état
 
       // ✅ CORRECTION : Ajout de la vérification password_reset_required
@@ -158,7 +158,7 @@ export function useAuth() {
     }
     try {
       setCsrfHeader();
-      const response = await apiClient.post("/api/resend-verification", { email });
+      const response = await apiClient.post("/resend-verification", { email });
       return response.data;
     } catch (error) {
       console.error("Erreur lors du renvoi du code:", error.response?.data || error.message);
@@ -172,7 +172,7 @@ export function useAuth() {
   const logout = async () => {
     try {
       setCsrfHeader();
-      await apiClient.post("/api/logout");
+      await apiClient.post("/logout");
     } catch (error) {
       console.error("Erreur API lors de la déconnexion:", error.response?.data || error.message);
     } finally {

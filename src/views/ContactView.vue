@@ -220,7 +220,7 @@
       }
 
       // Envoyer le message
-      const response = await apiClient.post("/api/contact", {
+      const response = await apiClient.post("/contact", {
         name: form.name,
         email: form.email,
         subject: form.subject,

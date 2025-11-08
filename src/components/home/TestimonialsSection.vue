@@ -137,7 +137,7 @@ const handleImageError = (event) => {
 // Fonction pour charger les témoignages
 async function loadTestimonials() {
   try {
-    const res = await apiClient.get('/api/homepage');
+    const res = await apiClient.get('/homepage');
     const homepageTestimonials = res.data?.homepage?.testimonials || [];
     testimonials.value = homepageTestimonials.length > 0 ? homepageTestimonials : props.testimonials;
     

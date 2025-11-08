@@ -529,7 +529,7 @@
       await apiClient.get("/sanctum/csrf-cookie");
       setCsrfHeader();
 
-      const response = await apiClient.put("/api/account", {
+      const response = await apiClient.put("/account", {
         name: editForm.name.trim(),
       });
 
@@ -590,7 +590,7 @@
       await apiClient.get("/sanctum/csrf-cookie");
       setCsrfHeader();
 
-      const response = await apiClient.put("/api/account", {
+      const response = await apiClient.put("/account", {
         email: editForm.email.trim(),
       });
 
@@ -639,7 +639,7 @@
       await apiClient.get("/sanctum/csrf-cookie");
       setCsrfHeader();
 
-      const response = await apiClient.post("/api/account/verify-email-change", {
+      const response = await apiClient.post("/account/verify-email-change", {
         code: emailVerificationCode.value,
       });
 
@@ -681,7 +681,7 @@
       await apiClient.get("/sanctum/csrf-cookie");
       setCsrfHeader();
 
-      const response = await apiClient.post("/api/account/resend-email-change-code");
+      const response = await apiClient.post("/account/resend-email-change-code");
 
       showSuccess(response.data?.message || "Un nouveau code de vérification a été envoyé.");
     } catch (error) {
@@ -718,7 +718,7 @@
         payload.phone = null; // Permettre de supprimer le téléphone
       }
 
-      const response = await apiClient.put("/api/account", payload);
+      const response = await apiClient.put("/account", payload);
 
       // Mettre à jour l'utilisateur localement avec les données de la réponse
       if (response.data) {
@@ -774,7 +774,7 @@
       await apiClient.get("/sanctum/csrf-cookie");
       setCsrfHeader();
 
-      const response = await apiClient.put("/api/account", {
+      const response = await apiClient.put("/account", {
         current_password: editForm.current_password,
         password: editForm.password,
         password_confirmation: editForm.password_confirmation,

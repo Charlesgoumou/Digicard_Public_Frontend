@@ -608,7 +608,7 @@
   // Charger les prix depuis l'API
   const loadPricing = async () => {
     try {
-      const res = await apiClient.get('/api/settings/pricing');
+      const res = await apiClient.get('/settings/pricing');
       const pricing = res.data?.pricing || res.data || {};
       
       if (pricing.card_price !== undefined && pricing.card_price !== null) {
@@ -1219,7 +1219,7 @@
 
     // Charger le prix d'une carte supplémentaire depuis les settings
     try {
-      const response = await apiClient.get("/api/settings/pricing");
+      const response = await apiClient.get("/settings/pricing");
       const pricing = response.data?.pricing || response.data;
       if (pricing && pricing.additional_card_price) {
         additionalCardPrice.value = Number(pricing.additional_card_price);

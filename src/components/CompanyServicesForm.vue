@@ -36,7 +36,8 @@
               </label>
             </div>
             <p class="text-xs text-slate-400 mt-2">
-              Si coché, le bouton "Découvrir nos Services" redirigera vers votre site web. Sinon, l'URL apparaîtra dans la section contact du footer.
+              Si coché, le bouton "Découvrir nos Services" redirigera vers votre site web. Sinon, l'URL apparaîtra dans
+              la section contact du footer.
             </p>
           </div>
 
@@ -409,8 +410,9 @@
           </h2>
           <p class="text-slate-300 text-sm">Enregistrez votre travail et activez la publication en ligne</p>
           <p class="text-slate-400 text-xs mt-2">
-            💡 <strong>Astuce :</strong> Si vous avez coché la case pour mettre en avant votre site web dans le bouton "Découvrir nos Services",
-            vous pouvez enregistrer et publier même si les autres champs ne sont pas remplis. Le bouton redirigera directement vers votre site web.
+            💡 <strong>Astuce :</strong> Si vous avez coché la case pour mettre en avant votre site web dans le bouton
+            "Découvrir nos Services", vous pouvez enregistrer et publier même si les autres champs ne sont pas remplis.
+            Le bouton redirigera directement vers votre site web.
           </p>
         </div>
 
@@ -519,14 +521,14 @@
   const loadCompanyPage = async () => {
     try {
       const params = props.orderId ? { order_id: props.orderId } : {};
-      const response = await apiClient.get("/api/company-page", { params });
-      
+      const response = await apiClient.get("/company-page", { params });
+
       // Mettre à jour le formulaire avec les données reçues
       if (response.data) {
         // Préserver les valeurs par défaut pour les champs qui pourraient ne pas être dans la réponse
         const currentForm = { ...form.value };
         Object.assign(form.value, response.data);
-        
+
         // S'assurer que les champs critiques ne sont pas perdus
         if (!form.value.services || !Array.isArray(form.value.services)) {
           form.value.services = [];
@@ -560,7 +562,7 @@
         formData.append("order_id", props.orderId);
       }
 
-      const response = await apiClient.post("/api/company-page/logo", formData, {
+      const response = await apiClient.post("/company-page/logo", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -599,7 +601,7 @@
         formData.append("order_id", props.orderId);
       }
 
-      const response = await apiClient.post("/api/company-page/extract-presentation", formData, {
+      const response = await apiClient.post("/company-page/extract-presentation", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -703,7 +705,7 @@
       if (props.orderId) {
         payload.order_id = props.orderId;
       }
-      const response = await apiClient.post("/api/company-page/generate-content", payload);
+      const response = await apiClient.post("/company-page/generate-content", payload);
 
       // Mettre à jour le formulaire avec le contenu généré
       if (response.data.companyPage) {
@@ -743,7 +745,7 @@
       if (props.orderId) {
         payload.order_id = props.orderId;
       }
-      const response = await apiClient.put("/api/company-page", payload);
+      const response = await apiClient.put("/company-page", payload);
 
       // Mettre à jour le formulaire avec les données retournées par le backend
       // pour s'assurer que toutes les données sont synchronisées
@@ -751,7 +753,7 @@
         // Mettre à jour le formulaire avec les données retournées
         // Le backend formate déjà l'URL du logo correctement
         Object.assign(form.value, response.data.companyPage);
-        
+
         // S'assurer que services est un tableau
         if (!form.value.services || !Array.isArray(form.value.services)) {
           form.value.services = [];
