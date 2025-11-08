@@ -1,0 +1,1492 @@
+<template>
+  <div class="min-h-screen bg-slate-900 pt-20 sm:pt-32 text-white">
+    <div class="container mx-auto px-4 py-12">
+      <!-- Bouton Retour -->
+      <div class="mb-6">
+        <button
+          @click="goToDashboard"
+          type="button"
+          class="flex items-center gap-2 text-slate-400 hover:text-white transition-colors group"
+        >
+          <svg
+            class="w-5 h-5 transform group-hover:-translate-x-1 transition-transform"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          <span class="font-medium">Retour au Dashboard</span>
+        </button>
+      </div>
+
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+        <h1 class="text-3xl sm:text-4xl font-bold">Mes Commandes</h1>
+
+        <!-- Bouton Commander Une Nouvelle Carte (visible pour particuliers et business admin uniquement) -->
+        <button
+          v-if="user && user.role !== 'employee'"
+          @click="openOrderModal"
+          class="bg-gradient-to-r from-sky-500 to-blue-500 hover:from-sky-600 hover:to-blue-600 text-white font-semibold py-2.5 px-6 rounded-lg transition-all duration-300 ease-in-out hover:shadow-lg hover:shadow-sky-500/30 flex items-center gap-2 whitespace-nowrap"
+        >
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          Commander Une Nouvelle Carte
+        </button>
+      </div>
+
+      <!-- État de chargement -->
+      <div v-if="isLoading" class="text-center text-slate-400 py-10">
+        <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-sky-500"></div>
+        <p class="mt-4">Chargement...</p>
+      </div>
+
+      <!-- Erreur -->
+      <div v-else-if="loadingError" class="text-center text-red-400 py-10">
+        <p>{{ loadingError }}</p>
+      </div>
+
+      <!-- Aucune commande -->
+      <div v-else-if="orders.length === 0" class="bg-slate-800 rounded-lg p-8 text-center border border-slate-700">
+        <svg class="w-16 h-16 mx-auto text-slate-600 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+          />
+        </svg>
+        <h2 class="text-xl font-semibold text-slate-300 mb-2">Aucune commande pour le moment</h2>
+        <p class="text-slate-400 mb-6">Commencez par commander vos cartes de visite digitales.</p>
+        <button
+          @click="openOrderModal"
+          class="bg-gradient-to-r from-sky-500 to-blue-500 hover:from-sky-600 hover:to-blue-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 ease-in-out hover:shadow-lg hover:shadow-sky-500/30"
+        >
+          Commander Une Nouvelle Carte
+        </button>
+      </div>
+
+      <!-- Liste des commandes -->
+      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div
+          v-for="order in orders"
+          :key="`${order.id}-${pricingVersion}`"
+          class="bg-slate-800 rounded-xl p-6 border border-slate-700 hover:border-sky-500 transition-all duration-300 hover:shadow-lg hover:shadow-sky-500/20"
+        >
+          <!-- En-tête de la commande -->
+          <div class="flex justify-between items-start mb-4">
+            <div>
+              <p class="text-sm text-slate-400">Commande</p>
+              <p class="text-lg font-bold text-white">#{{ order.order_number }}</p>
+            </div>
+            <span :class="getStatusClass(order)" class="px-3 py-1 rounded-full text-xs font-semibold">
+              {{ getStatusText(order) }}
+            </span>
+          </div>
+
+          <!-- Détails de la commande -->
+          <div class="space-y-3 mb-4">
+            <div class="flex justify-between items-center">
+              <span class="text-slate-400 text-sm">Type</span>
+              <span class="text-white font-semibold">{{
+                order.order_type === "business" ? "🏢 Entreprise" : "👤 Personnel"
+              }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-slate-400 text-sm">Nombre de cartes</span>
+              <span class="text-white font-semibold">{{ getCardQuantity(order) }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-slate-400 text-sm">Prix total</span>
+              <span class="text-white font-semibold">{{ formatPrice(getCorrectTotalPrice(order)) }} GNF</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-slate-400 text-sm">Design</span>
+              <span class="text-white font-semibold">{{ getDesignLabel(order) }}</span>
+            </div>
+            <div class="border-t border-slate-700 pt-3">
+              <p class="text-slate-400 text-xs mb-1">Abonnement Annuel</p>
+              <p class="text-white font-semibold">{{ formatPrice(order.annual_subscription) }} GNF/an</p>
+              <p class="text-slate-500 text-xs mt-1">à compter du {{ formatDate(order.subscription_start_date) }}</p>
+            </div>
+          </div>
+
+          <!-- Liste des employés (pour les commandes business) -->
+          <div
+            v-if="order.order_type === 'business' && order.order_employees && order.order_employees.length > 0"
+            class="mb-4"
+          >
+            <div class="border-t border-slate-700 pt-3">
+              <p class="text-slate-400 text-xs mb-2 font-semibold">Employés ({{ order.order_employees.length }})</p>
+              <div class="space-y-2 max-h-40 overflow-y-auto">
+                <div
+                  v-for="emp in order.order_employees"
+                  :key="emp.id"
+                  class="flex items-center justify-between bg-slate-700/50 rounded px-2 py-1.5 text-xs"
+                >
+                  <div class="flex-1">
+                    <p class="text-white font-medium">{{ emp.employee_name }}</p>
+                    <p class="text-slate-400 text-[10px]">{{ emp.card_quantity }} carte(s)</p>
+                  </div>
+                  <span v-if="emp.is_configured" class="text-green-400 flex items-center gap-1">
+                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Vérifié
+                  </span>
+                  <span v-else class="text-yellow-400 text-[10px]">Non vérifié</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Statut de configuration -->
+          <div class="mb-4" v-if="!order.is_configured">
+            <div class="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 text-yellow-400 text-sm">
+              ⚠️ Cette commande n'est pas encore paramétrée
+            </div>
+          </div>
+
+          <!-- Date de la commande -->
+          <p class="text-slate-500 text-xs mb-4">Commandé le {{ formatDateTime(order.created_at) }}</p>
+
+          <!-- Boutons d'action -->
+          <div class="space-y-2">
+            <!-- Bouton Paramétrer -->
+            <button
+              v-if="!order.is_configured && order.status !== 'cancelled'"
+              @click="configureOrder(order)"
+              class="w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+            >
+              Paramétrer cette commande
+            </button>
+            <div v-else class="flex items-center justify-center gap-2 text-green-400 text-sm py-2">
+              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+              <span>Commande paramétrée</span>
+            </div>
+
+            <!-- Bouton Valider la Commande - Visible tant que la commande n'est pas validée -->
+            <button
+              v-if="order.status !== 'validated' && order.status !== 'cancelled'"
+              @click="openValidateModal(order)"
+              :disabled="(isProcessing && validatingOrderId === order.id) || !hasDesignDefined(order)"
+              class="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg
+                v-if="isProcessing && validatingOrderId === order.id"
+                class="animate-spin h-5 w-5"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              <svg
+                v-else
+                class="w-5 h-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+              {{ isProcessing && validatingOrderId === order.id ? "Validation en cours..." : "Valider la Commande" }}
+            </button>
+            <!-- Message d'avertissement si le design n'est pas défini -->
+            <div
+              v-if="order.status !== 'validated' && order.status !== 'cancelled' && !hasDesignDefined(order)"
+              class="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-yellow-400 text-xs text-center"
+            >
+              <div class="flex items-center justify-center gap-2">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span>Vous devez définir un design avant de valider la commande</span>
+              </div>
+            </div>
+
+            <!-- Message de confirmation pour les commandes validées -->
+            <div v-if="order.status === 'validated' && hasDesignDefined(order)" class="bg-green-500/10 border border-green-500/30 rounded-lg p-3 text-center">
+              <div class="flex items-center justify-center gap-2 text-green-400 text-sm mb-2">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <span class="font-semibold">Commande validée</span>
+              </div>
+              <p class="text-xs text-slate-400">Vous avez reçu un email de confirmation</p>
+            </div>
+
+            <!-- Bouton Ajouter plus de Cartes - Visible pour les commandes validées des particuliers et business -->
+            <button
+              v-if="order.status === 'validated' && hasDesignDefined(order) && ((order.order_type === 'personal' || order.order_type === 'individual') || (order.order_type === 'business' || order.order_type === 'entreprise'))"
+              @click="openAddCardsModal(order)"
+              class="w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 mt-3"
+            >
+              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              Ajouter plus de Cartes
+            </button>
+
+            <!-- Affichage des cartes supplémentaires si elles existent -->
+            <div
+              v-if="order.status === 'validated' && order.additional_cards_count && order.additional_cards_count > 0"
+              class="mt-3 p-3 bg-slate-800/50 border border-slate-700 rounded-lg"
+            >
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-slate-400 text-sm">Cartes Supplémentaires</span>
+                <span class="text-white font-semibold">{{ order.additional_cards_count }}</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-slate-400 text-sm">Prix total</span>
+                <span class="text-white font-semibold">{{ formatPrice(order.additional_cards_total_price || 0) }} GNF</span>
+              </div>
+            </div>
+
+            <!-- Bouton Annuler la Commande - Non visible pour les commandes validées -->
+            <button
+              v-if="order.status !== 'validated' && order.status !== 'cancelled'"
+              @click="openCancelModal(order)"
+              class="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Annuler la Commande
+            </button>
+            <div v-if="order.status === 'cancelled'" class="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-center text-red-400 text-sm">
+              Cette commande a été annulée. Aucune action n'est possible.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Confirmation d'Annulation -->
+    <div
+      v-if="showCancelModal"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      @click.self="closeCancelModal"
+    >
+      <div class="bg-slate-800 rounded-xl p-6 max-w-md w-full border border-slate-700 shadow-2xl">
+        <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-red-500/20 rounded-full">
+          <svg class="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            />
+          </svg>
+        </div>
+        <h3 class="text-xl font-bold text-white text-center mb-3">Annuler la Commande</h3>
+        <p class="text-slate-300 text-center mb-6">
+          Êtes-vous sûr de vouloir annuler cette commande ? Cette action est irréversible et la commande sera
+          définitivement supprimée.
+        </p>
+        <div class="flex gap-3">
+          <button
+            @click="closeCancelModal"
+            :disabled="isProcessing"
+            class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors disabled:opacity-50"
+          >
+            Non
+          </button>
+          <button
+            @click="confirmCancel"
+            :disabled="isProcessing"
+            class="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            <span v-if="!isProcessing">Oui, Annuler</span>
+            <span v-else>
+              <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal pour ajouter des cartes supplémentaires -->
+    <div
+      v-if="showAddCardsModal"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50 p-4 overflow-y-auto"
+      @click.self="closeAddCardsModal"
+    >
+      <div class="bg-slate-800 rounded-xl p-4 sm:p-6 max-w-2xl w-full border border-slate-700 shadow-2xl my-auto max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 bg-sky-500/20 rounded-full">
+          <svg class="w-6 h-6 sm:w-8 sm:h-8 text-sky-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+        </div>
+        <h3 class="text-lg sm:text-xl font-bold text-white text-center mb-2 sm:mb-3 px-2">Ajouter des Cartes Supplémentaires</h3>
+        <p class="text-slate-300 text-center mb-4 sm:mb-6 text-xs sm:text-sm px-2">
+          Le même design sera retenu pour les cartes ajoutées. L'abonnement initial s'applique à toutes les cartes.
+        </p>
+
+        <!-- Pour les commandes business : distribution des cartes -->
+        <div v-if="isBusinessOrder && selectedOrder" class="mb-4 sm:mb-6">
+          <div class="mb-3 sm:mb-4">
+            <label class="block text-slate-300 text-xs sm:text-sm font-medium mb-2">
+              Nombre total de cartes à ajouter
+            </label>
+            <input
+              v-model.number="additionalCardsQuantity"
+              type="number"
+              min="1"
+              max="100"
+              @input="updateBusinessDistribution"
+              class="w-full bg-slate-700 border border-slate-600 rounded-lg py-2.5 px-4 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition"
+              placeholder="Ex: 1, 2, 3..."
+            />
+          </div>
+
+          <!-- Distribution pour le business admin (s'il est inclus) -->
+          <div v-if="businessAdminInOrder" class="mb-3 sm:mb-4 p-3 sm:p-4 bg-slate-700/30 rounded-lg border border-slate-600">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 mb-2 sm:mb-3">
+              <div class="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2 flex-1 min-w-0">
+                <span class="text-slate-300 text-xs sm:text-sm font-medium break-words">Pour vous ({{ businessAdminName }})</span>
+                <span v-if="businessAdminCurrentCards > 0" class="text-slate-400 text-xs whitespace-nowrap">
+                  ({{ businessAdminCurrentCards }} carte(s) actuelle(s))
+                </span>
+              </div>
+              <input
+                :value="businessDistribution.admin || 0"
+                type="number"
+                min="0"
+                :max="additionalCardsQuantity"
+                @input="(e) => {
+                  const value = e.target.value === '' ? 0 : Number(e.target.value) || 0;
+                  businessDistribution.admin = Math.max(0, Math.min(value, additionalCardsQuantity));
+                  updateBusinessDistribution();
+                }"
+                @blur="(e) => {
+                  if (e.target.value === '' || e.target.value === null || e.target.value === undefined) {
+                    businessDistribution.admin = 0;
+                    updateBusinessDistribution();
+                  }
+                }"
+                placeholder="0"
+                class="w-20 bg-slate-600 border border-slate-500 rounded-lg py-1.5 px-3 text-white text-center focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition"
+              />
+            </div>
+          </div>
+
+          <!-- Distribution pour les employés -->
+          <div v-if="orderEmployees && orderEmployees.length > 0" class="mb-3 sm:mb-4">
+            <h4 class="text-slate-300 text-xs sm:text-sm font-medium mb-2 sm:mb-3">Pour vos employés ({{ orderEmployees.length }})</h4>
+            <div class="space-y-2 sm:space-y-3 max-h-48 sm:max-h-64 overflow-y-auto">
+              <div
+                v-for="employee in orderEmployees"
+                :key="employee.id || employee.employee_id"
+                class="p-2 sm:p-3 bg-slate-700/30 rounded-lg border border-slate-600"
+              >
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
+                  <div class="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2 flex-1 min-w-0">
+                    <span class="text-slate-300 text-xs sm:text-sm break-words">
+                      {{ employee.employee_name || employee.employee?.name || employee.name || `Employé #${employee.employee_id || employee.id}` }}
+                    </span>
+                    <span v-if="(employee.card_quantity || 0) > 0" class="text-slate-400 text-xs whitespace-nowrap">
+                      ({{ employee.card_quantity }} carte(s) actuelle(s))
+                    </span>
+                  </div>
+                  <input
+                    :value="businessDistribution.employees[employee.employee_id || employee.id] || 0"
+                    type="number"
+                    min="0"
+                    :max="additionalCardsQuantity"
+                    @input="(e) => { 
+                      const empId = employee.employee_id || employee.id; 
+                      const value = e.target.value === '' ? 0 : Number(e.target.value) || 0;
+                      businessDistribution.employees[empId] = Math.max(0, Math.min(value, additionalCardsQuantity)); 
+                      updateBusinessDistribution(); 
+                    }"
+                    @blur="(e) => {
+                      const empId = employee.employee_id || employee.id;
+                      if (e.target.value === '' || e.target.value === null || e.target.value === undefined) {
+                        businessDistribution.employees[empId] = 0;
+                        updateBusinessDistribution();
+                      }
+                    }"
+                    placeholder="0"
+                    class="w-20 bg-slate-600 border border-slate-500 rounded-lg py-1.5 px-3 text-white text-center text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Message si aucun employé n'est trouvé -->
+          <div v-else-if="isBusinessOrder && orderEmployees.length === 0" class="mb-3 sm:mb-4 p-2 sm:p-3 bg-slate-700/30 rounded-lg border border-slate-600 text-slate-400 text-xs sm:text-sm">
+            Aucun employé trouvé pour cette commande.
+          </div>
+
+          <!-- Avertissement si la distribution ne correspond pas -->
+          <div v-if="businessDistributionTotal !== additionalCardsQuantity && additionalCardsQuantity > 0 && businessDistributionTotal > 0" class="mb-3 sm:mb-4 p-2 sm:p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-yellow-400 text-xs sm:text-sm">
+            ⚠️ La distribution ({{ businessDistributionTotal }}) ne correspond pas au total ({{ additionalCardsQuantity }}). Veuillez ajuster la répartition.
+          </div>
+          
+          <!-- Message d'aide pour distribuer les cartes -->
+          <div v-if="businessDistributionTotal === 0 && additionalCardsQuantity > 0 && (businessAdminInOrder || (orderEmployees && orderEmployees.length > 0))" class="mb-3 sm:mb-4 p-2 sm:p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg text-blue-400 text-xs sm:text-sm">
+            💡 Veuillez répartir les {{ additionalCardsQuantity }} carte(s) entre vous-même{{ businessAdminInOrder ? '' : ' (si inclus)' }} et vos employés ci-dessus.
+          </div>
+          
+          <!-- Message si aucun employé n'est disponible -->
+          <div v-if="businessDistributionTotal === 0 && additionalCardsQuantity > 0 && !businessAdminInOrder && (!orderEmployees || orderEmployees.length === 0)" class="mb-3 sm:mb-4 p-2 sm:p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg text-orange-400 text-xs sm:text-sm">
+            ⚠️ Aucun employé trouvé pour cette commande. Si vous êtes inclus dans la commande, vous pouvez ajouter toutes les cartes pour vous-même.
+          </div>
+        </div>
+
+        <!-- Pour les commandes particulières : simple input -->
+        <div v-else class="mb-3 sm:mb-4">
+          <label class="block text-slate-300 text-xs sm:text-sm font-medium mb-2">
+            Nombre de cartes à ajouter
+          </label>
+          <input
+            v-model.number="additionalCardsQuantity"
+            type="number"
+            min="1"
+            max="100"
+            class="w-full bg-slate-700 border border-slate-600 rounded-lg py-2.5 px-4 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition"
+            placeholder="Ex: 1, 2, 3..."
+          />
+        </div>
+
+        <div v-if="additionalCardsQuantity > 0 && additionalCardPrice" class="mb-4 sm:mb-6 p-3 sm:p-4 bg-slate-700/50 rounded-lg">
+          <div class="flex justify-between items-center mb-2">
+            <span class="text-slate-300 text-xs sm:text-sm">Prix unitaire</span>
+            <span class="text-white font-semibold text-xs sm:text-sm">{{ formatPrice(additionalCardPrice) }} GNF</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-slate-300 text-xs sm:text-sm font-medium">Prix total</span>
+            <span class="text-white font-bold text-sm sm:text-lg">{{ formatPrice(Math.round(additionalCardsQuantity * additionalCardPrice)) }} GNF</span>
+          </div>
+        </div>
+
+        <div v-if="addCardsError" class="mb-3 sm:mb-4 p-2 sm:p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs sm:text-sm text-center">
+          {{ addCardsError }}
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
+          <button
+            @click="closeAddCardsModal"
+            :disabled="isAddingCards"
+            class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2.5 sm:py-3 px-4 rounded-lg transition-colors disabled:opacity-50 text-sm sm:text-base"
+          >
+            Annuler
+          </button>
+          <button
+            @click="confirmAddCards"
+            :disabled="isAddingCards || !additionalCardsQuantity || additionalCardsQuantity < 1 || (isBusinessOrder && (businessDistributionTotal === 0 || businessDistributionTotal !== additionalCardsQuantity))"
+            class="flex-1 bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2.5 sm:py-3 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2 text-sm sm:text-base"
+            :title="isBusinessOrder && businessDistributionTotal !== additionalCardsQuantity ? 'Veuillez répartir correctement les cartes avant de confirmer' : ''"
+          >
+            <span v-if="!isAddingCards">Confirmer</span>
+            <span v-else class="flex items-center gap-2">
+              <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              Ajout en cours...
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Overlay de chargement global pendant la validation -->
+    <div
+      v-if="isProcessing && validatingOrderId"
+      class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50"
+    >
+      <div class="text-center">
+        <div class="inline-block animate-spin rounded-full h-16 w-16 border-b-2 border-green-500 mb-4"></div>
+        <p class="text-white font-medium text-lg">Validation de votre commande...</p>
+      </div>
+    </div>
+
+    <!-- Modal de Validation de Commande -->
+    <div
+      v-if="showValidateModal"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      @click.self="closeValidateModal"
+    >
+      <div class="bg-slate-800 rounded-xl p-6 max-w-md w-full border border-slate-700 shadow-2xl">
+        <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-green-500/20 rounded-full">
+          <svg class="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <h3 class="text-xl font-bold text-white text-center mb-3">🎉 Félicitations !</h3>
+        <p class="text-slate-300 text-center mb-6">
+          Votre commande a été validée avec succès ! Vous recevrez un email résumant votre commande et les conditions
+          générales d'utilisation.
+        </p>
+        <button
+          @click="closeValidateModal"
+          class="w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+        >
+          Fermer
+        </button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+  import { ref, computed, onMounted, onActivated, onBeforeUnmount, nextTick } from "vue";
+  import { useRouter } from "vue-router";
+  import apiClient from "@/api";
+  import { useAuth } from "@/composables/useAuth";
+  import { useOrderModal } from "@/composables/useOrderModal";
+  import Cookies from "js-cookie";
+
+  const router = useRouter();
+  const { user } = useAuth();
+  const { openOrderModal } = useOrderModal();
+
+  const orders = ref([]);
+  const isLoading = ref(true);
+  const loadingError = ref("");
+  
+  // Prix dynamiques chargés depuis l'API
+  const BASE_PRICE = ref(200000); // Prix par défaut (sera remplacé par l'API)
+  const EXTRA_PRICE = ref(60000); // Prix par défaut (sera remplacé par l'API)
+  const pricingVersion = ref(0); // Clé de version pour forcer le re-render quand les prix changent
+
+  // États des modals
+  const showCancelModal = ref(false);
+  const showValidateModal = ref(false);
+  const showAddCardsModal = ref(false);
+  const selectedOrder = ref(null);
+  const isProcessing = ref(false);
+  const validatingOrderId = ref(null); // ID de la commande en cours de validation
+  const isAddingCards = ref(false);
+  const additionalCardsQuantity = ref(1);
+  const additionalCardPrice = ref(null);
+  const addCardsError = ref("");
+  
+  // Pour les commandes business : distribution des cartes
+  const isBusinessOrder = ref(false);
+  const businessAdminInOrder = ref(false);
+  const businessAdminName = ref("");
+  const businessAdminCurrentCards = ref(0);
+  const orderEmployees = ref([]);
+  const businessDistribution = ref({
+    admin: 0,
+    employees: {},
+  });
+
+  // Fonction pour retourner au Dashboard
+  const goToDashboard = () => {
+    router.push({ name: "Dashboard" });
+  };
+
+  // Charger les prix depuis l'API
+  const loadPricing = async () => {
+    try {
+      const res = await apiClient.get('/api/settings/pricing');
+      const pricing = res.data?.pricing || res.data || {};
+      
+      if (pricing.card_price !== undefined && pricing.card_price !== null) {
+        BASE_PRICE.value = Number(pricing.card_price);
+      }
+      if (pricing.additional_card_price !== undefined && pricing.additional_card_price !== null) {
+        EXTRA_PRICE.value = Number(pricing.additional_card_price);
+      }
+      
+      console.log('Prix chargés depuis l\'API dans OrdersView:', {
+        BASE_PRICE: BASE_PRICE.value,
+        EXTRA_PRICE: EXTRA_PRICE.value,
+      });
+      
+      // Incrémenter la version pour forcer le re-render
+      pricingVersion.value++;
+    } catch (e) {
+      console.warn('Impossible de charger la tarification depuis l\'API. Utilisation des valeurs par défaut.', e);
+    }
+  };
+
+  // Charger les commandes
+  const loadOrders = async () => {
+    isLoading.value = true;
+    loadingError.value = "";
+
+    try {
+      console.log("OrdersView: Début du chargement des commandes...");
+      
+      // Charger les prix avant de charger les commandes
+      await loadPricing();
+      
+      // ✅ Ajouter un timestamp pour éviter le cache du navigateur
+      const timestamp = new Date().getTime();
+      console.log("OrdersView: Appel API pour charger les commandes...");
+      const response = await apiClient.get(`/api/orders?_t=${timestamp}`);
+      
+      console.log("OrdersView: Commandes reçues du backend", {
+        count: Array.isArray(response.data) ? response.data.length : 0,
+        data: response.data
+      });
+      
+      orders.value = response.data || [];
+      
+      console.log("OrdersView: Commandes chargées avec succès", {
+        count: orders.value.length,
+        orders: orders.value.map(o => ({ id: o.id, order_number: o.order_number, status: o.status }))
+      });
+    } catch (error) {
+      console.error("OrdersView: Erreur lors du chargement des commandes:", error);
+      console.error("OrdersView: Détails de l'erreur:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        stack: error.stack
+      });
+      loadingError.value = error.response?.data?.message || "Impossible de charger vos commandes. Veuillez réessayer.";
+      // S'assurer que orders est toujours un tableau même en cas d'erreur
+      orders.value = [];
+    } finally {
+      isLoading.value = false;
+      console.log("OrdersView: Fin du chargement des commandes", {
+        isLoading: isLoading.value,
+        hasError: !!loadingError.value,
+        ordersCount: orders.value.length
+      });
+    }
+  };
+
+  // Fonction pour formater le prix
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat("fr-FR").format(price);
+  };
+
+  // Fonction pour formater la date (JJ/MM/AAAA)
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  // Fonction pour formater la date et l'heure
+  const formatDateTime = (dateTimeString) => {
+    const date = new Date(dateTimeString);
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    return `${day}/${month}/${year} à ${hours}:${minutes}`;
+  };
+
+  // Obtenir le nombre de cartes (spécifique à l'employé si applicable)
+  const getCardQuantity = (order) => {
+    // Si l'utilisateur est un employé et que employee_card_quantity existe, l'utiliser
+    if (user.value?.role === "employee" && order.employee_card_quantity !== undefined) {
+      return order.employee_card_quantity;
+    }
+
+    // ✅ Pour toutes les autres commandes (business et personal), utiliser card_quantity
+    // qui est déjà calculé et mis à jour correctement par le backend
+    return order.card_quantity || 0;
+  };
+
+  // Recalculer le prix total pour les commandes entreprises avec les prix chargés depuis l'API
+  // IMPORTANT: Les commandes validées conservent leur prix d'origine (pas de recalcul)
+  const getCorrectTotalPrice = (order) => {
+    // Si la commande est validée, utiliser le prix enregistré (pas de recalcul)
+    const isOrderValidated = order.status === 'validated' || order.status === 'validé' || order.status === 'valide';
+    if (isOrderValidated) {
+      // Pour les commandes validées, utiliser le prix enregistré dans la commande
+      // Cela garantit que le prix ne change pas même si les prix sont modifiés par le super admin
+      return order.total_price || 0;
+    }
+    
+    // Pour les commandes non validées, recalculer avec les prix actuels de l'API
+    if (order.order_type === "business" || order.order_type === "entreprise") {
+      // Utiliser les prix chargés depuis l'API (dynamiques)
+      const basePrice = BASE_PRICE.value;
+      const extraPrice = EXTRA_PRICE.value;
+      
+      let calculatedPrice = 0;
+      let calculationMethod = '';
+      
+      // Si on a les employee_slots ou order_employees, utiliser ces données
+      if (order.employee_slots && order.employee_slots.length > 0) {
+        // Calculer avec les slots d'employés
+        calculatedPrice = order.employee_slots.reduce((total, slot) => {
+          const quantity = Number(slot.cards_quantity) || 1;
+          return total + basePrice + (quantity - 1) * extraPrice;
+        }, 0);
+        calculationMethod = 'employee_slots';
+      } else if (order.order_employees && order.order_employees.length > 0) {
+        // Calculer avec les employés de la commande
+        calculatedPrice = order.order_employees.reduce((total, emp) => {
+          const quantity = Number(emp.card_quantity) || Number(emp.cards_quantity) || 1;
+          return total + basePrice + (quantity - 1) * extraPrice;
+        }, 0);
+        calculationMethod = 'order_employees';
+      } else if (order.total_employees && order.cards_per_employee) {
+        // Mode uniforme : même nombre de cartes pour tous
+        const quantity = Number(order.cards_per_employee) || 1;
+        const pricePerPerson = basePrice + (quantity - 1) * extraPrice;
+        calculatedPrice = order.total_employees * pricePerPerson;
+        calculationMethod = 'uniform_mode';
+      } else if (order.card_quantity && order.total_employees) {
+        // Fallback : calculer avec le nombre total de cartes et le nombre de personnes
+        const cardsPerPerson = Math.floor(order.card_quantity / order.total_employees);
+        const pricePerPerson = basePrice + (cardsPerPerson - 1) * extraPrice;
+        calculatedPrice = order.total_employees * pricePerPerson;
+        calculationMethod = 'fallback_calculation';
+      } else if (order.card_quantity || order.quantity) {
+        // Cas simple : calculer directement avec le nombre total de cartes
+        const quantity = Number(order.card_quantity || order.quantity) || 0;
+        if (quantity > 0) {
+          calculatedPrice = basePrice + (quantity - 1) * extraPrice;
+          calculationMethod = 'simple_card_quantity';
+        }
+      }
+      
+      // Log pour debug
+      if (calculatedPrice > 0) {
+        console.log(`Prix recalculé pour commande business #${order.id} (${calculationMethod}):`, {
+          orderId: order.id,
+          orderType: order.order_type,
+          status: order.status,
+          total_employees: order.total_employees,
+          cards_per_employee: order.cards_per_employee,
+          card_quantity: order.card_quantity,
+          quantity: order.quantity,
+          prixBackend: order.total_price,
+          prixRecalculé: calculatedPrice,
+          BASE_PRICE_utilisé: basePrice,
+          EXTRA_PRICE_utilisé: extraPrice,
+          méthode: calculationMethod,
+        });
+        return calculatedPrice;
+      }
+    }
+    
+    // Pour les commandes particulières/individuelles non validées, recalculer avec les prix actuels
+    if (
+      !isOrderValidated &&
+      (order.order_type === "personal" || order.order_type === "individual" || order.order_type === "particulier")
+    ) {
+      const quantity = order.card_quantity || order.quantity || 0;
+      if (quantity > 0) {
+        const calculatedPrice = BASE_PRICE.value + (quantity - 1) * EXTRA_PRICE.value;
+        console.log(`Prix recalculé pour commande personnelle #${order.id}:`, {
+          orderId: order.id,
+          orderType: order.order_type,
+          status: order.status,
+          quantity: quantity,
+          prixBackend: order.total_price,
+          prixRecalculé: calculatedPrice,
+          BASE_PRICE_utilisé: BASE_PRICE.value,
+          EXTRA_PRICE_utilisé: EXTRA_PRICE.value,
+        });
+        return calculatedPrice;
+      }
+    }
+    
+    // Pour les autres cas, utiliser le prix du backend
+    return order.total_price || 0;
+  };
+
+  // Obtenir les données de design d'une commande
+  const getDesignData = (order) => {
+    // Pour les employés, vérifier d'abord dans employee_profile
+    if (user.value?.role === "employee" && order.employee_profile) {
+      return {
+        card_design_type: order.employee_profile.card_design_type,
+        card_design_number: order.employee_profile.card_design_number,
+        card_design_custom_url: order.employee_profile.card_design_custom_url,
+        no_design_yet: order.employee_profile.no_design_yet,
+      };
+    }
+    
+    // Pour les business admins inclus dans une commande entreprise, vérifier dans employee_profile
+    // car ils sont traités comme des "employés" de leur propre commande (via OrderEmployee)
+    // Utiliser plusieurs indicateurs pour détecter si le business admin est inclus :
+    // 1. employee_profile existe (le plus fiable)
+    // 2. order_employees contient un employé avec employee_id = user.id
+    // 3. employee_card_quantity existe (fallback)
+    const isBusinessAdminInOrder = 
+      user.value?.role === "business_admin" && 
+      order.order_type === "business" &&
+      (
+        order.employee_profile !== undefined ||
+        (order.order_employees && order.order_employees.some(emp => emp.employee_id === user.value.id)) ||
+        order.employee_card_quantity !== undefined
+      );
+    
+    console.log("OrdersView: getDesignData for order", {
+      orderId: order.id,
+      orderType: order.order_type,
+      userRole: user.value?.role,
+      hasEmployeeProfile: !!order.employee_profile,
+      hasOrderEmployees: !!order.order_employees,
+      orderEmployeesCount: order.order_employees?.length || 0,
+      employeeCardQuantity: order.employee_card_quantity,
+      isBusinessAdminInOrder,
+      employeeProfileDesign: order.employee_profile ? {
+        card_design_type: order.employee_profile.card_design_type,
+        card_design_number: order.employee_profile.card_design_number,
+        no_design_yet: order.employee_profile.no_design_yet,
+      } : null,
+      orderDesign: {
+        card_design_type: order.card_design_type,
+        card_design_number: order.card_design_number,
+        no_design_yet: order.no_design_yet,
+      },
+    });
+    
+    if (isBusinessAdminInOrder && order.employee_profile) {
+      console.log("OrdersView: Using employee_profile design data for business admin", {
+        card_design_type: order.employee_profile.card_design_type,
+        card_design_number: order.employee_profile.card_design_number,
+        card_design_custom_url: order.employee_profile.card_design_custom_url,
+        no_design_yet: order.employee_profile.no_design_yet,
+      });
+      return {
+        card_design_type: order.employee_profile.card_design_type,
+        card_design_number: order.employee_profile.card_design_number,
+        card_design_custom_url: order.employee_profile.card_design_custom_url,
+        no_design_yet: order.employee_profile.no_design_yet,
+      };
+    }
+    
+    // Pour les autres utilisateurs, utiliser les données de la commande
+    // Le backend copie aussi les données de design au niveau racine pour le business admin inclus
+    console.log("OrdersView: Using order-level design data", {
+      card_design_type: order.card_design_type,
+      card_design_number: order.card_design_number,
+      card_design_custom_url: order.card_design_custom_url,
+      no_design_yet: order.no_design_yet,
+    });
+    return {
+      card_design_type: order.card_design_type,
+      card_design_number: order.card_design_number,
+      card_design_custom_url: order.card_design_custom_url,
+      no_design_yet: order.no_design_yet,
+    };
+  };
+
+  // Vérifier si un design est défini pour une commande
+  const hasDesignDefined = (order) => {
+    const designData = getDesignData(order);
+
+    // Si "Je n'ai pas encore mon design" est coché, la validation est impossible
+    if (designData?.no_design_yet) {
+      return false;
+    }
+
+    // Si un design template est sélectionné
+    if (designData?.card_design_type === "template" && designData?.card_design_number) {
+      return true;
+    }
+
+    // Si un design personnalisé est sélectionné
+    if (designData?.card_design_type === "custom" && designData?.card_design_custom_url) {
+      return true;
+    }
+
+    // Aucun design défini
+    return false;
+  };
+
+  // Obtenir le label du design choisi
+  const getDesignLabel = (order) => {
+    const designData = getDesignData(order);
+
+    // Si "Je n'ai pas encore mon design" est coché
+    if (designData?.no_design_yet) {
+      return "Design en attente";
+    }
+
+    // Si un design template est sélectionné
+    if (designData?.card_design_type === "template" && designData?.card_design_number) {
+      return `Design${designData.card_design_number}`;
+    }
+
+    // Si un design personnalisé est sélectionné
+    if (designData?.card_design_type === "custom") {
+      return "Design Personnel";
+    }
+
+    // Si aucun design n'est défini
+    return "Non défini";
+  };
+
+  // Obtenir la classe CSS du statut
+  const getStatusClass = (order) => {
+    const classes = {
+      pending: "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30",
+      awaiting: "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30",
+      validated: "bg-blue-500/20 text-blue-400 border border-blue-500/30",
+      configured: "bg-green-500/20 text-green-400 border border-green-500/30",
+      completed: "bg-green-500/20 text-green-400 border border-green-500/30",
+      cancelled: "bg-red-500/20 text-red-400 border border-red-500/30",
+    };
+    if (!hasDesignDefined(order)) return classes.awaiting;
+    return classes[order?.status] || classes.pending;
+  };
+
+  // Obtenir le texte du statut
+  const getStatusText = (order) => {
+    if (!hasDesignDefined(order)) return "En attente design";
+    const texts = {
+      pending: "En attente",
+      validated: "Validée",
+      configured: "Paramétrée",
+      completed: "Terminée",
+      cancelled: "Annulée",
+    };
+    return texts[order?.status] || "Inconnu";
+  };
+
+  // Configurer une commande (rediriger vers la page de paramétrage)
+  const configureOrder = (order) => {
+    router.push({ name: "Settings", query: { orderId: order.id } });
+  };
+
+  // Ouvrir le modal d'annulation
+  const openCancelModal = (order) => {
+    selectedOrder.value = order;
+    showCancelModal.value = true;
+  };
+
+  // Fermer le modal d'annulation
+  const closeCancelModal = () => {
+    if (!isProcessing.value) {
+      showCancelModal.value = false;
+      selectedOrder.value = null;
+    }
+  };
+
+  // Confirmer l'annulation de la commande
+  const confirmCancel = async () => {
+    if (!selectedOrder.value || isProcessing.value) return;
+
+    isProcessing.value = true;
+
+    try {
+      // Définir le header CSRF
+      const csrfToken = Cookies.get("XSRF-TOKEN");
+      if (csrfToken) {
+        apiClient.defaults.headers.common["X-XSRF-TOKEN"] = csrfToken;
+      }
+
+      await apiClient.delete(`/api/orders/${selectedOrder.value.id}`);
+
+      // Retirer la commande de la liste
+      orders.value = orders.value.filter((o) => o.id !== selectedOrder.value.id);
+
+      // Fermer le modal
+      showCancelModal.value = false;
+      selectedOrder.value = null;
+    } catch (error) {
+      console.error("Erreur lors de l'annulation de la commande:", error);
+      alert(error.response?.data?.message || "Erreur lors de l'annulation de la commande.");
+    } finally {
+      isProcessing.value = false;
+      delete apiClient.defaults.headers.common["X-XSRF-TOKEN"];
+    }
+  };
+
+  // Ouvrir le modal de validation
+  const openValidateModal = async (order) => {
+    if (isProcessing.value) return;
+
+    // Vérifier si un design est défini avant de permettre la validation
+    if (!hasDesignDefined(order)) {
+      alert("Vous devez définir un design pour la carte avant de pouvoir valider la commande.\n\nVeuillez aller dans 'Paramétrer ma carte' pour sélectionner un design (template ou personnalisé). L'option 'Je n'ai pas encore mon design' empêche la validation.");
+      return;
+    }
+
+    isProcessing.value = true;
+    validatingOrderId.value = order.id;
+
+    try {
+      // Définir le header CSRF
+      const csrfToken = Cookies.get("XSRF-TOKEN");
+      if (csrfToken) {
+        apiClient.defaults.headers.common["X-XSRF-TOKEN"] = csrfToken;
+      }
+
+      const response = await apiClient.post(`/api/orders/${order.id}/validate`);
+
+      // Mettre à jour la commande dans la liste
+      const index = orders.value.findIndex((o) => o.id === order.id);
+      if (index !== -1) {
+        orders.value[index] = { ...orders.value[index], ...response.data.order };
+      }
+
+      // Émettre un événement pour notifier qu'une commande a été validée
+      // Cela permettra au Dashboard du super admin de se mettre à jour automatiquement
+      window.dispatchEvent(new CustomEvent('order-validated', {
+        detail: { order: response.data.order }
+      }));
+
+      // Afficher le modal de succès
+      showValidateModal.value = true;
+
+      // Attendre que Vue ait rendu le modal avant de désactiver le chargement
+      await nextTick();
+      // Petit délai supplémentaire pour s'assurer que le modal est bien visible
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    } catch (error) {
+      console.error("Erreur lors de la validation de la commande:", error);
+      alert(error.response?.data?.message || "Erreur lors de la validation de la commande.");
+    } finally {
+      isProcessing.value = false;
+      validatingOrderId.value = null;
+      delete apiClient.defaults.headers.common["X-XSRF-TOKEN"];
+    }
+  };
+
+  // Fermer le modal de validation
+  const closeValidateModal = () => {
+    showValidateModal.value = false;
+    // Recharger les commandes pour obtenir les données à jour
+    loadOrders();
+  };
+
+  // Ouvrir le modal pour ajouter des cartes supplémentaires
+  const openAddCardsModal = async (order) => {
+    selectedOrder.value = order;
+    additionalCardsQuantity.value = 1;
+    addCardsError.value = "";
+    showAddCardsModal.value = true;
+
+    // Vérifier si c'est une commande business
+    isBusinessOrder.value = order.order_type === 'business' || order.order_type === 'entreprise';
+    
+    if (isBusinessOrder.value) {
+      // Charger les employés de la commande
+      try {
+        const response = await apiClient.get(`/api/orders/${order.id}`);
+        const orderData = response.data;
+        
+        console.log("OrdersView: openAddCardsModal - Réponse API complète", {
+          orderId: order.id,
+          orderDataKeys: Object.keys(orderData),
+          hasOrderEmployees: !!orderData.order_employees,
+          orderEmployeesType: Array.isArray(orderData.order_employees) ? 'array' : typeof orderData.order_employees,
+          orderEmployeesLength: Array.isArray(orderData.order_employees) ? orderData.order_employees.length : 0,
+          orderEmployeesData: orderData.order_employees,
+          orderFromList: order.order_employees ? {
+            type: Array.isArray(order.order_employees) ? 'array' : typeof order.order_employees,
+            length: Array.isArray(order.order_employees) ? order.order_employees.length : 0,
+            data: order.order_employees
+          } : null,
+        });
+        
+        // Récupérer tous les order_employees (y compris le business admin s'il est inclus)
+        // Essayer plusieurs sources possibles pour les données
+        let allEmployees = [];
+        
+        if (orderData.order_employees && Array.isArray(orderData.order_employees)) {
+          allEmployees = orderData.order_employees;
+        } else if (order.order_employees && Array.isArray(order.order_employees)) {
+          allEmployees = order.order_employees;
+        } else if (orderData.orderEmployees && Array.isArray(orderData.orderEmployees)) {
+          allEmployees = orderData.orderEmployees;
+        }
+        
+        console.log("OrdersView: openAddCardsModal - allEmployees récupérés", {
+          totalCount: allEmployees.length,
+          employees: allEmployees.map(e => ({
+            id: e.id,
+            employee_id: e.employee_id,
+            employee_name: e.employee_name,
+            employee: e.employee ? { id: e.employee.id, name: e.employee.name, role: e.employee.role } : null,
+            card_quantity: e.card_quantity,
+          }))
+        });
+        
+        // Séparer le business admin des autres employés
+        // IMPORTANT: Pour identifier le business admin, on compare employee_id avec user.id
+        // Mais il faut aussi vérifier le rôle de l'employé si la relation employee est chargée
+        const adminEmployee = allEmployees.find(emp => {
+          const empId = emp.employee_id || emp.id;
+          const isSameUser = empId === user.value.id;
+          // Vérifier aussi si l'employé a le rôle business_admin (si la relation employee est chargée)
+          const isBusinessAdmin = emp.employee && emp.employee.role === 'business_admin';
+          return isSameUser || (isSameUser && isBusinessAdmin);
+        });
+        
+        // Filtrer les autres employés : exclure le business admin ET les employés avec role === 'business_admin'
+        const otherEmployees = allEmployees.filter(emp => {
+          const empId = emp.employee_id || emp.id;
+          const isNotAdmin = empId !== user.value.id;
+          const isNotBusinessAdminRole = !emp.employee || emp.employee.role !== 'business_admin';
+          return isNotAdmin && isNotBusinessAdminRole;
+        });
+        
+        // Définir si le business admin est inclus
+        businessAdminInOrder.value = !!adminEmployee;
+        
+        if (adminEmployee) {
+          businessAdminName.value = adminEmployee.employee_name || adminEmployee.employee?.name || user.value.name || "Vous";
+          businessAdminCurrentCards.value = adminEmployee.card_quantity || 0;
+        }
+        
+        // Stocker uniquement les vrais employés (exclure le business admin)
+        orderEmployees.value = otherEmployees;
+        
+        // Initialiser la distribution
+        businessDistribution.value = {
+          admin: 0,
+          employees: {},
+        };
+        
+        // Initialiser les quantités pour chaque employé (exclure le business admin de cette liste)
+        otherEmployees.forEach(emp => {
+          const empId = emp.employee_id || emp.id;
+          businessDistribution.value.employees[empId] = 0;
+        });
+        
+        console.log("OrdersView: openAddCardsModal - Employés chargés et filtrés", {
+          totalEmployees: allEmployees.length,
+          adminIncluded: businessAdminInOrder.value,
+          adminName: businessAdminName.value,
+          adminCurrentCards: businessAdminCurrentCards.value,
+          otherEmployeesCount: otherEmployees.length,
+          employeesList: otherEmployees.map(e => ({
+            id: e.id,
+            employee_id: e.employee_id || e.id,
+            name: e.employee_name || e.employee?.name || `Employé #${e.employee_id || e.id}`,
+            currentCards: e.card_quantity || 0,
+            role: e.employee?.role
+          })),
+          distributionEmployees: Object.keys(businessDistribution.value.employees)
+        });
+      } catch (error) {
+        console.error("Erreur lors du chargement des employés:", error);
+        console.error("Stack trace:", error.stack);
+        // Fallback: utiliser les données de la commande directement
+        const allEmployees = order.order_employees || [];
+        const adminEmployee = allEmployees.find(emp => (emp.employee_id || emp.id) === user.value.id);
+        const otherEmployees = allEmployees.filter(emp => {
+          const empId = emp.employee_id || emp.id;
+          const isNotAdmin = empId !== user.value.id;
+          const isNotBusinessAdminRole = !emp.employee || emp.employee.role !== 'business_admin';
+          return isNotAdmin && isNotBusinessAdminRole;
+        });
+        
+        businessAdminInOrder.value = !!adminEmployee;
+        if (adminEmployee) {
+          businessAdminName.value = adminEmployee.employee_name || adminEmployee.employee?.name || user.value.name || "Vous";
+          businessAdminCurrentCards.value = adminEmployee.card_quantity || 0;
+        }
+        
+        orderEmployees.value = otherEmployees;
+        businessDistribution.value = {
+          admin: 0,
+          employees: {},
+        };
+        otherEmployees.forEach(emp => {
+          const empId = emp.employee_id || emp.id;
+          businessDistribution.value.employees[empId] = 0;
+        });
+      }
+    }
+
+    // Charger le prix d'une carte supplémentaire depuis les settings
+    try {
+      const response = await apiClient.get("/api/settings/pricing");
+      const pricing = response.data?.pricing || response.data;
+      if (pricing && pricing.additional_card_price) {
+        additionalCardPrice.value = Number(pricing.additional_card_price);
+      } else {
+        // Valeur par défaut si le prix n'est pas disponible
+        additionalCardPrice.value = 45000;
+      }
+    } catch (error) {
+      console.error("Erreur lors du chargement du prix:", error);
+      // Valeur par défaut en cas d'erreur
+      additionalCardPrice.value = 45000;
+    }
+  };
+
+  // Fermer le modal pour ajouter des cartes
+  const closeAddCardsModal = () => {
+    showAddCardsModal.value = false;
+    selectedOrder.value = null;
+    additionalCardsQuantity.value = 1;
+    addCardsError.value = "";
+    isBusinessOrder.value = false;
+    businessAdminInOrder.value = false;
+    businessAdminName.value = "";
+    businessAdminCurrentCards.value = 0;
+    orderEmployees.value = [];
+    businessDistribution.value = {
+      admin: 0,
+      employees: {},
+    };
+  };
+  
+  // Calculer le total de la distribution pour les commandes business
+  const businessDistributionTotal = computed(() => {
+    const adminTotal = Number(businessDistribution.value.admin) || 0;
+    
+    // Calculer le total des employés : utiliser orderEmployees pour s'assurer qu'on inclut tous les employés
+    let employeesTotal = 0;
+    if (orderEmployees.value && orderEmployees.value.length > 0) {
+      orderEmployees.value.forEach(employee => {
+        const empId = employee.employee_id || employee.id;
+        const empQuantity = businessDistribution.value.employees && businessDistribution.value.employees[empId] !== undefined
+          ? Number(businessDistribution.value.employees[empId]) || 0
+          : 0;
+        employeesTotal += empQuantity;
+      });
+    } else {
+      // Fallback : utiliser les valeurs dans businessDistribution.value.employees
+      employeesTotal = Object.values(businessDistribution.value.employees || {}).reduce((sum, qty) => {
+        const numQty = Number(qty) || 0;
+        return sum + numQty;
+      }, 0);
+    }
+    
+    const total = adminTotal + employeesTotal;
+    
+    // Log pour debug
+    console.log("OrdersView: businessDistributionTotal computed", {
+      admin: adminTotal,
+      employeesTotal: employeesTotal,
+      employees: businessDistribution.value.employees,
+      orderEmployees_count: orderEmployees.value?.length || 0,
+      total: total,
+      additionalCardsQuantity: additionalCardsQuantity.value
+    });
+    
+    return total;
+  });
+  
+  // Mettre à jour la distribution quand la quantité totale change
+  const updateBusinessDistribution = () => {
+    // S'assurer que la distribution ne dépasse pas la quantité totale
+    const currentTotal = businessDistributionTotal.value;
+    if (currentTotal > additionalCardsQuantity.value) {
+      // Réduire proportionnellement si nécessaire
+      const ratio = additionalCardsQuantity.value / currentTotal;
+      businessDistribution.value.admin = Math.floor((businessDistribution.value.admin || 0) * ratio);
+      Object.keys(businessDistribution.value.employees).forEach(empId => {
+        businessDistribution.value.employees[empId] = Math.floor((businessDistribution.value.employees[empId] || 0) * ratio);
+      });
+    }
+  };
+
+  // Confirmer l'ajout de cartes supplémentaires
+  const confirmAddCards = async () => {
+    if (!selectedOrder.value || !additionalCardsQuantity.value || additionalCardsQuantity.value < 1) {
+      return;
+    }
+
+    // Pour les commandes business, vérifier que la distribution correspond
+    if (isBusinessOrder.value) {
+      if (businessDistributionTotal.value === 0) {
+        addCardsError.value = "Veuillez répartir les cartes entre vous-même et vos employés.";
+        return;
+      }
+      if (businessDistributionTotal.value !== additionalCardsQuantity.value) {
+        addCardsError.value = `La distribution (${businessDistributionTotal.value}) doit correspondre au total (${additionalCardsQuantity.value}).`;
+        return;
+      }
+    }
+
+    isAddingCards.value = true;
+    addCardsError.value = "";
+
+    try {
+      // Définir le header CSRF
+      const csrfToken = Cookies.get("XSRF-TOKEN");
+      if (csrfToken) {
+        apiClient.defaults.headers.common["X-XSRF-TOKEN"] = csrfToken;
+      }
+
+      // Préparer le payload
+      const payload = {
+        quantity: additionalCardsQuantity.value,
+      };
+
+      // Pour les commandes business, ajouter la distribution
+      if (isBusinessOrder.value) {
+        // Convertir et nettoyer la valeur de l'admin (0 si vide/null/undefined)
+        const cleanedAdmin = Math.max(0, Number(businessDistribution.value.admin) || 0);
+        const cleanedEmployees = {};
+        
+        // IMPORTANT : Inclure TOUS les employés avec leur valeur (même 0)
+        // Cela permet au backend de savoir exactement combien de cartes attribuer à chaque employé
+        if (orderEmployees.value && orderEmployees.value.length > 0) {
+          orderEmployees.value.forEach(employee => {
+            const empId = employee.employee_id || employee.id;
+            // Récupérer la valeur depuis businessDistribution, ou 0 si non définie ou si l'employé n'est pas dans la distribution
+            const empQuantity = businessDistribution.value.employees && businessDistribution.value.employees[empId] !== undefined
+              ? Number(businessDistribution.value.employees[empId]) || 0
+              : 0;
+            // Inclure même si c'est 0, pour que le backend sache que cet employé ne doit pas recevoir de cartes
+            cleanedEmployees[empId] = Math.max(0, empQuantity);
+          });
+        }
+
+        console.log("OrdersView: confirmAddCards - Distribution complète avant envoi", {
+          orderId: selectedOrder.value.id,
+          quantity: additionalCardsQuantity.value,
+          businessDistributionTotal: businessDistributionTotal.value,
+          admin_original: businessDistribution.value.admin,
+          admin_cleaned: cleanedAdmin,
+          employees_original: businessDistribution.value.employees,
+          employees_cleaned: cleanedEmployees,
+          total_cleaned: cleanedAdmin + Object.values(cleanedEmployees).reduce((sum, qty) => sum + qty, 0),
+          orderEmployees_count: orderEmployees.value?.length || 0,
+        });
+
+        payload.distribution = {
+          admin: cleanedAdmin,
+          employees: cleanedEmployees,
+        };
+      }
+
+      console.log("OrdersView: confirmAddCards - Payload final envoyé au backend", {
+        orderId: selectedOrder.value.id,
+        payload: payload,
+        distribution: payload.distribution,
+      });
+
+      const response = await apiClient.post(`/api/orders/${selectedOrder.value.id}/add-cards`, payload);
+      
+      console.log("OrdersView: confirmAddCards - Réponse du backend", {
+        orderId: selectedOrder.value.id,
+        response: response.data,
+        order: response.data.order,
+        order_employees: response.data.order?.order_employees,
+      });
+
+      // Mettre à jour la commande dans la liste avec les nouvelles données
+      const index = orders.value.findIndex((o) => o.id === selectedOrder.value.id);
+      if (index !== -1) {
+        // Fusionner les données existantes avec les nouvelles données pour préserver les relations
+        orders.value[index] = { 
+          ...orders.value[index], 
+          ...response.data.order,
+          // S'assurer que order_employees est bien mis à jour
+          order_employees: response.data.order.order_employees || orders.value[index].order_employees,
+        };
+      }
+
+      // Déclencher un événement pour notifier les autres composants (comme AdminOrderList)
+      window.dispatchEvent(new CustomEvent('order-updated', { 
+        detail: { 
+          orderId: selectedOrder.value.id,
+          order: response.data.order 
+        } 
+      }));
+
+      // Fermer le modal et recharger les commandes pour avoir les données complètes
+      closeAddCardsModal();
+      await loadOrders();
+    } catch (error) {
+      console.error("Erreur lors de l'ajout de cartes:", error);
+      addCardsError.value = error.response?.data?.message || "Erreur lors de l'ajout de cartes. Veuillez réessayer.";
+    } finally {
+      isAddingCards.value = false;
+      delete apiClient.defaults.headers.common["X-XSRF-TOKEN"];
+    }
+  };
+
+  // ✅ Écouteur pour rafraîchir quand la page devient visible
+  const handleVisibilityChange = () => {
+    if (!document.hidden) {
+      loadOrders();
+    }
+  };
+
+  // ✅ Écouteur pour rafraîchir quand une nouvelle commande est créée
+  const handleOrderCreated = () => {
+    // Recharger les commandes pour afficher la nouvelle commande
+    loadOrders();
+  };
+  
+  // ✅ Écouteur pour rafraîchir quand une commande est mise à jour (depuis un autre onglet/instance)
+  const handleOrderUpdated = async (event) => {
+    const { orderId } = event.detail || {};
+    if (orderId) {
+      console.log("Événement order-updated reçu dans OrdersView pour la commande", orderId);
+      // Recharger les commandes pour afficher les mises à jour
+      await loadOrders();
+    }
+  };
+  
+  // Gestionnaire d'événement pour la mise à jour des prix
+  const handlePricingUpdate = async (event) => {
+    console.log("Événement pricing-updated reçu dans OrdersView, rechargement des prix...", event.detail);
+    // Recharger les prix depuis l'API
+    await loadPricing();
+    // Utiliser nextTick pour s'assurer que le re-render se fait après la mise à jour des prix
+    await nextTick();
+    // Les prix seront automatiquement utilisés lors du prochain rendu grâce à getCorrectTotalPrice
+    // et la clé de version forcera le re-render des cartes de commandes
+  };
+
+  // Charger les commandes au montage du composant
+  onMounted(async () => {
+    try {
+      console.log("OrdersView: Composant monté, chargement des commandes...");
+      await loadOrders();
+      console.log("OrdersView: Commandes chargées après montage");
+    } catch (error) {
+      console.error("OrdersView: Erreur critique lors du montage:", error);
+      loadingError.value = "Erreur lors de l'initialisation. Veuillez rafraîchir la page.";
+    }
+    
+    // Écouter les changements de visibilité de la page
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    // Écouter l'événement de création de commande
+    window.addEventListener("order-created", handleOrderCreated);
+    // Écouter l'événement de mise à jour de commande
+    window.addEventListener("order-updated", handleOrderUpdated);
+    // Écouter l'événement de mise à jour des prix
+    window.addEventListener("pricing-updated", handlePricingUpdate);
+    
+    console.log("OrdersView: Tous les écouteurs d'événements sont configurés");
+  });
+
+  // ✅ Recharger quand le composant devient actif (utile avec keep-alive ou navigation)
+  onActivated(() => {
+    loadOrders();
+  });
+
+  // Nettoyer les écouteurs d'événements
+  onBeforeUnmount(() => {
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
+    window.removeEventListener("order-created", handleOrderCreated);
+    window.removeEventListener("order-updated", handleOrderUpdated);
+    window.removeEventListener("pricing-updated", handlePricingUpdate);
+  });
+</script>

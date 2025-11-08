@@ -1,85 +1,134 @@
-<script setup>
-import { RouterLink, RouterView } from 'vue-router'
-import HelloWorld from './components/HelloWorld.vue'
-</script>
-
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="@/assets/logo.svg" width="125" height="125" />
+  <div 
+    id="app" 
+    class="w-full overflow-x-hidden min-h-screen bg-slate-900"
+  >
+    <TheHeader v-if="shouldShowHeader" />
 
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
+    <RouterView />
 
-      <nav>
-        <RouterLink to="/">Home</RouterLink>
-        <RouterLink to="/about">About</RouterLink>
-      </nav>
-    </div>
-  </header>
+    <TheFooter v-if="shouldShowFooter" />
 
-  <RouterView />
+    <AuthModal />
+    <OrderModal />
+  </div>
 </template>
 
-<style scoped>
-header {
-  line-height: 1.5;
-  max-height: 100vh;
-}
+<script setup>
+  import { computed, watch, ref, onBeforeMount } from "vue";
+  import { RouterView, useRoute } from "vue-router";
+  import TheHeader from "@/components/layout/TheHeader.vue";
+  import TheFooter from "@/components/layout/TheFooter.vue";
+  import AuthModal from "@/components/auth/AuthModal.vue";
+  import OrderModal from "@/components/layout/OrderModal.vue";
+  import { useLoadingStore } from "@/stores/loading";
+  import { useAuth } from "@/composables/useAuth";
 
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
-}
+  // Récupère l'information sur la route actuelle
+  const route = useRoute();
 
-nav {
-  width: 100%;
-  font-size: 12px;
-  text-align: center;
-  margin-top: 2rem;
-}
+  // Store de chargement
+  const loadingStore = useLoadingStore();
 
-nav a.router-link-exact-active {
-  color: var(--color-text);
-}
+  // Vérifie si l'utilisateur est connecté
+  const { isLoggedIn } = useAuth();
 
-nav a.router-link-exact-active:hover {
-  background-color: transparent;
-}
+  // Crée une propriété calculée qui vérifie si on est sur une route spéciale (Dashboard, CompanyPublic)
+  const isDashboardRoute = computed(() => {
+    return route.name === "Dashboard" || route.name === "CompanyPublic";
+  });
 
-nav a {
-  display: inline-block;
-  padding: 0 1rem;
-  border-left: 1px solid var(--color-border);
-}
+  // Vérifie si on est sur une route utilisateur connecté où le footer doit être caché
+  const isAuthenticatedUserRoute = computed(() => {
+    if (!isLoggedIn.value) {
+      return false;
+    }
+    // Routes où le footer doit être caché quand l'utilisateur est connecté
+    // Note: Dashboard est déjà géré par isDashboardRoute
+    return route.name === "Settings" ||
+           route.name === "Orders" ||
+           route.name === "Account" ||
+           route.name === "ProfileSelection";
+  });
 
-nav a:first-of-type {
-  border: 0;
-}
+  // Fonction helper pour vérifier si on est sur une page avec loader
+  const isPageWithLoader = computed(() => {
+    return route.name === "Home" || 
+           route.name === "cards" || 
+           route.name === "about" || 
+           route.name === "contact" ||
+           route.path === "/" ||
+           route.path === "/nos-cartes" ||
+           route.path === "/a-propos" ||
+           route.path === "/contact";
+  });
 
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
+  // État local pour masquer le header/footer dès le début si on démarre sur une page avec loader
+  const isPageLoading = ref(isPageWithLoader.value);
 
-  .logo {
-    margin: 0 2rem 0 0;
-  }
+  // Propriété calculée pour déterminer si le header doit être affiché
+  const shouldShowHeader = computed(() => {
+    // Ne pas afficher sur les routes dashboard
+    if (isDashboardRoute.value) {
+      return false;
+    }
+    // Ne pas afficher si on est sur une page avec loader ET que le chargement est en cours
+    if (isPageWithLoader.value && (isPageLoading.value || loadingStore.isHomePageLoading)) {
+      return false;
+    }
+    // Afficher dans tous les autres cas
+    return true;
+  });
 
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
+  // Propriété calculée pour déterminer si le footer doit être affiché
+  const shouldShowFooter = computed(() => {
+    // Ne pas afficher sur les routes dashboard
+    if (isDashboardRoute.value) {
+      return false;
+    }
+    // Ne pas afficher sur les routes utilisateur connecté (Dashboard, Settings, Orders, Account)
+    if (isAuthenticatedUserRoute.value) {
+      return false;
+    }
+    // Ne pas afficher si on est sur une page avec loader ET que le chargement est en cours
+    if (isPageWithLoader.value && (isPageLoading.value || loadingStore.isHomePageLoading)) {
+      return false;
+    }
+    // Afficher dans tous les autres cas
+    return true;
+  });
 
-  nav {
-    text-align: left;
-    margin-left: -1rem;
-    font-size: 1rem;
+  // Initialiser le chargement AVANT le montage pour éviter l'affichage du header/footer
+  onBeforeMount(() => {
+    if (isPageWithLoader.value) {
+      loadingStore.setHomePageLoading(true);
+      isPageLoading.value = true;
+    }
+  });
 
-    padding: 1rem 0;
-    margin-top: 1rem;
-  }
-}
-</style>
+  // Surveiller les changements de route pour gérer le chargement
+  watch(
+    () => route.name,
+    (newRouteName) => {
+      if (newRouteName === "Home" || newRouteName === "cards" || newRouteName === "about" || newRouteName === "contact") {
+        loadingStore.setHomePageLoading(true);
+        isPageLoading.value = true;
+      } else {
+        // Réinitialiser quand on quitte une page avec loader
+        loadingStore.setHomePageLoading(false);
+        isPageLoading.value = false;
+      }
+    }
+  );
+
+  // Surveiller le store pour afficher le header/footer quand le chargement est terminé
+  watch(
+    () => loadingStore.isHomePageLoading,
+    (isLoading) => {
+      if (!isLoading && isPageWithLoader.value) {
+        // Quand le chargement est terminé, afficher le header/footer
+        isPageLoading.value = false;
+      }
+    }
+  );
+</script>
