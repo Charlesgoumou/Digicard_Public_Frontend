@@ -56,7 +56,7 @@
 
         <div class="swiper designs-swiper">
           <div class="swiper-wrapper">
-            <div v-for="i in 30" :key="i" class="swiper-slide">
+            <div v-for="i in 30" :key="i" class="swiper-slide" :data-design-number="i">
               <div class="design-card relative group h-full">
                 <div
                   class="relative bg-slate-800 rounded-lg overflow-hidden border-2"
@@ -73,6 +73,8 @@
                     <img
                       :src="getDesignImageUrl(i)"
                       :alt="`Design de carte ${i}`"
+                      loading="lazy"
+                      decoding="async"
                       :class="`w-full max-w-[302px] h-auto max-h-[246px] sm:max-w-[min(265px,calc(100vw-90px))] sm:max-h-[min(227px,calc(75vh-80px))] md:max-h-[180px] lg:max-h-[200px] xl:max-h-[246px] object-contain ${isLocked ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`"
                       @click="!isLocked && viewDesignImage(i)"
                       @error="handleDesignImageError($event, i)"
@@ -406,6 +408,7 @@
   };
 
   // Import des images de design avec import.meta.glob
+  // Utiliser eager: true mais les images seront optimisées par Vite lors du build
   const designImageModules = import.meta.glob("@/assets/images/cartes/carte*.png", { eager: true });
 
   // Créer un mapping des numéros de design vers les URLs
@@ -442,7 +445,9 @@
 
   const viewDesignImage = (designNumber) => {
     modalDesignImageUrl.value = getDesignImageUrl(designNumber);
-    showDesignModal.value = true;
+    if (modalDesignImageUrl.value) {
+      showDesignModal.value = true;
+    }
   };
 
   const closeDesignModal = () => {
@@ -763,6 +768,7 @@
 
   // Initialiser Swiper après le montage
   onMounted(() => {
+    // Initialiser Swiper
     setTimeout(() => {
       initDesignsSwiper();
     }, 500);
