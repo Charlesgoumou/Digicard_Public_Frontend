@@ -594,13 +594,18 @@
       loadingMessage.value = "Envoi du code de vérification...";
       await register(payload);
     } catch (error) {
-      if (error.response?.data?.errors) {
+      // Vérifier si c'est une erreur CORS
+      if (!error.response && error.message && (error.message.includes('CORS') || error.message.includes('Network Error'))) {
+        errorMessage.value = "Erreur de connexion au serveur. Vérifiez votre connexion réseau ou contactez le support.";
+        console.error("Erreur CORS détectée:", error);
+      } else if (error.response?.data?.errors) {
         const errors = error.response.data.errors;
         const firstError = Object.values(errors)[0];
         errorMessage.value = Array.isArray(firstError) ? firstError[0] : firstError;
       } else {
         errorMessage.value = error.response?.data?.message || "Erreur lors de l'inscription.";
       }
+      console.error("Erreur lors de l'inscription:", error);
     } finally {
       isSubmitting.value = false;
       loadingMessage.value = "";

@@ -12,10 +12,19 @@ const apiClient = axios.create({
   xsrfHeaderName: "X-XSRF-TOKEN",
 });
 
-// Intercepteur pour gérer les erreurs 401 (session expirée)
+// Intercepteur pour gérer les erreurs 401 (session expirée) et les erreurs CORS
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Vérifier si c'est une erreur CORS (pas de réponse du serveur)
+    if (!error.response) {
+      // Cela peut être une erreur CORS ou une erreur réseau
+      if (error.message && (error.message.includes("Network Error") || error.code === "ERR_NETWORK")) {
+        console.error("Erreur réseau ou CORS détectée:", error.message);
+        // Ne pas rediriger pour les erreurs CORS, laisser le composant gérer l'erreur
+      }
+    }
+
     // Si on reçoit une erreur 401 (non autorisé) ou 419 (session expirée)
     if (error.response && (error.response.status === 401 || error.response.status === 419)) {
       // Vérifier si ce n'est pas une tentative de login/logout ou de vérification initiale

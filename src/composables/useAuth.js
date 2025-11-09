@@ -42,7 +42,9 @@ export function useAuth() {
   const _fetchUser = async () => {
     try {
       const response = await apiClient.get("/user");
-      user.value = response.data;
+      // Le backend retourne {user: null} ou {user: {...}}
+      // Il faut accéder à response.data.user pour obtenir l'utilisateur ou null
+      user.value = response.data.user || null;
       return user.value;
     } catch (error) {
       if (error.response && (error.response.status === 401 || error.response.status === 419)) {
