@@ -154,13 +154,17 @@ export function useAuth() {
   /**
    * Renvoie le code de vérification.
    */
-  const resendVerificationCode = async (email) => {
+  const resendVerificationCode = async (email, accountType = null) => {
     if (!email) {
       throw new Error("Email manquant pour renvoyer le code.");
     }
     try {
       setCsrfHeader();
-      const response = await apiClient.post("/api/resend-verification", { email });
+      const payload = { email };
+      if (accountType) {
+        payload.account_type = accountType;
+      }
+      const response = await apiClient.post("/api/resend-verification", payload);
       return response.data;
     } catch (error) {
       console.error("Erreur lors du renvoi du code:", error.response?.data || error.message);

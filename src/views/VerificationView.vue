@@ -237,8 +237,10 @@
     loadingMessage.value = "Renvoi du code...";
 
     try {
-      const response = await resendVerificationCode(email.value);
-      feedbackMessage.value = response.data.message || "Code renvoyé avec succès.";
+      // Passer accountType si disponible pour identifier le compte spécifique
+      const response = await resendVerificationCode(email.value, accountType.value || null);
+      feedbackMessage.value = response.message || "Code renvoyé avec succès.";
+      isError.value = false;
       startCooldown(); // Lance le timer de 30s
     } catch (error) {
       feedbackMessage.value = error.response?.data?.message || "Erreur lors du renvoi du code.";
