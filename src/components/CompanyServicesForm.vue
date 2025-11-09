@@ -521,7 +521,7 @@
   const loadCompanyPage = async () => {
     try {
       const params = props.orderId ? { order_id: props.orderId } : {};
-      const response = await apiClient.get("/company-page", { params });
+      const response = await apiClient.get("/api/company-page", { params });
 
       // Mettre à jour le formulaire avec les données reçues
       if (response.data) {
@@ -562,7 +562,7 @@
         formData.append("order_id", props.orderId);
       }
 
-      const response = await apiClient.post("/company-page/logo", formData, {
+      const response = await apiClient.post("/api/company-page/logo", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -601,7 +601,7 @@
         formData.append("order_id", props.orderId);
       }
 
-      const response = await apiClient.post("/company-page/extract-presentation", formData, {
+      const response = await apiClient.post("/api/company-page/extract-presentation", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -705,7 +705,7 @@
       if (props.orderId) {
         payload.order_id = props.orderId;
       }
-      const response = await apiClient.post("/company-page/generate-content", payload);
+      const response = await apiClient.post("/api/company-page/generate-content", payload);
 
       // Mettre à jour le formulaire avec le contenu généré
       if (response.data.companyPage) {
@@ -745,7 +745,7 @@
       if (props.orderId) {
         payload.order_id = props.orderId;
       }
-      const response = await apiClient.put("/company-page", payload);
+      const response = await apiClient.put("/api/company-page", payload);
 
       // Mettre à jour le formulaire avec les données retournées par le backend
       // pour s'assurer que toutes les données sont synchronisées

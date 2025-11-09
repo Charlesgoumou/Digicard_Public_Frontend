@@ -890,7 +890,7 @@
               : 1;
       }
 
-      const response = await apiClient.post("/orders", payload);
+      const response = await apiClient.post("/api/orders", payload);
       console.log("Commande créée avec succès:", response.data);
 
       // Vérifier que le prix retourné par le backend correspond au prix envoyé

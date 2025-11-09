@@ -129,7 +129,7 @@
   // Fonction pour charger les entreprises
   async function loadSocialProof() {
     try {
-      const res = await apiClient.get("/homepage");
+      const res = await apiClient.get("/api/homepage");
       const homepageSocialProof = res.data?.homepage?.social_proof || [];
       companies.value = homepageSocialProof.length > 0 ? homepageSocialProof : props.socialProof;
     } catch {

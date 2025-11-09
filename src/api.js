@@ -29,11 +29,11 @@ apiClient.interceptors.response.use(
     if (error.response && (error.response.status === 401 || error.response.status === 419)) {
       // Vérifier si ce n'est pas une tentative de login/logout ou de vérification initiale
       const isAuthRequest =
-        error.config.url.includes("/login") ||
-        error.config.url.includes("/logout") ||
-        error.config.url.includes("/register") ||
-        error.config.url.includes("/verify") ||
-        error.config.url.includes("/user") ||
+        error.config.url.includes("/api/login") ||
+        error.config.url.includes("/api/logout") ||
+        error.config.url.includes("/api/register") ||
+        error.config.url.includes("/api/verify") ||
+        error.config.url.includes("/api/user") ||
         error.config.url.includes("/sanctum/csrf-cookie");
 
       if (!isAuthRequest) {

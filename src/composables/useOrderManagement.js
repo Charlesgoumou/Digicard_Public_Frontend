@@ -28,8 +28,9 @@ export function useOrderManagement(user) {
   // Logique de chargement des commandes
   const loadOrders = async () => {
     try {
-      const response = await apiClient.get("/orders");
-      orders.value = response.data;
+      const response = await apiClient.get("/api/orders");
+      // S'assurer que response.data est un tableau
+      orders.value = Array.isArray(response.data) ? response.data : [];
       return orders.value;
     } catch (error) {
       console.error("Erreur lors du chargement des commandes:", error);

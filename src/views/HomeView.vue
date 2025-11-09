@@ -102,7 +102,7 @@
 
   async function loadHomepage() {
     try {
-      const res = await apiClient.get('/homepage');
+      const res = await apiClient.get('/api/homepage');
       homepage.value = res.data?.homepage || homepage.value;
     } catch (e) {
       // fallback silencieux

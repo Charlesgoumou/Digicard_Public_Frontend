@@ -617,7 +617,7 @@
 
   const loadPortfolio = async () => {
     try {
-      const response = await apiClient.get("/user-portfolio");
+      const response = await apiClient.get("/api/user-portfolio");
       Object.assign(form.value, response.data);
 
       // Initialiser les arrays vides si nécessaire
@@ -657,7 +657,7 @@
       const formData = new FormData();
       formData.append("photo", file);
 
-      const response = await apiClient.post("/user-portfolio/photo", formData, {
+      const response = await apiClient.post("/api/user-portfolio/photo", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -745,7 +745,7 @@
         primary_color: form.value.primary_color,
       };
 
-      const response = await apiClient.post("/user-portfolio/generate-content", payload);
+      const response = await apiClient.post("/api/user-portfolio/generate-content", payload);
 
       // Mettre à jour le formulaire avec le contenu généré
       if (response.data.portfolio) {
@@ -798,7 +798,7 @@
 
     try {
       setCsrfHeader();
-      await apiClient.put("/user-portfolio", form.value);
+      await apiClient.put("/api/user-portfolio", form.value);
 
       // Mettre à jour profileData avec les données sauvegardées
       profileData.value[selectedProfile.value] = {

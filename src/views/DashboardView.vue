@@ -826,7 +826,7 @@
 
     try {
       // Récupérer la commande de l'employé via OrderEmployee
-      const response = await apiClient.get("/orders");
+      const response = await apiClient.get("/api/orders");
       const orders = response.data;
 
       // Trouver la première commande où l'employé est assigné
@@ -858,7 +858,7 @@
     employeeFeedback.value = "";
     isEmployeeError.value = false;
     try {
-      const response = await apiClient.get("/employees");
+      const response = await apiClient.get("/api/employees");
       employees.value = response.data;
     } catch (error) {
       console.error("Error loading employees:", error.response?.data || error);
@@ -899,7 +899,7 @@
     isEmployeeError.value = false;
     try {
       setCsrfHeader();
-      const response = await apiClient.post("/employees", newEmployee);
+      const response = await apiClient.post("/api/employees", newEmployee);
       employees.value.push(response.data);
       newEmployee.name = "";
       newEmployee.email = "";
@@ -1164,7 +1164,7 @@
         return;
       }
       setCsrfHeader();
-      const response = await apiClient.post("/user/avatar", formData, {
+      const response = await apiClient.post("/api/user/avatar", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       if (user.value && response.data.avatar_url) {

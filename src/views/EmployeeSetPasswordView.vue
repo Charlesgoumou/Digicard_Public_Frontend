@@ -150,7 +150,7 @@
         console.warn("XSRF token not found for setting password.");
       } // Proceed but log warning
 
-      const response = await apiClient.post("/employee/set-password", passwordForm);
+      const response = await apiClient.post("/api/employee/set-password", passwordForm);
 
       // Success: Redirect to dashboard
       alert(response.data.message || "Mot de passe défini avec succès !");
