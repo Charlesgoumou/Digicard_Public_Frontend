@@ -35,3 +35,8 @@ AUDIT_API_REFACTORING.md
 ENDPOINT_ACCOUNT_API.md
 RESOLUTION_ERREUR_401.md
 IMPLEMENTATION_FLUX_ENTREPRISE.md
+# Fichiers d'environnement
+.env
+.env.local
+.env.production
+.env.development
