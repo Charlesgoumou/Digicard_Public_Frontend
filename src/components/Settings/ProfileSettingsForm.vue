@@ -561,6 +561,8 @@
 
   const handleAvatarImageError = () => {
     console.error("Erreur de chargement de l'avatar de la commande:", props.orderAvatarPreview);
+    // ✅ CORRECTION : Ne pas masquer l'erreur immédiatement, laisser l'utilisateur voir qu'il y a un problème
+    // Mais essayer de charger l'avatar utilisateur comme fallback si disponible
     if (props.user.avatar_url && !props.orderAvatarPreview?.includes(props.user.avatar_url)) {
       const backendUrl = import.meta.env.VITE_APP_URL_BACKEND || "http://localhost:8000";
       const userAvatarUrl = props.user.avatar_url;
@@ -572,9 +574,15 @@
       } else {
         fallbackAvatarUrl = backendUrl + "/" + userAvatarUrl.replace(/^\//, "");
       }
-      emit("update:avatar", fallbackAvatarUrl + "?t=" + new Date().getTime());
-      avatarLoadError.value = false;
+      // Essayer une seule fois avec l'avatar utilisateur
+      if (!avatarLoadError.value) {
+        emit("update:avatar", fallbackAvatarUrl + "?t=" + new Date().getTime());
+      } else {
+        // Si ça échoue aussi, marquer l'erreur
+        avatarLoadError.value = true;
+      }
     } else {
+      // Marquer l'erreur pour afficher l'icône par défaut
       avatarLoadError.value = true;
     }
   };
