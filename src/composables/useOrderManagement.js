@@ -12,17 +12,23 @@ export function useOrderManagement(user) {
   const isLoading = ref(true);
   const loadingError = ref("");
 
-  // Fonction utilitaire (déplacée depuis SettingsView)
+  // ✅ CORRECTION : Fonction utilitaire pour construire l'URL complète de l'avatar (gérer /api/storage/ et /storage/)
   const getAvatarUrl = (avatarUrl) => {
     if (!avatarUrl) return null;
     const backendUrl = import.meta.env.VITE_APP_URL_BACKEND || "http://localhost:8000";
-    if (avatarUrl.startsWith("/storage/")) {
-      return backendUrl + avatarUrl;
-    } else if (avatarUrl.startsWith("http://") || avatarUrl.startsWith("https://")) {
+    
+    // Si c'est déjà une URL complète (http:// ou https://), l'utiliser directement
+    if (avatarUrl.startsWith("http://") || avatarUrl.startsWith("https://")) {
       return avatarUrl;
-    } else {
-      return backendUrl + "/" + avatarUrl.replace(/^\//, "");
     }
+    
+    // Si c'est un chemin relatif (commence par /api/storage/ ou /storage/), ajouter le backend URL
+    if (avatarUrl.startsWith("/api/storage/") || avatarUrl.startsWith("/storage/")) {
+      return backendUrl + avatarUrl;
+    }
+    
+    // Sinon, c'est probablement un chemin relatif, ajouter le backend URL
+    return backendUrl + "/" + avatarUrl.replace(/^\//, "");
   };
 
   // Logique de chargement des commandes

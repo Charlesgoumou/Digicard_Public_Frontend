@@ -77,10 +77,13 @@
                   :style="{ borderColor: order.profile_border_color || '#facc15' }"
                 >
                   <img
-                    v-if="order.order_avatar_url"
+                    v-if="order.order_avatar_url && !avatarLoadError[order.id]"
                     :src="getAvatarUrl(order.order_avatar_url)"
+                    :data-order-id="order.id"
                     class="w-full h-full object-cover"
                     alt="Avatar"
+                    @error="handleAvatarError"
+                    @load="handleAvatarLoad"
                   />
                   <svg v-else class="w-8 h-8 sm:w-10 sm:h-10 text-slate-500" fill="currentColor" viewBox="0 0 24 24">
                     <path
@@ -198,6 +201,25 @@
   const orders = ref([]);
   const isLoading = ref(true);
   const loadingError = ref("");
+  
+  // ✅ CORRECTION : Gérer les erreurs de chargement d'avatar
+  const avatarLoadError = ref({});
+  
+  const handleAvatarError = (event) => {
+    const orderId = event.target.dataset.orderId;
+    if (orderId) {
+      avatarLoadError.value[orderId] = true;
+      console.error("Erreur de chargement de l'avatar pour la commande:", orderId, event.target.src);
+    }
+    event.target.style.display = "none";
+  };
+  
+  const handleAvatarLoad = (event) => {
+    const orderId = event.target.dataset.orderId;
+    if (orderId) {
+      avatarLoadError.value[orderId] = false;
+    }
+  };
 
   // Filtrer uniquement les commandes configurées
   const configuredOrders = computed(() => {
@@ -239,23 +261,23 @@
     router.push({ name: "Settings" });
   };
 
-  // Construire l'URL complète pour l'avatar
+  // ✅ CORRECTION : Construire l'URL complète pour l'avatar (gérer /api/storage/ et /storage/)
   const getAvatarUrl = (avatarUrl) => {
     if (!avatarUrl) return null;
     const backendUrl = import.meta.env.VITE_APP_URL_BACKEND || "http://localhost:8000";
 
-    // Si c'est un chemin relatif (commence par /storage/), ajouter le backend URL
-    if (avatarUrl.startsWith("/storage/")) {
-      return backendUrl + avatarUrl;
-    }
     // Si c'est déjà une URL complète (http:// ou https://), l'utiliser directement
-    else if (avatarUrl.startsWith("http://") || avatarUrl.startsWith("https://")) {
+    if (avatarUrl.startsWith("http://") || avatarUrl.startsWith("https://")) {
       return avatarUrl;
     }
-    // Sinon, c'est probablement un chemin relatif, ajouter le backend URL
-    else {
-      return backendUrl + "/" + avatarUrl.replace(/^\//, "");
+    
+    // Si c'est un chemin relatif (commence par /api/storage/ ou /storage/), ajouter le backend URL
+    if (avatarUrl.startsWith("/api/storage/") || avatarUrl.startsWith("/storage/")) {
+      return backendUrl + avatarUrl;
     }
+    
+    // Sinon, c'est probablement un chemin relatif, ajouter le backend URL
+    return backendUrl + "/" + avatarUrl.replace(/^\//, "");
   };
 
   // Obtenir le nombre de cartes (spécifique à l'employé ou business admin inclus)
@@ -345,6 +367,22 @@
       // Charger les commandes de l'utilisateur
       const response = await apiClient.get("/api/orders");
       let allOrders = Array.isArray(response.data) ? response.data : [];
+      
+      // ✅ DEBUG : Logger les commandes pour vérifier les données
+      console.log("ProfileSelectionView - Commandes chargées:", allOrders);
+      console.log("ProfileSelectionView - User:", user.value);
+      if (allOrders.length > 0) {
+        console.log("ProfileSelectionView - Première commande:", {
+          id: allOrders[0].id,
+          order_number: allOrders[0].order_number,
+          profile_name: allOrders[0].profile_name,
+          profile_title: allOrders[0].profile_title,
+          order_avatar_url: allOrders[0].order_avatar_url,
+          profile_border_color: allOrders[0].profile_border_color,
+          is_configured: allOrders[0].is_configured,
+          employee_is_configured: allOrders[0].employee_is_configured,
+        });
+      }
 
       // Si c'est un business admin, charger aussi les commandes de ses employés
       if (user.value?.role === "business_admin") {
@@ -401,15 +439,15 @@
 
           // Filtrer pour ne garder que les profils pertinents
           // Dans "Afficher mon Profil", le business admin voit :
-          // - Ses commandes personnelles (s'il en a)
+          // - Ses commandes personnelles/individuelles (s'il en a)
           // - Sa propre carte s'il s'est inclus dans une commande business (identifiable par employee_card_quantity)
           // - Les profils de ses employés configurés
           // MAIS PAS les commandes business non configurées par lui
           allOrders = allOrders.filter((order) => {
             // Garder les commandes d'employés
             if (order.is_employee_order) return true;
-            // Garder les commandes personnelles
-            if (order.order_type === "personal") return true;
+            // ✅ CORRECTION : Garder les commandes personnelles ET individuelles
+            if (order.order_type === "personal" || order.order_type === "individual") return true;
             // ✅ CORRECTION : Garder les commandes business où le business admin s'est inclus
             // (identifiable par la présence de employee_card_quantity - retourné par l'API)
             if (order.order_type === "business" && order.employee_card_quantity !== undefined) {

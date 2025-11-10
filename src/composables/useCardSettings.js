@@ -364,8 +364,9 @@ export function useCardSettings(
       // Construire l'URL complète si nécessaire
       if (avatarUrl && onAvatarPreviewUpdate) {
         let constructedUrl;
-        // Si c'est un chemin relatif (commence par /storage/), ajouter le backend URL
-        if (avatarUrl.startsWith("/storage/")) {
+        // ✅ CORRECTION : Gérer les deux formats (/storage/ et /api/storage/)
+        // Si c'est un chemin relatif (commence par /api/storage/ ou /storage/), ajouter le backend URL
+        if (avatarUrl.startsWith("/api/storage/") || avatarUrl.startsWith("/storage/")) {
           constructedUrl = backendUrl + avatarUrl;
         }
         // Si c'est déjà une URL complète (http:// ou https://), l'utiliser directement
@@ -377,44 +378,11 @@ export function useCardSettings(
           constructedUrl = backendUrl + "/" + avatarUrl.replace(/^\//, "");
         }
 
-        // Si l'avatar est celui de la commande (order_avatar_url), vérifier s'il est accessible
-        const isOrderAvatar = orderAvatarUrl && avatarUrl === orderAvatarUrl;
-        const hasUserAvatar = currentUser.avatar_url;
-
-        if (isOrderAvatar) {
-          // Précharger l'image pour vérifier si elle existe
-          const img = new Image();
-          img.onload = () => {
-            // L'image se charge, utiliser celle de la commande
-            onAvatarPreviewUpdate(constructedUrl + "?t=" + new Date().getTime());
-          };
-          img.onerror = () => {
-            // L'image de la commande ne se charge pas, utiliser l'avatar utilisateur comme fallback si disponible
-            if (hasUserAvatar) {
-              console.warn("L'avatar de la commande n'est pas accessible, utilisation de l'avatar utilisateur");
-              const userAvatarUrlRaw = currentUser.avatar_url;
-              let userAvatarUrl;
-              if (userAvatarUrlRaw.startsWith("/storage/")) {
-                userAvatarUrl = backendUrl + userAvatarUrlRaw;
-              } else if (userAvatarUrlRaw.startsWith("http://") || userAvatarUrlRaw.startsWith("https://")) {
-                userAvatarUrl = userAvatarUrlRaw;
-              } else {
-                userAvatarUrl = backendUrl + "/" + userAvatarUrlRaw.replace(/^\//, "");
-              }
-              onAvatarPreviewUpdate(userAvatarUrl + "?t=" + new Date().getTime());
-            } else {
-              // Pas d'avatar utilisateur, mais on essaie quand même d'afficher celui de la commande
-              onAvatarPreviewUpdate(constructedUrl + "?t=" + new Date().getTime());
-            }
-          };
-          // Définir temporairement l'URL de la commande, elle sera remplacée si elle échoue
-          onAvatarPreviewUpdate(constructedUrl);
-          // Déclencher le chargement
-          img.src = constructedUrl;
-        } else {
-          // Utiliser directement l'URL construite (avatar utilisateur ou autre)
-          onAvatarPreviewUpdate(constructedUrl + "?t=" + new Date().getTime());
-        }
+        // ✅ CORRECTION : Toujours utiliser directement l'URL construite
+        // Le préchargement avec Image() peut causer des problèmes de timing et de CORS
+        // Mieux vaut laisser le navigateur gérer le chargement de l'image directement
+        // Si l'image ne se charge pas, l'événement @error dans le composant gérera l'affichage
+        onAvatarPreviewUpdate(constructedUrl + "?t=" + new Date().getTime());
       } else if (onAvatarPreviewUpdate) {
         onAvatarPreviewUpdate(null);
       }

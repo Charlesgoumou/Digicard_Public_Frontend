@@ -454,7 +454,8 @@
       const timestamp = new Date().getTime();
       const avatarUrl = response.data.avatar_url;
       let fullAvatarUrl;
-      if (avatarUrl.startsWith("/storage/")) {
+      // ✅ CORRECTION : Gérer les deux formats (/storage/ et /api/storage/)
+      if (avatarUrl.startsWith("/api/storage/") || avatarUrl.startsWith("/storage/")) {
         fullAvatarUrl = backendUrl + avatarUrl;
       } else if (avatarUrl.startsWith("http://") || avatarUrl.startsWith("https://")) {
         fullAvatarUrl = avatarUrl;

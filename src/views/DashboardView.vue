@@ -9,7 +9,7 @@
           @click="openFileInput"
           class="relative w-40 h-40 mx-auto rounded-full border-4 border-slate-700 bg-slate-800 flex items-center justify-center cursor-pointer group overflow-hidden"
         >
-          <img v-if="user.avatar_url" :src="user.avatar_url" class="w-full h-full object-cover" alt="Avatar actuel" />
+          <img v-if="user.avatar_url" :src="getUserAvatarUrl(user.avatar_url)" class="w-full h-full object-cover" alt="Avatar actuel" @error="handleAvatarError" />
           <svg v-else class="w-20 h-20 text-slate-500" fill="currentColor" viewBox="0 0 24 24">
             <path
               d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z"
@@ -688,6 +688,32 @@
     }
   };
 
+  // ✅ CORRECTION : Fonction helper pour construire l'URL complète de l'avatar utilisateur
+  const getUserAvatarUrl = (avatarUrl) => {
+    if (!avatarUrl) return null;
+    const backendUrl = import.meta.env.VITE_APP_URL_BACKEND || "http://localhost:8000";
+    
+    // Si c'est déjà une URL complète (http:// ou https://), l'utiliser directement
+    if (avatarUrl.startsWith("http://") || avatarUrl.startsWith("https://")) {
+      return avatarUrl;
+    }
+    
+    // Si c'est un chemin relatif (commence par /api/storage/ ou /storage/), ajouter le backend URL
+    if (avatarUrl.startsWith("/api/storage/") || avatarUrl.startsWith("/storage/")) {
+      return backendUrl + avatarUrl;
+    }
+    
+    // Sinon, c'est probablement un chemin relatif, ajouter le backend URL
+    return backendUrl + "/" + avatarUrl.replace(/^\//, "");
+  };
+
+  // ✅ CORRECTION : Gérer les erreurs de chargement d'avatar
+  const handleAvatarError = (event) => {
+    console.error("Erreur de chargement de l'avatar:", event.target.src);
+    // Ne pas afficher l'image en cas d'erreur, le SVG par défaut sera affiché
+    event.target.style.display = "none";
+  };
+
   // --- Function to check if user has business orders and load them ---
   const checkBusinessOrders = async () => {
     if (user.value?.role !== "business_admin") return;
@@ -1178,7 +1204,21 @@
         headers: { "Content-Type": "multipart/form-data" },
       });
       if (user.value && response.data.avatar_url) {
-        const newUrlWithTimestamp = response.data.avatar_url + "?" + new Date().getTime();
+        // ✅ CORRECTION : Construire l'URL complète avec le backend URL
+        const backendUrl = import.meta.env.VITE_APP_URL_BACKEND || "http://localhost:8000";
+        let fullAvatarUrl;
+        
+        // Gérer les deux formats (/api/storage/ et /storage/)
+        if (response.data.avatar_url.startsWith("/api/storage/") || response.data.avatar_url.startsWith("/storage/")) {
+          fullAvatarUrl = backendUrl + response.data.avatar_url;
+        } else if (response.data.avatar_url.startsWith("http://") || response.data.avatar_url.startsWith("https://")) {
+          fullAvatarUrl = response.data.avatar_url;
+        } else {
+          fullAvatarUrl = backendUrl + "/" + response.data.avatar_url.replace(/^\//, "");
+        }
+        
+        // Ajouter un timestamp pour forcer le rechargement de l'image
+        const newUrlWithTimestamp = fullAvatarUrl + "?t=" + new Date().getTime();
         updateUserAvatar(newUrlWithTimestamp);
       }
       console.log("Avatar mis à jour:", response.data.avatar_url);

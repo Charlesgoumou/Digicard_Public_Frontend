@@ -44,7 +44,26 @@ export function useAuth() {
       const response = await apiClient.get("/api/user");
       // Le backend retourne {user: null} ou {user: {...}}
       // Il faut accéder à response.data.user pour obtenir l'utilisateur ou null
-      user.value = response.data.user || null;
+      const fetchedUser = response.data.user || null;
+      
+      // ✅ CORRECTION : Construire l'URL complète de l'avatar si présent
+      if (fetchedUser && fetchedUser.avatar_url) {
+        const backendUrl = import.meta.env.VITE_APP_URL_BACKEND || "http://localhost:8000";
+        let fullAvatarUrl = fetchedUser.avatar_url;
+        
+        // Si ce n'est pas déjà une URL complète, la construire
+        if (!fullAvatarUrl.startsWith("http://") && !fullAvatarUrl.startsWith("https://")) {
+          // Gérer les deux formats (/api/storage/ et /storage/)
+          if (fullAvatarUrl.startsWith("/api/storage/") || fullAvatarUrl.startsWith("/storage/")) {
+            fullAvatarUrl = backendUrl + fullAvatarUrl;
+          } else {
+            fullAvatarUrl = backendUrl + "/" + fullAvatarUrl.replace(/^\//, "");
+          }
+        }
+        fetchedUser.avatar_url = fullAvatarUrl;
+      }
+      
+      user.value = fetchedUser;
       return user.value;
     } catch (error) {
       if (error.response && (error.response.status === 401 || error.response.status === 419)) {
