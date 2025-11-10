@@ -629,6 +629,7 @@
     <ProfilePictureModal
       v-if="isCropperOpen"
       :imageUrl="selectedImageUrl"
+      :isUploading="isUploadingAvatar"
       @close="isCropperOpen = false"
       @save="handleImageSave"
     />
@@ -648,6 +649,7 @@
 
   const isCropperOpen = ref(false);
   const selectedImageUrl = ref(null);
+  const isUploadingAvatar = ref(false);
   let initialUserFetchAttempted = false;
 
   const employees = ref([]);
@@ -1194,6 +1196,10 @@
   const handleImageSave = async (croppedImageBlob) => {
     const formData = new FormData();
     formData.append("avatar", croppedImageBlob, "avatar.jpg");
+    isUploadingAvatar.value = true;
+    
+    let uploadSuccess = false;
+    
     try {
       if (!apiClient) {
         console.error("apiClient n'est pas initialisé !");
@@ -1222,12 +1228,22 @@
         updateUserAvatar(newUrlWithTimestamp);
       }
       console.log("Avatar mis à jour:", response.data.avatar_url);
+      uploadSuccess = true;
     } catch (error) {
       console.error("Erreur upload avatar:", error.response?.data || error);
       alert("Erreur mise à jour avatar.");
+      uploadSuccess = false;
     } finally {
-      isCropperOpen.value = false;
+      isUploadingAvatar.value = false;
       delete apiClient.defaults.headers.common["X-XSRF-TOKEN"];
+      
+      // ✅ CORRECTION : Fermer le modal seulement après que l'upload soit terminé
+      // Attendre un court délai pour que l'utilisateur voie que l'upload est terminé
+      if (uploadSuccess) {
+        setTimeout(() => {
+          isCropperOpen.value = false;
+        }, 800);
+      }
     }
   };
   const handleLogout = async () => {

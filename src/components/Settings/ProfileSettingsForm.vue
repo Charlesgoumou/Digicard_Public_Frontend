@@ -29,21 +29,39 @@
             <button
               type="button"
               @click.stop.prevent="triggerOrderAvatarUpload"
-              class="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+              :disabled="isUploadingAvatar"
+              class="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              📷 Télécharger une photo
+              <svg v-if="isUploadingAvatar" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span v-if="isUploadingAvatar">Téléchargement...</span>
+              <span v-else>📷 Télécharger une photo</span>
             </button>
             <button
               type="button"
               @click.stop.prevent="useProfileAvatarForOrder"
-              :disabled="!user.avatar_url"
-              class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              :disabled="!user.avatar_url || isUploadingAvatar"
+              class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              👤 Utiliser ma photo de profil
+              <svg v-if="isUploadingAvatar" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span v-if="isUploadingAvatar">Téléchargement...</span>
+              <span v-else>👤 Utiliser ma photo de profil</span>
             </button>
           </div>
-          <input ref="orderAvatarInput" type="file" accept="image/*" class="hidden" @change.stop="handleOrderAvatarUpload" />
-          <p v-if="avatarUploadMessage" :class="avatarUploadError ? 'text-red-400' : 'text-green-400'" class="text-sm">
+          <input ref="orderAvatarInput" type="file" accept="image/*" class="hidden" @change.stop="handleOrderAvatarUpload" :disabled="isUploadingAvatar" />
+          <div v-if="isUploadingAvatar" class="flex items-center gap-2 text-sky-400 text-sm">
+            <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>Téléchargement de la photo en cours...</span>
+          </div>
+          <p v-if="avatarUploadMessage && !isUploadingAvatar" :class="avatarUploadError ? 'text-red-400' : 'text-green-400'" class="text-sm">
             {{ avatarUploadMessage }}
           </p>
         </div>
@@ -53,6 +71,7 @@
     <OrderAvatarModal
       v-if="isOrderAvatarCropperOpen"
       :imageUrl="selectedOrderImageUrl"
+      :isUploading="isUploadingAvatar"
       @close="handleOrderAvatarModalClose"
       @save="handleOrderAvatarCropped"
     />
@@ -367,6 +386,7 @@
   const avatarUploadMessage = ref("");
   const avatarUploadError = ref(false);
   const avatarLoadError = ref(false);
+  const isUploadingAvatar = ref(false);
   const isOrderAvatarCropperOpen = ref(false);
   const selectedOrderImageUrl = ref(null);
 
@@ -433,12 +453,14 @@
       return;
     }
 
-    // Fermer le modal de recadrage immédiatement
-    isOrderAvatarCropperOpen.value = false;
-    selectedOrderImageUrl.value = null;
+    // ✅ CORRECTION : Ne PAS fermer le modal immédiatement - le laisser ouvert pour afficher l'indicateur de chargement
+    // Le modal se fermera automatiquement après l'upload réussi
     avatarUploadMessage.value = "";
     avatarUploadError.value = false;
     avatarLoadError.value = false;
+    isUploadingAvatar.value = true;
+    
+    let uploadSuccess = false;
     
     try {
       setCsrfHeader();
@@ -473,28 +495,43 @@
       // Afficher un message de succès (mais ne pas rediriger)
       avatarUploadMessage.value = "Photo téléchargée avec succès !";
       avatarUploadError.value = false;
-      
-      // Effacer le message après 3 secondes
-      setTimeout(() => {
-        avatarUploadMessage.value = "";
-      }, 3000);
+      uploadSuccess = true;
       
       // Réinitialiser l'input file pour permettre de sélectionner le même fichier à nouveau
       if (orderAvatarInput.value) {
         orderAvatarInput.value.value = "";
       }
       
+      // Effacer le message après 3 secondes
+      setTimeout(() => {
+        avatarUploadMessage.value = "";
+      }, 3000);
+      
     } catch (error) {
       console.error("Erreur lors du téléchargement de la photo:", error);
       avatarUploadMessage.value = error.response?.data?.message || "Erreur lors du téléchargement.";
       avatarUploadError.value = true;
+      uploadSuccess = false;
+      
+      // Ne pas fermer le modal en cas d'erreur pour que l'utilisateur puisse réessayer
+      // L'utilisateur peut fermer le modal manuellement s'il le souhaite
       
       // Réinitialiser l'input file même en cas d'erreur
       if (orderAvatarInput.value) {
         orderAvatarInput.value.value = "";
       }
     } finally {
+      isUploadingAvatar.value = false;
       delete apiClient.defaults.headers.common["X-XSRF-TOKEN"];
+      
+      // ✅ CORRECTION : Fermer le modal seulement après que l'upload soit terminé avec succès
+      // Attendre un court délai pour que l'utilisateur voie que l'upload est terminé
+      if (uploadSuccess) {
+        setTimeout(() => {
+          isOrderAvatarCropperOpen.value = false;
+          selectedOrderImageUrl.value = null;
+        }, 800);
+      }
     }
   };
 
@@ -507,6 +544,7 @@
     avatarUploadMessage.value = "";
     avatarUploadError.value = false;
     avatarLoadError.value = false;
+    isUploadingAvatar.value = true;
     
     const backendUrl = import.meta.env.VITE_APP_URL_BACKEND || "http://localhost:8000";
     const profileAvatarUrlRaw = props.user.avatar_url;
@@ -556,6 +594,7 @@
       avatarUploadMessage.value = error.response?.data?.message || "Erreur lors de l'opération.";
       avatarUploadError.value = true;
     } finally {
+      isUploadingAvatar.value = false;
       delete apiClient.defaults.headers.common["X-XSRF-TOKEN"];
     }
   };

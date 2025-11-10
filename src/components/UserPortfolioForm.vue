@@ -492,6 +492,7 @@
   const saveError = ref(false);
   const photoUploadMessage = ref("");
   const photoUploadError = ref(false);
+  const isUploadingPhoto = ref(false);
   const photoInput = ref(null);
   const isGenerating = ref(false);
   const generateMessage = ref("");
@@ -651,6 +652,7 @@
 
     photoUploadMessage.value = "";
     photoUploadError.value = false;
+    isUploadingPhoto.value = true;
 
     try {
       setCsrfHeader();
@@ -671,6 +673,7 @@
       photoUploadMessage.value = error.response?.data?.message || "Erreur lors de l'upload.";
       photoUploadError.value = true;
     } finally {
+      isUploadingPhoto.value = false;
       delete apiClient.defaults.headers.common["X-XSRF-TOKEN"];
     }
   };

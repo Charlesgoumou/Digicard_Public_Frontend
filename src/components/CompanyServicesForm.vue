@@ -72,17 +72,30 @@
                 <img :src="form.logo_url" alt="Logo" class="h-24 w-24 object-contain bg-white rounded-lg p-2" />
               </div>
               <div class="flex-grow">
-                <input type="file" @change="handleLogoUpload" accept="image/*" class="hidden" ref="logoInput" />
+                <input type="file" @change="handleLogoUpload" accept="image/*" class="hidden" ref="logoInput" :disabled="isUploadingLogo" />
                 <button
                   @click="$refs.logoInput.click()"
                   type="button"
-                  class="bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+                  :disabled="isUploadingLogo"
+                  class="bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  {{ form.logo_url ? "Changer le logo" : "Télécharger un logo" }}
+                  <svg v-if="isUploadingLogo" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span v-if="isUploadingLogo">Téléchargement...</span>
+                  <span v-else>{{ form.logo_url ? "Changer le logo" : "Télécharger un logo" }}</span>
                 </button>
-                <p class="text-sm text-slate-400 mt-2">Les couleurs seront automatiquement extraites du logo</p>
+                <div v-if="isUploadingLogo" class="flex items-center gap-2 text-sky-400 text-sm mt-2">
+                  <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>Téléchargement du logo en cours...</span>
+                </div>
+                <p v-else class="text-sm text-slate-400 mt-2">Les couleurs seront automatiquement extraites du logo</p>
                 <p
-                  v-if="logoUploadMessage"
+                  v-if="logoUploadMessage && !isUploadingLogo"
                   :class="logoUploadError ? 'text-red-400' : 'text-green-400'"
                   class="text-sm mt-2"
                 >
@@ -475,6 +488,7 @@
   const saveError = ref(false);
   const logoUploadMessage = ref("");
   const logoUploadError = ref(false);
+  const isUploadingLogo = ref(false);
   const logoInput = ref(null);
   const presentationInput = ref(null);
   const isGenerating = ref(false);
@@ -553,6 +567,7 @@
 
     logoUploadMessage.value = "";
     logoUploadError.value = false;
+    isUploadingLogo.value = true;
 
     try {
       setCsrfHeader();
@@ -581,6 +596,7 @@
       logoUploadMessage.value = error.response?.data?.message || "Erreur lors de l'upload.";
       logoUploadError.value = true;
     } finally {
+      isUploadingLogo.value = false;
       delete apiClient.defaults.headers.common["X-XSRF-TOKEN"];
     }
   };
