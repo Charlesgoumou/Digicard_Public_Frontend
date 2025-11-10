@@ -6,7 +6,6 @@
         :title="homepage.hero_title"
         :subtitle="homepage.hero_subtitle"
         :cta-text="homepage.hero_cta_text"
-        :cta-link="homepage.hero_cta_link"
         :image-url="homepage.hero_image_url"
       />
       <SocialProofSection :social-proof="homepage.social_proof || []" />

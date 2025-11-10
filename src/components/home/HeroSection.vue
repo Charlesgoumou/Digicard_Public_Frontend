@@ -19,15 +19,7 @@
             {{ computedSubtitle }}
           </p>
           <div v-if="!isEmployee" class="mt-10 flex flex-col sm:flex-row sm:justify-center lg:justify-start gap-4">
-            <a
-              v-if="ctaLinkFinal"
-              :href="ctaLinkFinal"
-              class="group relative inline-block text-lg font-semibold text-white bg-gradient-to-r from-sky-500 to-blue-500 rounded-full px-8 py-3.5 transition-all duration-300 ease-in-out hover:shadow-lg hover:shadow-sky-500/30"
-            >
-              {{ ctaTextFinal }}
-            </a>
             <button
-              v-else
               @click="openOrderModal"
               class="group relative inline-block text-lg font-semibold text-white bg-gradient-to-r from-sky-500 to-blue-500 rounded-full px-8 py-3.5 transition-all duration-300 ease-in-out hover:shadow-lg hover:shadow-sky-500/30"
             >
@@ -87,7 +79,6 @@
     title: { type: String, default: "" },
     subtitle: { type: String, default: "" },
     ctaText: { type: String, default: "" },
-    ctaLink: { type: String, default: "" },
     imageUrl: { type: String, default: "" },
   });
 
@@ -110,7 +101,6 @@
     () => props.subtitle || "Partagez instantanément vos contacts, liens et profils avec une seule carte intelligente.",
   );
   const ctaTextFinal = computed(() => props.ctaText || "Commander ma carte");
-  const ctaLinkFinal = computed(() => props.ctaLink || "");
 
   let intervalId = null;
 

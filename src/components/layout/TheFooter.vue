@@ -26,7 +26,8 @@
             <a href="mailto:contact@arccenciel.com" class="hover:text-blue-500 transition-colors"
               >contact@arccenciel.com</a
             >
-            <a href="tel:+224000000000" class="hover:text-blue-500 transition-colors">+224 000 000 000</a>
+            <a href="tel:+224613615732" class="hover:text-blue-500 transition-colors">+224 613 61 57 32</a>
+            <a href="tel:+224666572805" class="hover:text-blue-500 transition-colors">+224 666 57 28 05</a>
           </div>
         </div>
 
