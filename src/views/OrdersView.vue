@@ -641,10 +641,10 @@
       // Charger les prix avant de charger les commandes
       await loadPricing();
       
-      // ✅ Ajouter un timestamp pour éviter le cache du navigateur
-      const timestamp = new Date().getTime();
+      // ✅ OPTIMISATION : Ne pas ajouter de timestamp pour permettre le cache du navigateur
+      // Le backend retourne déjà les données optimisées
       console.log("OrdersView: Appel API pour charger les commandes...");
-      const response = await apiClient.get(`/api/orders?_t=${timestamp}`);
+      const response = await apiClient.get(`/api/orders`);
       
       console.log("OrdersView: Commandes reçues du backend", {
         count: Array.isArray(response.data) ? response.data.length : 0,

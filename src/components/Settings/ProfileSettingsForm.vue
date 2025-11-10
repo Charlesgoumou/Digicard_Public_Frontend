@@ -360,7 +360,7 @@
     },
   });
 
-  const emit = defineEmits(["addPhone", "removePhone", "addEmail", "removeEmail", "update:avatar"]);
+  const emit = defineEmits(["addPhone", "removePhone", "addEmail", "removeEmail", "update:avatar", "reload-order-data"]);
 
   // ========== GESTION DE L'AVATAR DE COMMANDE ==========
   const orderAvatarInput = ref(null);
@@ -462,8 +462,12 @@
         fullAvatarUrl = backendUrl + "/" + avatarUrl.replace(/^\//, "");
       }
       
-      // Mettre à jour l'aperçu de l'avatar
+      // Mettre à jour l'aperçu de l'avatar immédiatement
       emit("update:avatar", fullAvatarUrl + "?t=" + timestamp);
+      
+      // ✅ CORRECTION : Pour les business admin, recharger les données de la commande
+      // pour s'assurer que employee_avatar_url est bien chargé depuis le backend
+      emit("reload-order-data");
       
       // Afficher un message de succès (mais ne pas rediriger)
       avatarUploadMessage.value = "Photo téléchargée avec succès !";
@@ -533,6 +537,9 @@
       
       // Mettre à jour l'aperçu avec l'URL retournée par le backend
       emit("update:avatar", returnedAvatarUrl + "?t=" + timestamp);
+      
+      // ✅ CORRECTION : Recharger les données de la commande après avoir utilisé la photo de profil
+      emit("reload-order-data");
       
       // Afficher un message de succès (mais ne pas rediriger)
       avatarUploadMessage.value = "Photo de profil utilisée avec succès !";

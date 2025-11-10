@@ -204,20 +204,28 @@
     return orders.value.filter((order) => {
       // Pour les employés, vérifier employee_is_configured
       if (user.value?.role === "employee") {
-        return order.employee_is_configured || order.is_configured;
+        return order.employee_is_configured === true || order.is_configured === true;
       }
-      // Pour les business admin, ne pas afficher les commandes business non configurées par lui-même
-      // (seulement les entrées d'employés configurés)
+      // Pour les business admin
       if (user.value?.role === "business_admin") {
         // Si c'est une entrée d'employé, toujours l'afficher (déjà filtrée)
         if (order.is_employee_order) {
           return true;
         }
-        // Si c'est une commande du business admin lui-même, vérifier qu'elle est configurée
-        return order.is_configured;
+        // ✅ CORRECTION : Pour les business admin inclus dans une commande business,
+        // vérifier employee_is_configured (retourné par le backend quand l'admin est inclus)
+        // Le backend retourne employee_card_quantity et employee_is_configured pour les commandes où l'admin est inclus
+        const isAdminIncluded = 'employee_card_quantity' in order || 'employee_is_configured' in order;
+        if (isAdminIncluded) {
+          // Si l'admin est inclus dans la commande, vérifier employee_is_configured
+          return order.employee_is_configured === true || order.is_configured === true;
+        }
+        // Pour les commandes personnelles ou commandes business où l'admin n'est pas inclus,
+        // vérifier is_configured
+        return order.is_configured === true;
       }
       // Pour les autres, vérifier is_configured
-      return order.is_configured;
+      return order.is_configured === true;
     });
   });
 
@@ -282,8 +290,16 @@
 
   // Afficher le profil d'une commande
   const viewProfile = (order) => {
-    // Utiliser le username de l'employé si c'est une commande d'employé, sinon celui du user
-    const username = order.employee_username || user.value?.username;
+    // ✅ CORRECTION : Pour les business admin, utiliser le username depuis différentes sources
+    // 1. employee_username si c'est une commande d'employé
+    // 2. profile_username si disponible (retourné par le backend pour les business admin inclus)
+    // 3. employee_profile.username si disponible
+    // 4. user.value.username en dernier recours
+    const username = order.employee_username || 
+                     order.profile_username || 
+                     order.employee_profile?.username || 
+                     user.value?.username;
+    
     if (username) {
       const backendUrl = import.meta.env.VITE_APP_URL_BACKEND || "http://localhost:8000";
       
@@ -305,6 +321,9 @@
       }
       
       window.open(profileUrl, "_blank");
+    } else {
+      console.error("ProfileSelectionView: Username non trouvé pour la commande", order);
+      alert("Impossible d'afficher le profil : username non trouvé.");
     }
   };
 
@@ -412,6 +431,16 @@
       // 🔍 DEBUG : Afficher les données des commandes pour vérifier
       console.log("📊 Commandes chargées:", allOrders);
       console.log("👤 Utilisateur:", user.value);
+      console.log("✅ Commandes configurées (computed):", configuredOrders.value);
+      
+      // 🔍 DEBUG : Pour les business admin, vérifier les commandes business
+      if (user.value?.role === "business_admin") {
+        const businessOrdersWithAdmin = allOrders.filter(order => 
+          order.order_type === "business" && 
+          (order.employee_card_quantity !== undefined || order.employee_is_configured !== undefined)
+        );
+        console.log("💼 Commandes business avec admin inclus:", businessOrdersWithAdmin);
+      }
     } catch (error) {
       console.error("Erreur lors du chargement des commandes:", error);
       loadingError.value = "Impossible de charger vos commandes. Veuillez réessayer.";

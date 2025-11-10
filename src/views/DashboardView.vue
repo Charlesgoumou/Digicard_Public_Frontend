@@ -692,9 +692,9 @@
   const checkBusinessOrders = async () => {
     if (user.value?.role !== "business_admin") return;
     try {
-      // ✅ Ajouter un timestamp pour éviter le cache du navigateur
-      const timestamp = new Date().getTime();
-      const response = await apiClient.get(`/api/orders?_t=${timestamp}`);
+      // ✅ OPTIMISATION : Ne pas ajouter de timestamp pour permettre le cache du navigateur
+      // Le backend retourne déjà les données optimisées pour les business_admin
+      const response = await apiClient.get(`/api/orders`);
       const orders = response.data;
       businessOrders.value = orders.filter((order) => order.order_type === "business");
       hasBusinessOrder.value = businessOrders.value.length > 0;
@@ -702,15 +702,12 @@
       // Sélectionner la première commande et charger les slots automatiquement
       if (hasBusinessOrder.value) {
         selectedOrderId.value = businessOrders.value[0].id;
-        // ✅ Charger les slots automatiquement après détection d'une commande business
-        // Attendre un court délai pour s'assurer que la section est créée dans le DOM
-        // Utiliser nextTick pour s'assurer que le DOM est mis à jour avant de charger les slots
+        // ✅ OPTIMISATION : Charger les slots immédiatement sans délai supplémentaire
+        // Les données sont déjà optimisées côté backend
         await nextTick();
-        setTimeout(() => {
-          if (!slotsLoaded.value && selectedOrderId.value) {
-            loadOrderSlots();
-          }
-        }, 200);
+        if (!slotsLoaded.value && selectedOrderId.value) {
+          loadOrderSlots();
+        }
       }
     } catch (error) {
       console.error("Error loading orders:", error);
@@ -720,13 +717,18 @@
   // --- Charger les slots d'une commande spécifique ---
   const loadOrderSlots = async () => {
     if (!selectedOrderId.value) return;
+    
+    // ✅ OPTIMISATION : Éviter de recharger si les slots sont déjà chargés pour cette commande
+    if (slotsLoaded.value && currentOrderSlots.value.length > 0) {
+      return;
+    }
 
     slotsLoaded.value = false; // Réinitialiser l'état pour permettre un nouveau chargement
     isLoadingSlots.value = true;
     try {
-      // ✅ Ajouter un timestamp pour éviter le cache du navigateur
-      const timestamp = new Date().getTime();
-      const response = await apiClient.get(`/api/orders/${selectedOrderId.value}?_t=${timestamp}`);
+      // ✅ OPTIMISATION : Ne pas ajouter de timestamp pour permettre le cache du navigateur
+      // Le backend retourne déjà les données optimisées
+      const response = await apiClient.get(`/api/orders/${selectedOrderId.value}`);
       const order = response.data;
 
       // Filtrer les slots pour exclure le business admin s'il s'est inclus ET les slots supprimés

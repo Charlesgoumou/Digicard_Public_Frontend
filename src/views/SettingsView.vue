@@ -332,6 +332,7 @@
               @add-email="addEmail"
               @remove-email="removeEmail"
               @update:avatar="orderAvatarPreview = $event"
+              @reload-order-data="handleReloadOrderData"
             />
           </fieldset>
 
@@ -489,6 +490,20 @@
     getAvatarUrl,
     () => (isLoading.value = false),
   );
+
+  // ✅ CORRECTION : Fonction pour recharger les données de la commande après un upload d'avatar
+  const handleReloadOrderData = async () => {
+    if (!selectedOrderId.value) return;
+    
+    try {
+      console.log("SettingsView: Reloading order data after avatar upload...");
+      await loadOrderData(selectedOrderId.value);
+      console.log("SettingsView: Order data reloaded successfully after avatar upload");
+    } catch (error) {
+      console.error("SettingsView: Error reloading order data after avatar upload", error);
+      // Ne pas afficher d'erreur à l'utilisateur, car l'avatar a déjà été mis à jour visuellement
+    }
+  };
 
   // 'isLoading' de useOrderManagement contrôle le spinner.
   // 'isLoadingOrderData' de useCardSettings contrôle le spinner.
