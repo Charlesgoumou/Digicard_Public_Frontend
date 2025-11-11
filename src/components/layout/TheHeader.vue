@@ -165,7 +165,7 @@
               Commander ma carte
             </button>
             <button @click="openAuthModalAndCloseMenu" class="block w-full text-center text-slate-300">
-              S'inscrire | Se Connecter
+              Se Connecter
             </button>
           </template>
           <template v-else>
