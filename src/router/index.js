@@ -10,6 +10,17 @@ const router = createRouter({
     { path: "/nos-cartes", name: "cards", component: () => import("../views/CardsView.vue") },
     { path: "/a-propos", name: "about", component: () => import("../views/AboutView.vue") },
     { path: "/contact", name: "contact", component: () => import("../views/ContactView.vue") },
+    { path: "/mentions-legales", name: "legalMentions", component: () => import("../views/LegalMentionsView.vue") },
+    {
+      path: "/conditions-generales",
+      name: "termsAndConditions",
+      component: () => import("../views/TermsAndConditionsView.vue"),
+    },
+    {
+      path: "/politique-confidentialite",
+      name: "privacyPolicy",
+      component: () => import("../views/PrivacyPolicyView.vue"),
+    },
     { path: "/verify-code", name: "Verification", component: () => import("../views/VerificationView.vue") },
     { path: "/reset-password", name: "ResetPassword", component: () => import("../views/ResetPasswordView.vue") },
     { path: "/entreprise/:username", name: "CompanyPublic", component: () => import("../views/CompanyPublicView.vue") },

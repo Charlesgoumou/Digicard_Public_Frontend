@@ -65,9 +65,16 @@
 
       <div class="mt-12 pt-8 border-t border-slate-800 text-center text-sm">
         <p>&copy; {{ new Date().getFullYear() }} ArccEnCiel. Tous droits réservés.</p>
-        <div class="mt-2 space-x-4">
-          <a href="#" class="hover:text-blue-500 transition-colors">Mentions Légales</a>
-          <a href="#" class="hover:text-blue-500 transition-colors">Politique de Confidentialité</a>
+        <div class="mt-2 space-x-4 flex flex-wrap justify-center gap-2 sm:gap-4">
+          <router-link to="/mentions-legales" class="hover:text-blue-500 transition-colors"
+            >Mentions Légales</router-link
+          >
+          <router-link to="/conditions-generales" class="hover:text-blue-500 transition-colors"
+            >Conditions Générales de Vente et d'Utilisation (CGV/CGU)</router-link
+          >
+          <router-link to="/politique-confidentialite" class="hover:text-blue-500 transition-colors"
+            >Politique de Confidentialité</router-link
+          >
         </div>
       </div>
     </div>

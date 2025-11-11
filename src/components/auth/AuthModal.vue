@@ -29,21 +29,6 @@
         <!-- VUE CONNEXION -->
         <div v-if="view === 'login'" key="login">
           <h2 class="text-2xl font-bold text-white text-center mb-6">Se Connecter</h2>
-          <div class="mb-6">
-            <button
-              disabled
-              class="w-full flex items-center justify-center py-2.5 border border-slate-600 rounded-lg text-slate-500 transition-colors cursor-not-allowed opacity-50"
-            >
-              <svg class="h-5 w-5 mr-3" viewBox="0 0 48 48">...</svg>
-              Connexion rapide avec Google (Bientôt !)
-            </button>
-          </div>
-          <div class="relative my-6">
-            <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-700"></div></div>
-            <div class="relative flex justify-center text-sm">
-              <span class="bg-slate-800 px-2 text-slate-400">ou connectez-vous avec votre email</span>
-            </div>
-          </div>
           <form @submit.prevent="handleLogin" class="space-y-4">
             <div>
               <label for="login-email" class="block text-sm font-medium text-slate-300">Email</label>
@@ -320,10 +305,44 @@
               </div>
             </div>
 
+            <!-- Case à cocher pour accepter les CGV/CGU et la politique de confidentialité -->
+            <div class="flex items-start">
+              <input
+                v-model="registerForm.acceptTerms"
+                type="checkbox"
+                id="accept-terms"
+                required
+                class="mt-1 w-4 h-4 text-sky-500 bg-slate-700 border-slate-600 rounded focus:ring-2 focus:ring-sky-500 cursor-pointer flex-shrink-0"
+              />
+              <label for="accept-terms" class="ml-2 text-sm text-slate-300 leading-relaxed cursor-pointer">
+                J'accepte les 
+                <a 
+                  href="/conditions-generales" 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-sky-400 hover:text-sky-300 underline"
+                  @click.stop="openInNewTab('/conditions-generales', $event)"
+                >
+                  Conditions générales d'utilisation, de ventes (CGU/CGV)
+                </a>
+                et la 
+                <a 
+                  href="/politique-confidentialite" 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-sky-400 hover:text-sky-300 underline"
+                  @click.stop="openInNewTab('/politique-confidentialite', $event)"
+                >
+                  politique de confidentialité
+                </a>
+                .
+              </label>
+            </div>
+
             <p v-if="errorMessage" class="text-sm text-red-400 text-center pt-1 h-5">{{ errorMessage }}</p>
             <button
               type="submit"
-              :disabled="isSubmitting"
+              :disabled="isSubmitting || !registerForm.acceptTerms"
               class="w-full bg-sky-500 text-white font-semibold py-2.5 rounded-lg hover:bg-sky-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {{ isSubmitting ? "Création..." : "Créer mon compte" }}
@@ -472,9 +491,11 @@
 <script setup>
   import { ref, reactive } from "vue";
   import { useAuth } from "@/composables/useAuth";
+  import { useRouter } from "vue-router";
   import apiClient from "@/api";
 
   const { isAuthModalOpen, closeAuthModal, login, register } = useAuth();
+  const router = useRouter();
   const view = ref("login"); // 'login' | 'register' | 'forgotPassword' | 'selectAccount'
   const errorMessage = ref("");
   const successMessage = ref("");
@@ -500,6 +521,7 @@
     user_type: "individual",
     company_name: "",
     phone: "+224",
+    acceptTerms: false,
   });
   const forgotPasswordEmail = ref("");
 
@@ -663,6 +685,13 @@
 
   const onPhoneBlur = () => {
     registerForm.phone = sanitizeGuineaPhone(registerForm.phone || "");
+  };
+
+  // Fonction pour ouvrir un lien dans un nouvel onglet
+  const openInNewTab = (path, event) => {
+    event.preventDefault();
+    const url = router.resolve(path).href;
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 </script>
 
