@@ -541,10 +541,16 @@
           </svg>
         </div>
         <h3 class="text-xl font-bold text-white text-center mb-3">🎉 Félicitations !</h3>
-        <p class="text-slate-300 text-center mb-6">
+        <p class="text-slate-300 text-center mb-4">
           Votre commande a été validée avec succès ! Vous recevrez un email résumant votre commande et les conditions
           générales d'utilisation.
         </p>
+        <div class="bg-sky-500/10 border border-sky-500/30 rounded-lg p-4 mb-6">
+          <p class="text-sky-300 text-center text-sm">
+            <strong>📦 Livraison :</strong> Votre commande sera livrée dans un délai de <strong>48h</strong>, 
+            la livraison est <strong>gratuite</strong> partout à Conakry.
+          </p>
+        </div>
         <button
           @click="closeValidateModal"
           class="w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
