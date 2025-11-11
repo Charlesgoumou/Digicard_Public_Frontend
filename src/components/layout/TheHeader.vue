@@ -9,7 +9,7 @@
         >
           <img src="@/assets/images/logo.png" alt="Logo Carte Digitale" class="h-7 sm:h-8 w-auto flex-shrink-0" />
           <span class="hidden sm:inline">Carte Digitale</span>
-          <span class="sm:hidden text-sm">CD</span>
+          <span class="sm:hidden text-sm">DC</span>
         </RouterLink>
 
         <!-- Navigation Desktop (masquée jusqu'à lg) -->
