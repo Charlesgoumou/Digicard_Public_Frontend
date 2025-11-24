@@ -96,12 +96,13 @@
 
 <script setup>
 import { ref, onMounted } from "vue";
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 import apiClient from "../api.js";
 import { useAuth } from "../composables/useAuth";
 import Cookies from "js-cookie";
 
 const router = useRouter();
+const route = useRoute();
 const { user, fetchUser, updateUserLocally } = useAuth();
 
 // Réutiliser les mêmes noms de variables que AuthModal.vue pour la cohérence
@@ -109,6 +110,7 @@ const availableAccounts = ref([]);
 const isSubmitting = ref(false);
 const isLoading = ref(true);
 const errorMessage = ref("");
+const selectionToken = ref(null); // Token pour récupérer les données depuis le cache
 
 // Fonction helper pour récupérer et définir le header CSRF
 const setCsrfHeader = async () => {
@@ -131,10 +133,18 @@ const loadPendingAccounts = async () => {
     isLoading.value = true;
     errorMessage.value = "";
 
+    // ✅ CORRECTION: Récupérer le token depuis l'URL si présent
+    selectionToken.value = route.query.token || null;
+    if (selectionToken.value) {
+      console.log("Token de sélection trouvé dans l'URL:", selectionToken.value.substring(0, 10) + "...");
+    }
+
     // Récupérer le cookie CSRF avant l'appel API
     await setCsrfHeader();
 
-    const response = await apiClient.get("/api/google/pending-accounts");
+    // ✅ CORRECTION: Inclure le token dans la requête si disponible
+    const params = selectionToken.value ? { token: selectionToken.value } : {};
+    const response = await apiClient.get("/api/google/pending-accounts", { params });
     
     if (response.data && Array.isArray(response.data.accounts)) {
       // Le format est déjà correct (correspond à AuthModal.vue)
@@ -193,9 +203,16 @@ const selectAccountAndLogin = async (accountId) => {
     }
 
     console.log("Envoi de la requête à /api/google/select-account avec account_id:", accountIdInt);
-    const response = await apiClient.post("/api/google/select-account", {
+    
+    // ✅ CORRECTION: Inclure le token dans la requête si disponible
+    const payload = {
       account_id: accountIdInt,
-    });
+    };
+    if (selectionToken.value) {
+      payload.token = selectionToken.value;
+    }
+    
+    const response = await apiClient.post("/api/google/select-account", payload);
     
     console.log("Réponse reçue:", response.data);
 

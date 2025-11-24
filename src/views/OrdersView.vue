@@ -1946,7 +1946,8 @@
         };
         
         // Démarrer la vérification avec retry
-        checkAndShowSuccessModal();
+        // ✅ CORRECTION: Utiliser void pour ignorer la promesse et éviter les erreurs
+        void checkAndShowSuccessModal();
       }
     } catch (error) {
       console.error("OrdersView: Erreur critique lors du montage:", error);
