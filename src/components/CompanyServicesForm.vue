@@ -72,6 +72,18 @@
                 <img :src="form.logo_url" alt="Logo" class="h-24 w-24 object-contain bg-white rounded-lg p-2" />
               </div>
               <div class="flex-grow">
+                <!-- ✅ Message informatif sur la taille du fichier -->
+                <div class="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 mb-3">
+                  <p class="text-amber-300 text-sm flex items-start gap-2">
+                    <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>
+                      <strong>Taille maximale : 2 Mo</strong><br>
+                      Si votre fichier est plus volumineux, veuillez utiliser un outil de réduction de taille d'image (ex: TinyPNG, Squoosh, ImageOptim) avant de l'uploader.
+                    </span>
+                  </p>
+                </div>
                 <input type="file" @change="handleLogoUpload" accept="image/*" class="hidden" ref="logoInput" :disabled="isUploadingLogo" />
                 <button
                   @click="$refs.logoInput.click()"
@@ -115,6 +127,18 @@
               Uploadez un fichier de présentation de votre entreprise (PDF ou image) et nous remplirons automatiquement
               tous les champs ci dessous
             </p>
+            <!-- ✅ Message informatif sur la taille du fichier -->
+            <div class="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 mb-4">
+              <p class="text-amber-300 text-sm flex items-start gap-2">
+                <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>
+                  <strong>Taille maximale : 2 Mo</strong><br>
+                  Si votre fichier est plus volumineux, veuillez utiliser un outil de réduction de taille de fichier (ex: SmallPDF, ILovePDF, TinyPNG pour les images) avant de l'uploader.
+                </span>
+              </p>
+            </div>
             <p class="text-indigo-300 text-xs mb-4 flex items-center gap-2">
               <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path
@@ -465,7 +489,8 @@
 </template>
 
 <script setup>
-  import { ref, computed, onMounted } from "vue";
+  import { ref, computed, onMounted, watch } from "vue";
+  import { useRouter } from "vue-router";
   import apiClient from "@/api";
   import Cookies from "js-cookie";
   import { useAuth } from "@/composables/useAuth";
@@ -478,6 +503,7 @@
     },
   });
 
+  const router = useRouter();
   const { user } = useAuth();
   const username = ref(user.value?.username || "");
   const publicPageUrl = computed(() => `${window.location.origin}/entreprise/${username.value}`);
@@ -565,6 +591,18 @@
     const file = event.target.files[0];
     if (!file) return;
 
+    // ✅ CRITIQUE: Vérifier la taille du fichier (2 Mo max)
+    const maxSize = 2 * 1024 * 1024; // 2 Mo en octets
+    if (file.size > maxSize) {
+      logoUploadMessage.value = `Le fichier est trop volumineux (${(file.size / 1024 / 1024).toFixed(2)} Mo). Taille maximale : 2 Mo. Veuillez utiliser un outil de réduction de taille d'image (ex: TinyPNG, Squoosh, ImageOptim) avant de l'uploader.`;
+      logoUploadError.value = true;
+      // Réinitialiser l'input pour permettre de sélectionner un autre fichier
+      if (logoInput.value) {
+        logoInput.value.value = "";
+      }
+      return;
+    }
+
     logoUploadMessage.value = "";
     logoUploadError.value = false;
     isUploadingLogo.value = true;
@@ -604,6 +642,18 @@
   const handlePresentationUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
+
+    // ✅ CRITIQUE: Vérifier la taille du fichier (2 Mo max)
+    const maxSize = 2 * 1024 * 1024; // 2 Mo en octets
+    if (file.size > maxSize) {
+      extractionMessage.value = `Le fichier est trop volumineux (${(file.size / 1024 / 1024).toFixed(2)} Mo). Taille maximale : 2 Mo. Veuillez utiliser un outil de réduction de taille de fichier (ex: SmallPDF, ILovePDF, TinyPNG pour les images) avant de l'uploader.`;
+      extractionError.value = true;
+      // Réinitialiser l'input pour permettre de sélectionner un autre fichier
+      if (presentationInput.value) {
+        presentationInput.value.value = "";
+      }
+      return;
+    }
 
     extractionMessage.value = "";
     extractionError.value = false;
@@ -664,9 +714,20 @@
           error.response?.data?.message ||
           "Le service d'IA est temporairement surchargé. Veuillez réessayer dans quelques instants.";
       } else if (error.response?.status === 413) {
-        extractionMessage.value = "Le fichier est trop volumineux. Taille maximale : 10 MB.";
+        extractionMessage.value = "Le fichier est trop volumineux. Taille maximale : 2 Mo. Veuillez utiliser un outil de réduction de taille de fichier (ex: SmallPDF, ILovePDF, TinyPNG pour les images) avant de l'uploader.";
       } else if (error.response?.status === 422) {
-        extractionMessage.value = "Format de fichier non supporté. Formats acceptés : PDF, JPG, PNG, JPEG.";
+        // Vérifier si c'est une erreur de taille de fichier dans la validation Laravel
+        const errors = error.response?.data?.errors;
+        if (errors?.presentation && Array.isArray(errors.presentation)) {
+          const sizeError = errors.presentation.find(err => err.includes('2048') || err.includes('2'));
+          if (sizeError) {
+            extractionMessage.value = "Le fichier est trop volumineux. Taille maximale : 2 Mo. Veuillez utiliser un outil de réduction de taille de fichier (ex: SmallPDF, ILovePDF, TinyPNG pour les images) avant de l'uploader.";
+          } else {
+            extractionMessage.value = "Format de fichier non supporté. Formats acceptés : PDF, JPG, PNG, JPEG.";
+          }
+        } else {
+          extractionMessage.value = "Format de fichier non supporté. Formats acceptés : PDF, JPG, PNG, JPEG.";
+        }
       } else {
         extractionMessage.value = error.response?.data?.message || "Erreur lors de l'extraction du fichier.";
       }
@@ -753,14 +814,28 @@
     try {
       setCsrfHeader();
 
+      // Vérifier que si la case "mettre en avant le site web" est cochée, le site web est renseigné
+      if (form.value.website_featured_in_services_button === true) {
+        if (!form.value.company_website_url || form.value.company_website_url.trim() === "") {
+          saveMessage.value = "Veuillez renseigner le site web de l'entreprise pour mettre en avant votre site.";
+          saveError.value = true;
+          isSaving.value = false;
+          return;
+        }
+      }
+
       // Activer automatiquement la publication
       form.value.is_published = true;
 
-      // Enregistrer la page avec order_id si disponible
+      // Préparer le payload : le backend gère les champs null/vides automatiquement
+      // Si le site web est mis en avant, on peut sauvegarder même si les autres champs sont vides
       const payload = { ...form.value };
+      
+      // Ajouter order_id si disponible
       if (props.orderId) {
         payload.order_id = props.orderId;
       }
+      
       const response = await apiClient.put("/api/company-page", payload);
 
       // Mettre à jour le formulaire avec les données retournées par le backend
@@ -782,10 +857,10 @@
       saveMessage.value = "Page entreprise enregistrée et publiée avec succès !";
       saveError.value = false;
 
-      // Masquer le message après 3 secondes
+      // Rediriger vers le Dashboard après 2 secondes (pour que l'utilisateur voie le message de succès)
       setTimeout(() => {
-        saveMessage.value = "";
-      }, 3000);
+        router.push({ name: "Dashboard" });
+      }, 2000);
     } catch (error) {
       console.error("Erreur lors de la sauvegarde:", error);
       saveMessage.value = error.response?.data?.message || "Erreur lors de la sauvegarde.";
@@ -799,4 +874,15 @@
   onMounted(() => {
     loadCompanyPage();
   });
+
+  // Recharger les données quand orderId change
+  watch(
+    () => props.orderId,
+    (newOrderId, oldOrderId) => {
+      if (newOrderId && newOrderId !== oldOrderId) {
+        isLoading.value = true;
+        loadCompanyPage();
+      }
+    }
+  );
 </script>

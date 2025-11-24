@@ -66,16 +66,17 @@
                       : 'border-slate-700'
                   "
                 >
+                  <!-- ✅ MODIFICATION: Cadre carré 1080x1080 pour les images -->
                   <div
                     v-if="getDesignImageUrl(i) && !designImageErrors[i]"
-                    class="relative w-full h-[246px] sm:h-[min(227px,calc(75vh-80px))] md:h-[180px] lg:h-[200px] xl:h-[246px] flex items-center justify-center bg-slate-900/50"
+                    class="relative w-full aspect-square flex items-center justify-center bg-slate-900/50 overflow-hidden"
                   >
                     <img
                       :src="getDesignImageUrl(i)"
                       :alt="`Design de carte ${i}`"
                       loading="lazy"
                       decoding="async"
-                      :class="`w-full max-w-[302px] h-auto max-h-[246px] sm:max-w-[min(265px,calc(100vw-90px))] sm:max-h-[min(227px,calc(75vh-80px))] md:max-h-[180px] lg:max-h-[200px] xl:max-h-[246px] object-contain ${isLocked ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`"
+                      :class="`w-full h-full object-contain ${isLocked ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`"
                       @click="!isLocked && viewDesignImage(i)"
                       @error="handleDesignImageError($event, i)"
                       @load="designImageErrors[i] = false"
@@ -83,7 +84,7 @@
                   </div>
                   <div
                     v-else
-                    class="w-full h-[246px] sm:h-[min(227px,calc(75vh-80px))] md:h-[180px] lg:h-[200px] xl:h-[246px] bg-slate-700 flex flex-col items-center justify-center text-slate-400 text-xs p-2"
+                    class="w-full aspect-square bg-slate-700 flex flex-col items-center justify-center text-slate-400 text-xs p-2"
                   >
                     <div class="text-center">
                       <p class="font-semibold text-xs">Design {{ i }}</p>
@@ -407,14 +408,14 @@
     emit("update:noDesignYet", localNoDesignYet.value);
   };
 
-  // Import des images de design avec import.meta.glob
+  // ✅ MODIFICATION: Import des images de design avec extension .jpg (1080x1080)
   // Utiliser eager: true mais les images seront optimisées par Vite lors du build
-  const designImageModules = import.meta.glob("@/assets/images/cartes/carte*.png", { eager: true });
+  const designImageModules = import.meta.glob("@/assets/images/cartes/carte*.jpg", { eager: true });
 
   // Créer un mapping des numéros de design vers les URLs
   const designImageMap = {};
   Object.keys(designImageModules).forEach((path) => {
-    const match = path.match(/carte(\d+)\.png$/);
+    const match = path.match(/carte(\d+)\.jpg$/);
     if (match) {
       const number = parseInt(match[1]);
       designImageMap[number] = designImageModules[path].default;
@@ -865,12 +866,18 @@
     min-height: 0;
   }
 
+  /* ✅ MODIFICATION: S'assurer que le conteneur de l'image maintient le ratio carré */
+  .design-card > div > div:first-child {
+    aspect-ratio: 1 / 1;
+    width: 100%;
+  }
+
+  /* ✅ MODIFICATION: Images 1080x1080 avec ratio carré et object-contain */
   .design-card img {
     width: 100%;
-    max-width: 302px;
-    height: auto;
-    max-height: 246px;
+    height: 100%;
     object-fit: contain;
+    object-position: center;
     display: block;
   }
 
@@ -880,11 +887,12 @@
       padding: 0.25rem;
     }
 
+    /* ✅ MODIFICATION: Images 1080x1080 - ratio carré maintenu */
     .design-card img {
-      width: min(265px, calc(100vw - 90px));
-      height: min(227px, calc(75vh - 80px));
-      max-width: min(265px, calc(100vw - 90px));
-      max-height: min(227px, calc(75vh - 80px));
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      object-position: center;
     }
 
     .design-card .absolute.bottom-0 button {
@@ -1055,11 +1063,12 @@
       height: min(265px, calc(70vh - 20px));
     }
 
+    /* ✅ MODIFICATION: Images 1080x1080 - ratio carré maintenu */
     .design-card img {
-      width: min(230px, calc(100vw - 70px));
-      height: min(200px, calc(70vh - 80px));
-      max-width: min(230px, calc(100vw - 70px));
-      max-height: min(200px, calc(70vh - 80px));
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      object-position: center;
     }
 
     .designs-swiper-button-prev,
@@ -1083,11 +1092,12 @@
       height: min(280px, calc(72vh - 20px));
     }
 
+    /* ✅ MODIFICATION: Images 1080x1080 - ratio carré maintenu */
     .design-card img {
-      width: min(245px, calc(100vw - 80px));
-      height: min(210px, calc(72vh - 80px));
-      max-width: min(245px, calc(100vw - 80px));
-      max-height: min(210px, calc(72vh - 80px));
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      object-position: center;
     }
   }
 

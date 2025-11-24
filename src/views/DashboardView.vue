@@ -120,7 +120,13 @@
 
         <div v-else-if="user.role === 'business_admin'">
           <h1 class="text-4xl font-bold text-center mb-12">Espace Entreprise</h1>
+          <!-- ✅ Masquer le contenu jusqu'à ce que le chargement des commandes business soit terminé -->
+          <div v-if="isLoadingBusinessOrders" class="flex flex-col items-center justify-center py-12">
+            <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-sky-500"></div>
+            <p class="mt-4 text-slate-400 text-sm">Chargement de vos commandes...</p>
+          </div>
           <div
+            v-else
             class="grid gap-6 md:gap-8 max-w-6xl mx-auto mb-16 justify-items-center"
             :class="hasBusinessOrder ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 md:grid-cols-3'"
           >
@@ -158,8 +164,9 @@
               <p class="text-sm text-slate-400 flex-grow">Consultez votre historique.</p>
             </button>
           </div>
+          <!-- ✅ Masquer la section "Tableau de bord" jusqu'à ce que le chargement soit terminé -->
           <div
-            v-if="hasBusinessOrder"
+            v-if="!isLoadingBusinessOrders && hasBusinessOrder"
             id="employee-section"
             class="max-w-6xl mx-auto p-6 bg-slate-800/50 rounded-lg border border-slate-700 scroll-mt-24"
           >
@@ -527,6 +534,12 @@
         <div v-else-if="user.role === 'employee'">
           <h1 class="text-4xl font-bold text-center mb-4">Bienvenue, {{ user.name }} !</h1>
 
+          <!-- ✅ Masquer le contenu jusqu'à ce que le chargement de la commande employé soit terminé -->
+          <div v-if="isLoadingEmployeeOrder" class="flex flex-col items-center justify-center py-12 mb-12">
+            <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-sky-500"></div>
+            <p class="mt-4 text-slate-400 text-sm">Chargement de vos données...</p>
+          </div>
+          <template v-else>
           <!-- Badge discret avec le nombre de cartes assignées -->
           <div v-if="employeeOrder" class="text-center mb-12">
             <div class="inline-flex items-center gap-2 px-4 py-2 bg-sky-500/20 border border-sky-500/30 rounded-full">
@@ -596,6 +609,7 @@
               <p class="text-sm text-slate-400 flex-grow">Voyez votre profil public.</p>
             </button>
           </div>
+          </template>
         </div>
 
         <div v-else-if="user">
@@ -660,6 +674,7 @@
   const isLoadingEmployees = ref(false);
   const isRemovingEmployee = ref(null);
   const hasBusinessOrder = ref(false);
+  const isLoadingBusinessOrders = ref(false); // ✅ Variable d'état pour le chargement des commandes business
 
   // --- Variables pour le système de slots ---
   const businessOrders = ref([]);
@@ -670,6 +685,7 @@
 
   // --- Variables pour le dashboard employé ---
   const employeeOrder = ref(null);
+  const isLoadingEmployeeOrder = ref(false); // ✅ Variable d'état pour le chargement de la commande employé
 
   // --- Variables pour le modal de gestion d'employé ---
   const showEmployeeModal = ref(false);
@@ -718,8 +734,12 @@
 
   // --- Function to check if user has business orders and load them ---
   const checkBusinessOrders = async () => {
-    if (user.value?.role !== "business_admin") return;
+    if (user.value?.role !== "business_admin") {
+      isLoadingBusinessOrders.value = false;
+      return;
+    }
     try {
+      isLoadingBusinessOrders.value = true; // ✅ Marquer le début du chargement
       // ✅ OPTIMISATION : Ne pas ajouter de timestamp pour permettre le cache du navigateur
       // Le backend retourne déjà les données optimisées pour les business_admin
       const response = await apiClient.get(`/api/orders`);
@@ -738,7 +758,10 @@
         }
       }
     } catch (error) {
-      console.error("Error loading orders:", error);
+      console.error("Erreur lors du chargement des commandes business:", error);
+      hasBusinessOrder.value = false; // En cas d'erreur, considérer qu'il n'y a pas de commande business
+    } finally {
+      isLoadingBusinessOrders.value = false; // ✅ Marquer la fin du chargement
     }
   };
 
@@ -860,9 +883,13 @@
 
   // --- Charger la commande de l'employé ---
   const loadEmployeeOrder = async () => {
-    if (user.value?.role !== "employee") return;
+    if (user.value?.role !== "employee") {
+      isLoadingEmployeeOrder.value = false;
+      return;
+    }
 
     try {
+      isLoadingEmployeeOrder.value = true; // ✅ Marquer le début du chargement
       // Récupérer la commande de l'employé via OrderEmployee
       const response = await apiClient.get("/api/orders");
       const orders = response.data;
@@ -877,6 +904,8 @@
     } catch (error) {
       console.error("Error loading employee order:", error);
       employeeOrder.value = null;
+    } finally {
+      isLoadingEmployeeOrder.value = false; // ✅ Marquer la fin du chargement
     }
   };
 
@@ -1326,12 +1355,25 @@
   // --- Watch pour charger les données selon le rôle ---
   watch(
     user,
-    (newUser) => {
+    (newUser, oldUser) => {
+      // ✅ Réinitialiser la variable de chargement si le rôle change
+      if (oldUser && newUser && oldUser.role !== newUser.role) {
+        isLoadingBusinessOrders.value = false;
+        hasBusinessOrder.value = false;
+        businessOrders.value = [];
+        isLoadingEmployeeOrder.value = false;
+        employeeOrder.value = null;
+      }
+      
       if (newUser) {
         if (newUser.role === "business_admin") {
           checkBusinessOrders();
         } else if (newUser.role === "employee") {
           loadEmployeeOrder();
+        } else {
+          // Si ce n'est pas un business_admin ou employé, s'assurer que les variables sont à false
+          isLoadingBusinessOrders.value = false;
+          isLoadingEmployeeOrder.value = false;
         }
       }
     },

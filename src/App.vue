@@ -15,7 +15,7 @@
 </template>
 
 <script setup>
-  import { computed, watch, ref, onBeforeMount } from "vue";
+  import { computed, watch, ref, onBeforeMount, onMounted, onUnmounted } from "vue";
   import { RouterView, useRoute } from "vue-router";
   import TheHeader from "@/components/layout/TheHeader.vue";
   import TheFooter from "@/components/layout/TheFooter.vue";
@@ -31,11 +31,11 @@
   const loadingStore = useLoadingStore();
 
   // Vérifie si l'utilisateur est connecté
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, logout } = useAuth();
 
-  // Crée une propriété calculée qui vérifie si on est sur une route spéciale (Dashboard, CompanyPublic)
+  // Crée une propriété calculée qui vérifie si on est sur une route spéciale (Dashboard, CompanyPublic, FinalizeRegistration, SelectAccount)
   const isDashboardRoute = computed(() => {
-    return route.name === "Dashboard" || route.name === "CompanyPublic";
+    return route.name === "Dashboard" || route.name === "CompanyPublic" || route.name === "FinalizeRegistration" || route.name === "SelectAccount";
   });
 
   // Vérifie si on est sur une route utilisateur connecté où le footer doit être caché
@@ -44,7 +44,7 @@
       return false;
     }
     // Routes où le footer doit être caché quand l'utilisateur est connecté
-    // Note: Dashboard est déjà géré par isDashboardRoute
+    // Note: Dashboard et FinalizeRegistration sont déjà gérés par isDashboardRoute
     return route.name === "Settings" ||
            route.name === "Orders" ||
            route.name === "Account" ||
@@ -131,4 +131,178 @@
       }
     }
   );
+
+  // ✅ NOUVEAU : Déconnexion automatique après 2 heures d'inactivité
+  const INACTIVITY_TIMEOUT = 2 * 60 * 60 * 1000; // 2 heures en millisecondes
+  const CHECK_INTERVAL = 60 * 1000; // Vérifier toutes les minutes
+  let lastActivityTime = ref(Date.now());
+  let inactivityCheckInterval = null;
+
+  // Fonction pour mettre à jour le temps de dernière activité
+  const updateLastActivity = () => {
+    if (isLoggedIn.value) {
+      lastActivityTime.value = Date.now();
+      // Sauvegarder dans localStorage pour persister entre les rechargements de page
+      localStorage.setItem('lastActivityTime', lastActivityTime.value.toString());
+    }
+  };
+
+  // Événements utilisateur qui indiquent une activité
+  const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+  
+  // Ajouter les écouteurs d'événements pour détecter l'activité
+  const setupActivityTracking = () => {
+    activityEvents.forEach(event => {
+      document.addEventListener(event, updateLastActivity, { passive: true });
+    });
+  };
+
+  // Retirer les écouteurs d'événements
+  const removeActivityTracking = () => {
+    activityEvents.forEach(event => {
+      document.removeEventListener(event, updateLastActivity);
+    });
+  };
+
+  // Fonction pour vérifier l'inactivité et déconnecter si nécessaire
+  const checkInactivity = () => {
+    if (!isLoggedIn.value) {
+      return;
+    }
+
+    // Récupérer le temps de dernière activité depuis localStorage si disponible
+    const savedLastActivity = localStorage.getItem('lastActivityTime');
+    if (savedLastActivity) {
+      lastActivityTime.value = parseInt(savedLastActivity, 10);
+    }
+
+    const now = Date.now();
+    const timeSinceLastActivity = now - lastActivityTime.value;
+
+    if (timeSinceLastActivity >= INACTIVITY_TIMEOUT) {
+      // 2 heures d'inactivité détectées, déconnecter l'utilisateur
+      console.log('Déconnexion automatique après 2 heures d\'inactivité');
+      
+      // Afficher un message à l'utilisateur avant de le déconnecter
+      alert('Vous avez été déconnecté automatiquement après 2 heures d\'inactivité pour des raisons de sécurité.');
+      
+      // Déconnecter l'utilisateur
+      logout();
+      
+      // Nettoyer le localStorage
+      localStorage.removeItem('lastActivityTime');
+    }
+  };
+
+  // ✅ NOUVEAU : Fonction pour vérifier l'inactivité quand la page redevient visible
+  const handleVisibilityChange = () => {
+    if (!isLoggedIn.value) {
+      return;
+    }
+
+    // Si la page redevient visible
+    if (!document.hidden) {
+      // Récupérer le temps de dernière activité depuis localStorage
+      const savedLastActivity = localStorage.getItem('lastActivityTime');
+      if (savedLastActivity) {
+        const savedTime = parseInt(savedLastActivity, 10);
+        const now = Date.now();
+        const timeSinceLastActivity = now - savedTime;
+
+        // Si 2 heures ou plus se sont écoulées depuis la dernière activité
+        if (timeSinceLastActivity >= INACTIVITY_TIMEOUT) {
+          console.log('Déconnexion automatique : retour après 2 heures d\'inactivité');
+          
+          // Afficher un message à l'utilisateur
+          alert('Votre session a expiré après 2 heures d\'inactivité. Veuillez vous reconnecter.');
+          
+          // Déconnecter l'utilisateur
+          logout();
+          
+          // Nettoyer le localStorage
+          localStorage.removeItem('lastActivityTime');
+        } else {
+          // Si moins de 2 heures, mettre à jour le temps de dernière activité
+          // car l'utilisateur revient sur la page
+          lastActivityTime.value = Date.now();
+          localStorage.setItem('lastActivityTime', lastActivityTime.value.toString());
+        }
+      }
+    } else {
+      // Si la page devient cachée (navigateur minimisé), sauvegarder le temps actuel
+      if (isLoggedIn.value) {
+        lastActivityTime.value = Date.now();
+        localStorage.setItem('lastActivityTime', lastActivityTime.value.toString());
+      }
+    }
+  };
+
+  // Initialiser le suivi d'activité et la vérification d'inactivité
+  onMounted(() => {
+    // Récupérer le temps de dernière activité depuis localStorage si disponible
+    const savedLastActivity = localStorage.getItem('lastActivityTime');
+    if (savedLastActivity) {
+      lastActivityTime.value = parseInt(savedLastActivity, 10);
+      
+      // ✅ NOUVEAU : Vérifier immédiatement si 2 heures se sont écoulées au chargement de la page
+      if (isLoggedIn.value) {
+        const now = Date.now();
+        const timeSinceLastActivity = now - lastActivityTime.value;
+        
+        if (timeSinceLastActivity >= INACTIVITY_TIMEOUT) {
+          console.log('Déconnexion automatique : session expirée au chargement de la page');
+          alert('Votre session a expiré après 2 heures d\'inactivité. Veuillez vous reconnecter.');
+          logout();
+          localStorage.removeItem('lastActivityTime');
+          return; // Ne pas continuer l'initialisation si l'utilisateur est déconnecté
+        }
+      }
+    } else if (isLoggedIn.value) {
+      // Si l'utilisateur est connecté mais qu'il n'y a pas de temps sauvegardé, initialiser avec maintenant
+      lastActivityTime.value = Date.now();
+      localStorage.setItem('lastActivityTime', lastActivityTime.value.toString());
+    }
+
+    // Configurer le suivi d'activité
+    setupActivityTracking();
+
+    // Démarrer la vérification périodique de l'inactivité
+    inactivityCheckInterval = setInterval(checkInactivity, CHECK_INTERVAL);
+
+    // ✅ NOUVEAU : Ajouter l'écouteur pour détecter quand la page redevient visible
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+  });
+
+  // Nettoyer les écouteurs et l'intervalle lors du démontage
+  onUnmounted(() => {
+    removeActivityTracking();
+    if (inactivityCheckInterval) {
+      clearInterval(inactivityCheckInterval);
+    }
+    // ✅ NOUVEAU : Retirer l'écouteur de visibilité
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
+  });
+
+  // Surveiller les changements de statut de connexion
+  watch(isLoggedIn, (newValue) => {
+    if (newValue) {
+      // Utilisateur connecté : initialiser le suivi d'activité
+      lastActivityTime.value = Date.now();
+      localStorage.setItem('lastActivityTime', lastActivityTime.value.toString());
+      setupActivityTracking();
+      
+      // Démarrer la vérification si elle n'est pas déjà active
+      if (!inactivityCheckInterval) {
+        inactivityCheckInterval = setInterval(checkInactivity, CHECK_INTERVAL);
+      }
+    } else {
+      // Utilisateur déconnecté : nettoyer
+      removeActivityTracking();
+      localStorage.removeItem('lastActivityTime');
+      if (inactivityCheckInterval) {
+        clearInterval(inactivityCheckInterval);
+        inactivityCheckInterval = null;
+      }
+    }
+  });
 </script>

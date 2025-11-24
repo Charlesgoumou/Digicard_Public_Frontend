@@ -174,6 +174,7 @@
   import { ref, onMounted } from "vue";
   import { useRouter, useRoute } from "vue-router";
   import apiClient from "@/api";
+  import Cookies from "js-cookie";
 
   const router = useRouter();
   const route = useRoute();
@@ -193,6 +194,25 @@
   const verifying = ref(true);
   const tokenError = ref("");
 
+  // Fonction helper pour récupérer et configurer le cookie CSRF
+  const setupCsrfToken = async () => {
+    try {
+      // Récupérer le cookie CSRF
+      await apiClient.get("/sanctum/csrf-cookie");
+      // Attendre un peu pour que le cookie soit bien défini
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Mettre à jour le header CSRF
+      const xsrfToken = Cookies.get("XSRF-TOKEN");
+      if (xsrfToken) {
+        apiClient.defaults.headers.common["X-XSRF-TOKEN"] = decodeURIComponent(xsrfToken);
+      }
+    } catch (csrfError) {
+      console.warn("Erreur lors de la récupération du cookie CSRF:", csrfError);
+      // Continuer quand même, le cookie peut déjà être présent
+    }
+  };
+
   // Vérifier le token au chargement
   onMounted(async () => {
     const email = route.query.email;
@@ -207,6 +227,9 @@
     form.value.email = email;
     form.value.token = token;
 
+    // ✅ CRITIQUE: Récupérer le cookie CSRF avant de vérifier le token
+    await setupCsrfToken();
+
     // Vérifier la validité du token
     try {
       await apiClient.post("/api/password/verify-token", {
@@ -216,7 +239,11 @@
       verifying.value = false;
     } catch (err) {
       console.error("Erreur de vérification du token:", err);
-      tokenError.value = err.response?.data?.message || "Ce lien de réinitialisation a expiré ou est invalide.";
+      if (err.response?.status === 419) {
+        tokenError.value = "Erreur de session. Veuillez réessayer.";
+      } else {
+        tokenError.value = err.response?.data?.message || "Ce lien de réinitialisation a expiré ou est invalide.";
+      }
       verifying.value = false;
     }
   });
@@ -238,6 +265,9 @@
     isSubmitting.value = true;
 
     try {
+      // ✅ CRITIQUE: Récupérer le cookie CSRF avant de soumettre le formulaire
+      await setupCsrfToken();
+      
       const response = await apiClient.post("/api/password/reset", form.value);
       success.value = response.data.message;
 
@@ -247,7 +277,11 @@
       }, 2000);
     } catch (err) {
       console.error("Erreur lors de la réinitialisation:", err);
-      error.value = err.response?.data?.message || "Une erreur est survenue. Veuillez réessayer.";
+      if (err.response?.status === 419) {
+        error.value = "Erreur de session. Veuillez rafraîchir la page et réessayer.";
+      } else {
+        error.value = err.response?.data?.message || "Une erreur est survenue. Veuillez réessayer.";
+      }
     } finally {
       isSubmitting.value = false;
     }

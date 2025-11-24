@@ -198,7 +198,7 @@
               >
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
               </svg>
-              {{ isProcessing && validatingOrderId === order.id ? "Validation en cours..." : "Valider la Commande" }}
+              {{ isProcessing && validatingOrderId === order.id ? "Redirection vers le paiement..." : "Payer et Valider" }}
             </button>
             <!-- Message d'avertissement si le design n'est pas défini -->
             <div
@@ -241,18 +241,87 @@
               Ajouter plus de Cartes
             </button>
 
-            <!-- Affichage des cartes supplémentaires si elles existent -->
+            <!-- ✅ NOUVEAU: Section détaillée des cartes supplémentaires payées -->
             <div
-              v-if="order.status === 'validated' && order.additional_cards_count && order.additional_cards_count > 0"
-              class="mt-3 p-3 bg-slate-800/50 border border-slate-700 rounded-lg"
+              v-if="order.status === 'validated' && order.paid_additional_payments && order.paid_additional_payments.length > 0"
+              class="mt-4 p-4 bg-slate-800/50 border border-slate-700 rounded-lg"
             >
-              <div class="flex justify-between items-center mb-2">
-                <span class="text-slate-400 text-sm">Cartes Supplémentaires</span>
-                <span class="text-white font-semibold">{{ order.additional_cards_count }}</span>
+              <h3 class="text-white font-semibold mb-3 flex items-center gap-2">
+                <svg class="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Cartes Supplémentaires Payées
+              </h3>
+              
+              <div class="space-y-3">
+                <div
+                  v-for="(payment, index) in order.paid_additional_payments"
+                  :key="payment.id || index"
+                  class="p-3 bg-slate-900/50 rounded-lg border border-slate-600"
+                >
+                  <div class="flex justify-between items-start mb-2">
+                    <div>
+                      <p class="text-slate-400 text-xs">Paiement #{{ index + 1 }}</p>
+                      <p class="text-white font-semibold text-sm">{{ payment.quantity }} carte(s) supplémentaire(s)</p>
+                    </div>
+                    <span class="text-green-400 text-xs font-semibold">Payé</span>
+                  </div>
+                  
+                  <div class="space-y-1 text-xs">
+                    <div class="flex justify-between">
+                      <span class="text-slate-400">Prix unitaire:</span>
+                      <span class="text-white">{{ formatPrice(payment.unit_price || 0) }} GNF</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-slate-400">Montant total:</span>
+                      <span class="text-white font-semibold">{{ formatPrice(payment.total_price || 0) }} GNF</span>
+                    </div>
+                    <div v-if="payment.paid_at" class="flex justify-between">
+                      <span class="text-slate-400">Date de paiement:</span>
+                      <span class="text-white">{{ formatDate(payment.paid_at) }}</span>
+                    </div>
+                  </div>
+                  
+                  <!-- Détails de la distribution pour les commandes business -->
+                  <div
+                    v-if="order.order_type === 'business' && payment.distribution"
+                    class="mt-2 pt-2 border-t border-slate-700"
+                  >
+                    <p class="text-slate-400 text-xs mb-1">Répartition:</p>
+                    <div class="space-y-1 text-xs">
+                      <div
+                        v-if="payment.distribution.admin && parseInt(payment.distribution.admin) > 0"
+                        class="flex justify-between"
+                      >
+                        <span class="text-slate-400">Vous:</span>
+                        <span class="text-white">{{ payment.distribution.admin }} carte(s)</span>
+                      </div>
+                      <div
+                        v-for="(qty, empId) in payment.distribution.employees"
+                        :key="empId"
+                        v-if="parseInt(qty) > 0"
+                        class="flex justify-between"
+                      >
+                        <span class="text-slate-400">
+                          {{ getEmployeeName(order, empId) || `Employé #${empId}` }}:
+                        </span>
+                        <span class="text-white">{{ qty }} carte(s)</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div class="flex justify-between items-center">
-                <span class="text-slate-400 text-sm">Prix total</span>
-                <span class="text-white font-semibold">{{ formatPrice(order.additional_cards_total_price || 0) }} GNF</span>
+              
+              <!-- Résumé total -->
+              <div class="mt-3 pt-3 border-t border-slate-700">
+                <div class="flex justify-between items-center">
+                  <span class="text-slate-400 text-sm">Total cartes supplémentaires:</span>
+                  <span class="text-white font-semibold">{{ order.additional_cards_count || 0 }}</span>
+                </div>
+                <div class="flex justify-between items-center mt-1">
+                  <span class="text-slate-400 text-sm">Montant total payé:</span>
+                  <span class="text-white font-semibold">{{ formatPrice(order.additional_cards_total_price || 0) }} GNF</span>
+                </div>
               </div>
             </div>
 
@@ -496,9 +565,9 @@
           </button>
           <button
             @click="confirmAddCards"
-            :disabled="isAddingCards || !additionalCardsQuantity || additionalCardsQuantity < 1 || (isBusinessOrder && (businessDistributionTotal === 0 || businessDistributionTotal !== additionalCardsQuantity))"
+            :disabled="isAddingCards || !additionalCardsQuantity || additionalCardsQuantity < 1 || !additionalCardPrice || (isBusinessOrder && (businessDistributionTotal === 0 || businessDistributionTotal !== additionalCardsQuantity))"
             class="flex-1 bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2.5 sm:py-3 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2 text-sm sm:text-base"
-            :title="isBusinessOrder && businessDistributionTotal !== additionalCardsQuantity ? 'Veuillez répartir correctement les cartes avant de confirmer' : ''"
+            :title="!additionalCardPrice ? 'Chargement du prix en cours...' : (isBusinessOrder && businessDistributionTotal !== additionalCardsQuantity ? 'Veuillez répartir correctement les cartes avant de confirmer' : '')"
           >
             <span v-if="!isAddingCards">Confirmer</span>
             <span v-else class="flex items-center gap-2">
@@ -513,6 +582,45 @@
               Ajout en cours...
             </span>
           </button>
+        </div>
+        
+        <!-- ✅ NOUVEAU: Section des détails du paiement -->
+        <div v-if="showPaymentDetails && pendingAdditionalPayment" class="mt-4 sm:mt-6 p-4 sm:p-6 bg-slate-800/50 border border-slate-600 rounded-lg">
+          <div class="mb-4">
+            <h4 class="text-lg sm:text-xl font-bold text-white mb-3">Détails de la commande supplémentaire</h4>
+            <div class="space-y-2 text-sm sm:text-base">
+              <div class="flex justify-between text-slate-300">
+                <span>Nombre de cartes :</span>
+                <span class="text-white font-semibold">{{ pendingAdditionalPayment.quantity }}</span>
+              </div>
+              <div class="flex justify-between text-slate-300">
+                <span>Prix unitaire :</span>
+                <span class="text-white font-semibold">{{ formatPrice(pendingAdditionalPayment.unit_price) }} GNF</span>
+              </div>
+              <div class="flex justify-between text-slate-300 border-t border-slate-600 pt-2 mt-2">
+                <span class="font-semibold">Montant total :</span>
+                <span class="text-white font-bold text-lg">{{ formatPrice(pendingAdditionalPayment.total_price) }} GNF</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="flex flex-col sm:flex-row gap-3">
+            <button
+              @click="handlePayment"
+              class="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+              </svg>
+              Payer {{ formatPrice(pendingAdditionalPayment.total_price) }} GNF
+            </button>
+            <button
+              @click="cancelPayment"
+              class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+            >
+              Annuler
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -559,18 +667,63 @@
         </button>
       </div>
     </div>
+
+    <!-- ✅ NOUVEAU: Modal de Félicitation pour les Cartes Supplémentaires -->
+    <div
+      v-if="showAdditionalCardsSuccessModal"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      @click.self="closeAdditionalCardsSuccessModal"
+    >
+      <div class="bg-slate-800 rounded-xl p-6 max-w-md w-full border border-slate-700 shadow-2xl">
+        <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-green-500/20 rounded-full">
+          <svg class="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <h3 class="text-xl font-bold text-white text-center mb-3">🎉 Paiement Réussi !</h3>
+        <p class="text-slate-300 text-center mb-4">
+          Vos cartes supplémentaires ont été ajoutées avec succès à votre commande !
+        </p>
+        <div v-if="additionalCardsSuccessData" class="bg-sky-500/10 border border-sky-500/30 rounded-lg p-4 mb-6">
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between items-center">
+              <span class="text-slate-400">Nombre de cartes ajoutées:</span>
+              <span class="text-white font-semibold">{{ additionalCardsSuccessData.quantity }} carte(s)</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-slate-400">Montant payé:</span>
+              <span class="text-white font-semibold">{{ formatPrice(additionalCardsSuccessData.total_price) }} GNF</span>
+            </div>
+            <div v-if="additionalCardsSuccessData.order_number" class="flex justify-between items-center">
+              <span class="text-slate-400">Commande:</span>
+              <span class="text-white font-semibold">#{{ additionalCardsSuccessData.order_number }}</span>
+            </div>
+          </div>
+        </div>
+        <p class="text-slate-400 text-center text-sm mb-6">
+          Les cartes supplémentaires ont été ajoutées à votre commande et seront livrées avec votre commande principale.
+        </p>
+        <button
+          @click="closeAdditionalCardsSuccessModal"
+          class="w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+        >
+          Fermer
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
   import { ref, computed, onMounted, onActivated, onBeforeUnmount, nextTick } from "vue";
-  import { useRouter } from "vue-router";
+  import { useRouter, useRoute } from "vue-router";
   import apiClient from "@/api";
   import { useAuth } from "@/composables/useAuth";
   import { useOrderModal } from "@/composables/useOrderModal";
   import Cookies from "js-cookie";
 
   const router = useRouter();
+  const route = useRoute();
   const { user } = useAuth();
   const { openOrderModal } = useOrderModal();
 
@@ -586,6 +739,8 @@
   // États des modals
   const showCancelModal = ref(false);
   const showValidateModal = ref(false);
+  const showAdditionalCardsSuccessModal = ref(false);
+  const additionalCardsSuccessData = ref(null);
   const showAddCardsModal = ref(false);
   const selectedOrder = ref(null);
   const isProcessing = ref(false);
@@ -594,6 +749,10 @@
   const additionalCardsQuantity = ref(1);
   const additionalCardPrice = ref(null);
   const addCardsError = ref("");
+  
+  // ✅ NOUVEAU: Variables pour le paiement des cartes supplémentaires
+  const showPaymentDetails = ref(false);
+  const pendingAdditionalPayment = ref(null);
   
   // Pour les commandes business : distribution des cartes
   const isBusinessOrder = ref(false);
@@ -689,12 +848,19 @@
     return new Intl.NumberFormat("fr-FR").format(price);
   };
 
-  // Fonction pour formater la date (JJ/MM/AAAA)
+  // Fonction pour formater la date (JJ/MM/AAAA) ou date et heure si disponible
   const formatDate = (dateString) => {
+    if (!dateString) return '';
     const date = new Date(dateString);
     const day = String(date.getDate()).padStart(2, "0");
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    // Si l'heure est disponible (pas minuit), l'afficher
+    if (hours !== '00' || minutes !== '00') {
+      return `${day}/${month}/${year} à ${hours}:${minutes}`;
+    }
     return `${day}/${month}/${year}`;
   };
 
@@ -707,6 +873,25 @@
     const hours = String(date.getHours()).padStart(2, "0");
     const minutes = String(date.getMinutes()).padStart(2, "0");
     return `${day}/${month}/${year} à ${hours}:${minutes}`;
+  };
+
+  // ✅ NOUVEAU: Fonction pour obtenir le nom d'un employé à partir de son ID
+  const getEmployeeName = (order, employeeId) => {
+    if (!order || !employeeId) return null;
+    
+    // Chercher dans order_employees
+    if (order.order_employees && Array.isArray(order.order_employees)) {
+      const employee = order.order_employees.find(emp => 
+        emp.employee_id === parseInt(employeeId) || 
+        emp.id === parseInt(employeeId) ||
+        String(emp.employee_id) === String(employeeId)
+      );
+      if (employee) {
+        return employee.employee_name || employee.name || null;
+      }
+    }
+    
+    return null;
   };
 
   // Obtenir le nombre de cartes (spécifique à l'employé si applicable)
@@ -1046,6 +1231,15 @@
 
       const response = await apiClient.post(`/api/orders/${order.id}/validate`);
 
+      // ✅ MODIFICATION: Vérifier si la réponse contient un lien de paiement
+      if (response.data.payment_url) {
+        // Rediriger vers le lien de paiement Chap Chap Pay
+        console.log('Redirection vers le paiement Chap Chap Pay:', response.data.payment_url);
+        window.location.href = response.data.payment_url;
+        return; // Sortir de la fonction car la redirection va se faire
+      }
+
+      // Si pas de lien de paiement (ancien comportement pour compatibilité)
       // Mettre à jour la commande dans la liste
       const index = orders.value.findIndex((o) => o.id === order.id);
       if (index !== -1) {
@@ -1078,6 +1272,14 @@
   // Fermer le modal de validation
   const closeValidateModal = () => {
     showValidateModal.value = false;
+    // Recharger les commandes pour obtenir les données à jour
+    loadOrders();
+  };
+
+  // ✅ NOUVEAU: Fermer le modal de félicitation pour les cartes supplémentaires
+  const closeAdditionalCardsSuccessModal = () => {
+    showAdditionalCardsSuccessModal.value = false;
+    additionalCardsSuccessData.value = null;
     // Recharger les commandes pour obtenir les données à jour
     loadOrders();
   };
@@ -1223,21 +1425,65 @@
       }
     }
 
-    // Charger le prix d'une carte supplémentaire depuis les settings
+    // Charger le prix d'une carte supplémentaire depuis les settings du super admin
+    // IMPORTANT: Le prix doit toujours être celui défini par le super admin
     try {
-      const response = await apiClient.get("/api/settings/pricing");
+      // Utiliser un timestamp pour éviter le cache
+      const timestamp = new Date().getTime();
+      const response = await apiClient.get(`/api/settings/pricing?t=${timestamp}`);
+      
+      console.log("OrdersView: openAddCardsModal - Réponse complète de l'API pricing", {
+        fullResponse: response.data,
+        pricing: response.data?.pricing,
+        additional_card_price: response.data?.pricing?.additional_card_price,
+      });
+      
       const pricing = response.data?.pricing || response.data;
-      if (pricing && pricing.additional_card_price) {
-        additionalCardPrice.value = Number(pricing.additional_card_price);
+      
+      if (pricing && pricing.additional_card_price !== undefined && pricing.additional_card_price !== null) {
+        const priceFromAdmin = Number(pricing.additional_card_price);
+        console.log("OrdersView: openAddCardsModal - Prix récupéré depuis l'API", {
+          rawValue: pricing.additional_card_price,
+          convertedValue: priceFromAdmin,
+          isValid: priceFromAdmin > 0,
+        });
+        
+        if (priceFromAdmin > 0) {
+          additionalCardPrice.value = priceFromAdmin;
+          console.log("✅ Prix de la carte supplémentaire chargé depuis les settings du super admin:", priceFromAdmin, "GNF");
+        } else {
+          console.error("❌ Prix de la carte supplémentaire invalide (<= 0):", priceFromAdmin);
+          throw new Error(`Prix invalide reçu depuis l'API: ${priceFromAdmin}`);
+        }
       } else {
-        // Valeur par défaut si le prix n'est pas disponible
-        additionalCardPrice.value = 45000;
+        console.error("❌ Prix non trouvé dans la réponse de l'API", {
+          pricing: pricing,
+          hasAdditionalCardPrice: pricing?.additional_card_price !== undefined,
+        });
+        throw new Error("Prix non trouvé dans la réponse de l'API");
       }
     } catch (error) {
-      console.error("Erreur lors du chargement du prix:", error);
-      // Valeur par défaut en cas d'erreur
-      additionalCardPrice.value = 45000;
+      console.error("❌ Erreur lors du chargement du prix depuis les settings du super admin:", error);
+      // Ne pas utiliser de valeur par défaut codée en dur
+      // Afficher un message d'erreur à l'utilisateur
+      addCardsError.value = "Impossible de charger le prix des cartes supplémentaires depuis les paramètres du super admin. Veuillez réessayer ou contacter le support.";
+      additionalCardPrice.value = null;
     }
+  };
+
+  // ✅ NOUVEAU: Gérer le paiement des cartes supplémentaires
+  const handlePayment = () => {
+    if (pendingAdditionalPayment.value && pendingAdditionalPayment.value.payment_url) {
+      // Rediriger vers l'URL de paiement
+      window.location.href = pendingAdditionalPayment.value.payment_url;
+    }
+  };
+
+  // ✅ NOUVEAU: Annuler le paiement
+  const cancelPayment = () => {
+    showPaymentDetails.value = false;
+    pendingAdditionalPayment.value = null;
+    closeAddCardsModal();
   };
 
   // Fermer le modal pour ajouter des cartes
@@ -1245,7 +1491,10 @@
     showAddCardsModal.value = false;
     selectedOrder.value = null;
     additionalCardsQuantity.value = 1;
+    additionalCardPrice.value = null; // Réinitialiser le prix pour forcer le rechargement à la prochaine ouverture
     addCardsError.value = "";
+    showPaymentDetails.value = false; // ✅ Réinitialiser aussi les détails du paiement
+    pendingAdditionalPayment.value = null; // ✅ Réinitialiser le paiement en attente
     isBusinessOrder.value = false;
     businessAdminInOrder.value = false;
     businessAdminName.value = "";
@@ -1390,10 +1639,20 @@
       console.log("OrdersView: confirmAddCards - Réponse du backend", {
         orderId: selectedOrder.value.id,
         response: response.data,
-        order: response.data.order,
-        order_employees: response.data.order?.order_employees,
+        requires_payment: response.data.requires_payment,
+        additional_payment: response.data.additional_payment,
       });
 
+      // ✅ NOUVEAU: Si un paiement est requis, afficher les détails au lieu de fermer le modal
+      if (response.data.requires_payment && response.data.additional_payment) {
+        // Stocker les détails du paiement
+        pendingAdditionalPayment.value = response.data.additional_payment;
+        showPaymentDetails.value = true;
+        // Ne pas fermer le modal, afficher les détails du paiement
+        return;
+      }
+
+      // Ancien comportement si pas de paiement requis (ne devrait plus arriver)
       // Mettre à jour la commande dans la liste avec les nouvelles données
       const index = orders.value.findIndex((o) => o.id === selectedOrder.value.id);
       if (index !== -1) {
@@ -1466,6 +1725,229 @@
       console.log("OrdersView: Composant monté, chargement des commandes...");
       await loadOrders();
       console.log("OrdersView: Commandes chargées après montage");
+      
+      // ✅ NOUVEAU: Détecter si on vient d'un retour de paiement réussi
+      const paymentSuccess = route.query.payment === 'success';
+      const orderIdFromQuery = route.query.order_id;
+      const additionalPaymentIdFromQuery = route.query.additional_payment_id;
+      
+      // ✅ NOUVEAU: Gérer le retour de paiement pour les cartes supplémentaires
+      if (paymentSuccess && additionalPaymentIdFromQuery) {
+        console.log("OrdersView: Retour de paiement cartes supplémentaires détecté", {
+          payment: route.query.payment,
+          additional_payment_id: additionalPaymentIdFromQuery
+        });
+        
+        // Fonction pour vérifier et afficher le modal de succès
+        const checkAndShowAdditionalCardsSuccessModal = async (retryCount = 0, maxRetries = 10) => {
+          console.log(`OrdersView: Vérification du statut du paiement supplémentaire (tentative ${retryCount + 1}/${maxRetries + 1})`);
+          
+          try {
+            // Vérifier le statut du paiement via l'API backend
+            const checkResponse = await apiClient.get(`/api/additional-payments/${additionalPaymentIdFromQuery}/check-status`);
+            console.log("OrdersView: Statut du paiement supplémentaire vérifié via API", checkResponse.data);
+            
+            if (checkResponse.data.status === 'paid') {
+              // Le paiement a été confirmé, recharger les commandes pour avoir le statut à jour
+              await loadOrders();
+              await nextTick();
+              
+              // Stocker les données de succès
+              additionalCardsSuccessData.value = {
+                quantity: checkResponse.data.quantity,
+                total_price: checkResponse.data.total_price,
+                order_number: checkResponse.data.order_number,
+              };
+              
+              // Afficher le modal de félicitation
+              showAdditionalCardsSuccessModal.value = true;
+              
+              // Nettoyer l'URL SEULEMENT après avoir affiché le modal avec succès
+              router.replace({ name: 'Orders', query: {} });
+              return true; // Succès
+            } else if (checkResponse.data.status === 'pending') {
+              // Le paiement est encore en attente, réessayer plus tard
+              if (retryCount < maxRetries) {
+                console.log("OrdersView: Paiement supplémentaire en attente, nouvelle tentative dans 2 secondes...", {
+                  additional_payment_id: additionalPaymentIdFromQuery,
+                  retry_count: retryCount + 1,
+                  max_retries: maxRetries
+                });
+                
+                // Réessayer après 2 secondes
+                setTimeout(() => {
+                  checkAndShowAdditionalCardsSuccessModal(retryCount + 1, maxRetries);
+                }, 2000);
+                return false; // En attente
+              } else {
+                console.warn("OrdersView: Paiement supplémentaire toujours en attente après toutes les tentatives");
+                router.replace({ name: 'Orders', query: {} });
+                return false; // Timeout
+              }
+            } else {
+              // Le paiement a échoué
+              console.warn("OrdersView: Paiement supplémentaire non confirmé", checkResponse.data);
+              router.replace({ name: 'Orders', query: {} });
+              return false; // Échec
+            }
+          } catch (error) {
+            console.error("OrdersView: Erreur lors de la vérification du statut du paiement supplémentaire", error);
+            
+            // En cas d'erreur, réessayer si on n'a pas atteint le maximum
+            if (retryCount < maxRetries) {
+              setTimeout(() => {
+                checkAndShowAdditionalCardsSuccessModal(retryCount + 1, maxRetries);
+              }, 2000);
+              return false;
+            } else {
+              router.replace({ name: 'Orders', query: {} });
+              return false;
+            }
+          }
+        };
+        
+        // Démarrer la vérification
+        await checkAndShowAdditionalCardsSuccessModal();
+      } else if (paymentSuccess) {
+        console.log("OrdersView: Retour de paiement réussi détecté", {
+          payment: route.query.payment,
+          order_id: orderIdFromQuery
+        });
+        
+        // Attendre un peu pour que les commandes soient bien chargées
+        await nextTick();
+        
+        // Fonction pour vérifier et afficher le modal de succès
+        const checkAndShowSuccessModal = async (retryCount = 0, maxRetries = 10) => {
+          console.log(`OrdersView: Vérification du statut de la commande (tentative ${retryCount + 1}/${maxRetries + 1})`);
+          
+          // Si un order_id est spécifié, vérifier d'abord via l'API
+          if (orderIdFromQuery) {
+            try {
+              // Vérifier le statut du paiement via l'API backend
+              const checkResponse = await apiClient.get(`/api/orders/${orderIdFromQuery}/check-payment`);
+              console.log("OrdersView: Statut de paiement vérifié via API", checkResponse.data);
+              
+              if (checkResponse.data.status === 'validated') {
+                // Le paiement a été confirmé, recharger les commandes pour avoir le statut à jour
+                await loadOrders();
+                await nextTick();
+                
+                const targetOrder = orders.value.find(o => 
+                  o.id === parseInt(orderIdFromQuery) || 
+                  String(o.id) === String(orderIdFromQuery) ||
+                  o.order_number === orderIdFromQuery
+                );
+                
+                if (targetOrder && targetOrder.status === 'validated') {
+                  console.log("OrdersView: Commande validée trouvée, affichage du modal de succès", {
+                    order_id: targetOrder.id,
+                    order_number: targetOrder.order_number,
+                    status: targetOrder.status
+                  });
+                  // Ouvrir le modal de félicitations
+                  showValidateModal.value = true;
+                  
+                  // ✅ Nettoyer l'URL SEULEMENT après avoir affiché le modal avec succès
+                  router.replace({ name: 'Orders', query: {} });
+                  return true; // Succès
+                }
+              } else if (checkResponse.data.status === 'pending') {
+                // Le paiement est encore en attente, réessayer plus tard
+                if (retryCount < maxRetries) {
+                  console.log("OrdersView: Paiement en attente, nouvelle tentative dans 2 secondes...", {
+                    order_id_from_query: orderIdFromQuery,
+                    retry_count: retryCount + 1,
+                    max_retries: maxRetries
+                  });
+                  
+                  // Réessayer après 2 secondes
+                  setTimeout(() => {
+                    checkAndShowSuccessModal(retryCount + 1, maxRetries);
+                  }, 2000);
+                  return false; // En attente
+                }
+              } else {
+                // Le paiement a échoué
+                console.warn("OrdersView: Paiement non confirmé", checkResponse.data);
+                router.replace({ name: 'Orders', query: {} });
+                return false; // Échec
+              }
+            } catch (error) {
+              console.error("OrdersView: Erreur lors de la vérification du statut de paiement", error);
+              // En cas d'erreur, continuer avec la vérification classique
+            }
+          }
+          
+          // Vérification classique : recharger les commandes
+          await loadOrders();
+          await nextTick();
+          
+          let targetOrder = null;
+          
+          // Si un order_id est spécifié, chercher cette commande spécifique
+          if (orderIdFromQuery) {
+            targetOrder = orders.value.find(o => 
+              o.id === parseInt(orderIdFromQuery) || 
+              String(o.id) === String(orderIdFromQuery) ||
+              o.order_number === orderIdFromQuery
+            );
+          } else {
+            // Sinon, chercher la première commande validée récemment
+            targetOrder = orders.value.find(o => o.status === 'validated');
+          }
+          
+          if (targetOrder && targetOrder.status === 'validated') {
+            console.log("OrdersView: Commande validée trouvée, affichage du modal de succès", {
+              order_id: targetOrder.id,
+              order_number: targetOrder.order_number,
+              status: targetOrder.status
+            });
+            // Ouvrir le modal de félicitations
+            showValidateModal.value = true;
+            
+            // ✅ Nettoyer l'URL SEULEMENT après avoir affiché le modal avec succès
+            router.replace({ name: 'Orders', query: {} });
+            return true; // Succès
+          } else if (retryCount < maxRetries) {
+            // Si la commande n'est pas encore validée et qu'on peut encore réessayer
+            console.log("OrdersView: Commande pas encore validée, nouvelle tentative dans 2 secondes...", {
+              order_id_from_query: orderIdFromQuery,
+              retry_count: retryCount + 1,
+              max_retries: maxRetries,
+              orders_loaded: orders.value.map(o => ({ 
+                id: o.id, 
+                order_number: o.order_number, 
+                status: o.status 
+              }))
+            });
+            
+            // Réessayer après 2 secondes
+            setTimeout(() => {
+              checkAndShowSuccessModal(retryCount + 1, maxRetries);
+            }, 2000);
+            return false; // En attente
+          } else {
+            // Toutes les tentatives ont échoué
+            console.warn("OrdersView: Impossible de trouver une commande validée après plusieurs tentatives", {
+              order_id_from_query: orderIdFromQuery,
+              max_retries: maxRetries,
+              orders_loaded: orders.value.map(o => ({ 
+                id: o.id, 
+                order_number: o.order_number, 
+                status: o.status 
+              }))
+            });
+            
+            // Nettoyer l'URL même en cas d'échec pour éviter de rester bloqué
+            router.replace({ name: 'Orders', query: {} });
+            return false; // Échec
+          }
+        };
+        
+        // Démarrer la vérification avec retry
+        checkAndShowSuccessModal();
+      }
     } catch (error) {
       console.error("OrdersView: Erreur critique lors du montage:", error);
       loadingError.value = "Erreur lors de l'initialisation. Veuillez rafraîchir la page.";

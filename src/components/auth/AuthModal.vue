@@ -106,6 +106,66 @@
               {{ isSubmitting ? "Connexion..." : "Se Connecter" }}
             </button>
           </form>
+
+          <!-- Séparateur -->
+          <div class="relative my-6">
+            <div class="absolute inset-0 flex items-center">
+              <div class="w-full border-t border-slate-600"></div>
+            </div>
+            <div class="relative flex justify-center text-sm">
+              <span class="px-4 bg-slate-800 text-slate-400">ou</span>
+            </div>
+          </div>
+
+          <!-- Bouton Google -->
+          <button
+            type="button"
+            @click="handleGoogleAuth"
+            :disabled="isGoogleLoading"
+            class="w-full flex items-center justify-center gap-3 bg-white text-gray-700 font-semibold py-2.5 rounded-lg hover:bg-gray-50 transition-colors border border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg v-if="!isGoogleLoading" class="w-5 h-5" viewBox="0 0 24 24">
+              <path
+                fill="#4285F4"
+                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+              />
+              <path
+                fill="#34A853"
+                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+              />
+              <path
+                fill="#EA4335"
+                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+              />
+            </svg>
+            <svg
+              v-else
+              class="animate-spin h-5 w-5 text-gray-700"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                class="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"
+              ></circle>
+              <path
+                class="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
+            </svg>
+            <span>{{ isGoogleLoading ? 'Chargement...' : 'Se connecter avec Google' }}</span>
+          </button>
+
           <p class="text-center text-sm text-slate-400 mt-6">
             Vous n'avez pas de compte?
             <button
@@ -178,7 +238,9 @@
               />
             </div>
             <div>
-              <label for="register-phone" class="block text-sm font-medium text-slate-300">Téléphone (+224XXXXXXXXX)</label>
+              <label for="register-phone" class="block text-sm font-medium text-slate-300"
+                >Téléphone (+224XXXXXXXXX)</label
+              >
               <input
                 v-model.trim="registerForm.phone"
                 type="tel"
@@ -315,9 +377,9 @@
                 class="mt-1 w-4 h-4 text-sky-500 bg-slate-700 border-slate-600 rounded focus:ring-2 focus:ring-sky-500 cursor-pointer flex-shrink-0"
               />
               <label for="accept-terms" class="ml-2 text-sm text-slate-300 leading-relaxed cursor-pointer">
-                J'accepte les 
-                <a 
-                  href="/conditions-generales" 
+                J'accepte les
+                <a
+                  href="/conditions-generales"
                   target="_blank"
                   rel="noopener noreferrer"
                   class="text-sky-400 hover:text-sky-300 underline"
@@ -325,9 +387,9 @@
                 >
                   Conditions générales d'utilisation, de ventes (CGU/CGV)
                 </a>
-                et la 
-                <a 
-                  href="/politique-confidentialite" 
+                et la
+                <a
+                  href="/politique-confidentialite"
                   target="_blank"
                   rel="noopener noreferrer"
                   class="text-sky-400 hover:text-sky-300 underline"
@@ -348,6 +410,66 @@
               {{ isSubmitting ? "Création..." : "Créer mon compte" }}
             </button>
           </form>
+
+          <!-- Séparateur -->
+          <div class="relative my-6">
+            <div class="absolute inset-0 flex items-center">
+              <div class="w-full border-t border-slate-600"></div>
+            </div>
+            <div class="relative flex justify-center text-sm">
+              <span class="px-4 bg-slate-800 text-slate-400">ou</span>
+            </div>
+          </div>
+
+          <!-- Bouton Google -->
+          <button
+            type="button"
+            @click="handleGoogleAuth"
+            :disabled="isGoogleLoading || !registerForm.acceptTerms"
+            class="w-full flex items-center justify-center gap-3 bg-white text-gray-700 font-semibold py-2.5 rounded-lg hover:bg-gray-50 transition-colors border border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg v-if="!isGoogleLoading" class="w-5 h-5" viewBox="0 0 24 24">
+              <path
+                fill="#4285F4"
+                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+              />
+              <path
+                fill="#34A853"
+                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+              />
+              <path
+                fill="#EA4335"
+                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+              />
+            </svg>
+            <svg
+              v-else
+              class="animate-spin h-5 w-5 text-gray-700"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                class="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"
+              ></circle>
+              <path
+                class="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
+            </svg>
+            <span>{{ isGoogleLoading ? 'Chargement...' : "S'inscrire avec Google" }}</span>
+          </button>
+
           <p class="text-center text-sm text-slate-400 mt-6">
             Déjà un compte?
             <button
@@ -449,7 +571,7 @@
                       />
                     </svg>
                     <span class="text-white font-semibold">
-                      {{ account.type === "business" ? "Compte Entreprise" : "Compte Personnel" }}
+                      {{ account.type === "business" ? "Compte Entreprise" : (account.type === "employee" || account.role === "employee" ? "Compte Employé" : "Compte Particulier") }}
                     </span>
                   </div>
                   <p class="text-slate-400 text-sm mt-1">{{ account.name }}</p>
@@ -489,10 +611,11 @@
 </template>
 
 <script setup>
-  import { ref, reactive } from "vue";
+  import { ref, reactive, computed } from "vue";
   import { useAuth } from "@/composables/useAuth";
   import { useRouter } from "vue-router";
   import apiClient from "@/api";
+  import Cookies from "js-cookie";
 
   const { isAuthModalOpen, closeAuthModal, login, register } = useAuth();
   const router = useRouter();
@@ -501,6 +624,7 @@
   const successMessage = ref("");
   const isSubmitting = ref(false);
   const loadingMessage = ref(""); // Message affiché pendant le chargement
+  const isGoogleLoading = ref(false); // État de chargement pour les boutons Google
 
   // Visibilité des mots de passe
   const showLoginPassword = ref(false);
@@ -617,7 +741,11 @@
       await register(payload);
     } catch (error) {
       // Vérifier si c'est une erreur CORS
-      if (!error.response && error.message && (error.message.includes('CORS') || error.message.includes('Network Error'))) {
+      if (
+        !error.response &&
+        error.message &&
+        (error.message.includes("CORS") || error.message.includes("Network Error"))
+      ) {
         errorMessage.value = "Erreur de connexion au serveur. Vérifiez votre connexion réseau ou contactez le support.";
         console.error("Erreur CORS détectée:", error);
       } else if (error.response?.data?.errors) {
@@ -635,20 +763,53 @@
   };
 
   // Forgot password handler
-  const handleForgotPassword = async () => {
+  const handleForgotPassword = async (e) => {
+    // ✅ CRITIQUE: Empêcher le comportement par défaut du formulaire
+    if (e && e.preventDefault) {
+      e.preventDefault();
+    }
+    
     errorMessage.value = "";
     successMessage.value = "";
     isSubmitting.value = true;
     loadingMessage.value = "Envoi du lien de réinitialisation...";
 
     try {
+      // ✅ CRITIQUE: Récupérer le cookie CSRF avant de faire la requête
+      // Cela évite l'erreur 419 (CSRF token mismatch)
+      try {
+        await apiClient.get("/sanctum/csrf-cookie");
+        // Attendre un peu pour que le cookie soit bien défini
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (csrfError) {
+        console.warn("Erreur lors de la récupération du cookie CSRF:", csrfError);
+        // Continuer quand même, le cookie peut déjà être présent
+      }
+      
+      // ✅ CRITIQUE: Mettre à jour le header CSRF après avoir récupéré le cookie
+      const xsrfToken = Cookies.get("XSRF-TOKEN");
+      if (xsrfToken) {
+        apiClient.defaults.headers.common["X-XSRF-TOKEN"] = decodeURIComponent(xsrfToken);
+      }
+      
       const response = await apiClient.post("/api/password/reset-link", {
         email: forgotPasswordEmail.value,
       });
-      successMessage.value = response.data.message;
+      
+      console.log("Password reset link response:", response.data);
+      
+      // ✅ CRITIQUE: Afficher le message de succès et NE PAS fermer le modal
+      successMessage.value = response.data.message || "Un lien de réinitialisation a été envoyé à votre adresse email.";
       forgotPasswordEmail.value = "";
+      
+      // Ne pas fermer le modal pour que l'utilisateur puisse voir le message de succès
     } catch (error) {
-      errorMessage.value = error.response?.data?.message || "Erreur lors de l'envoi de l'email.";
+      console.error("Password reset link error:", error);
+      if (error.response?.status === 419) {
+        errorMessage.value = "Erreur de session. Veuillez réessayer.";
+      } else {
+        errorMessage.value = error.response?.data?.message || "Erreur lors de l'envoi de l'email.";
+      }
     } finally {
       isSubmitting.value = false;
       loadingMessage.value = "";
@@ -691,8 +852,49 @@
   const openInNewTab = (path, event) => {
     event.preventDefault();
     const url = router.resolve(path).href;
-    window.open(url, '_blank', 'noopener,noreferrer');
+    window.open(url, "_blank", "noopener,noreferrer");
   };
+
+  // URL du backend depuis la variable d'environnement
+  const backendUrl = import.meta.env.VITE_APP_URL_BACKEND;
+
+  // URL complète pour l'authentification Google
+  // Distinguer "connexion" et "inscription" avec le paramètre action
+  const googleLoginUrl = computed(() => {
+    const action = view.value === 'register' ? 'register' : 'login';
+    return `${backendUrl}/auth/google?action=${action}`;
+  });
+
+  // ✅ MODIFICATION: Gestionnaire pour les boutons Google avec indicateur de chargement
+  const handleGoogleAuth = () => {
+    // ✅ MODIFICATION: Vérifier si on est en mode "register" et si la case CGU/CGV est cochée
+    if (view.value === 'register' && !registerForm.acceptTerms) {
+      errorMessage.value = "Veuillez accepter les Conditions générales d'utilisation et la politique de confidentialité pour continuer.";
+      return;
+    }
+    
+    // Réinitialiser le message d'erreur si tout est OK
+    errorMessage.value = "";
+    
+    // Activer le chargement
+    isGoogleLoading.value = true;
+    
+    // Rediriger vers l'URL Google OAuth
+    window.location.href = googleLoginUrl.value;
+    
+    // Le chargement continuera jusqu'à ce que la page se charge
+    // Si la redirection échoue, désactiver le chargement après un délai
+    setTimeout(() => {
+      // Si on est toujours sur la même page après 5 secondes, désactiver le chargement
+      // (cela ne devrait normalement pas arriver car la redirection devrait être immédiate)
+      if (isGoogleLoading.value) {
+        isGoogleLoading.value = false;
+      }
+    }, 5000);
+  };
+
+  // Debug: Vérifier que la variable d'environnement est chargée
+  console.log("Google URL:", googleLoginUrl.value);
 </script>
 
 <style scoped>

@@ -41,6 +41,20 @@ export function useAuth() {
 
   const _fetchUser = async () => {
     try {
+      // ✅ CRITIQUE: Récupérer le cookie CSRF avant de faire la requête utilisateur
+      // Nécessaire pour établir la session Laravel et éviter les erreurs 419/401
+      try {
+        await apiClient.get("/sanctum/csrf-cookie");
+        // Attendre un peu pour que le cookie soit bien défini
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (csrfError) {
+        console.warn("Erreur lors de la récupération du cookie CSRF:", csrfError);
+        // Continuer quand même, le cookie peut déjà être présent
+      }
+      
+      // ✅ CRITIQUE: Mettre à jour le header CSRF après avoir récupéré le cookie
+      await setCsrfHeader();
+      
       const response = await apiClient.get("/api/user");
       // Le backend retourne {user: null} ou {user: {...}}
       // Il faut accéder à response.data.user pour obtenir l'utilisateur ou null
@@ -241,11 +255,17 @@ export function useAuth() {
   };
 
   const updateUserLocally = (updatedUserData) => {
-    if (user.value && updatedUserData) {
-      // Fusionne les nouvelles données dans l'objet utilisateur existant
-      // Cela préserve la réactivité si user.value est déjà réactif
-      user.value = { ...user.value, ...updatedUserData };
-      console.log("User state updated locally after profile save:", user.value);
+    if (updatedUserData) {
+      if (user.value) {
+        // Fusionne les nouvelles données dans l'objet utilisateur existant
+        // Cela préserve la réactivité si user.value est déjà réactif
+        user.value = { ...user.value, ...updatedUserData };
+        console.log("User state updated locally (merged):", user.value);
+      } else {
+        // Si user.value est null, créer un nouvel utilisateur avec les données fournies
+        user.value = { ...updatedUserData };
+        console.log("User state created locally:", user.value);
+      }
     }
   };
 

@@ -43,7 +43,16 @@
       error.value = false;
 
       const username = route.params.username;
-      const response = await apiClient.get(`/api/company/${username}`);
+      // Récupérer le paramètre order depuis l'URL si disponible
+      const orderId = route.query.order;
+      
+      // Construire l'URL avec le paramètre order si disponible
+      let apiUrl = `/api/company/${username}`;
+      if (orderId) {
+        apiUrl += `?order=${orderId}`;
+      }
+      
+      const response = await apiClient.get(apiUrl);
 
       if (response.data && response.data.pageData) {
         pageData.value = response.data.pageData;

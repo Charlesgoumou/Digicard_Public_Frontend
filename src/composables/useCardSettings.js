@@ -582,19 +582,26 @@ export function useCardSettings(
         }
       }
 
-      saveSuccess.value = "Vos modifications ont été enregistrées !";
-
+      // Message de succès adapté selon le type d'utilisateur
+      if (user.value && user.value.role === 'business_admin') {
+        saveSuccess.value = "Vos modifications ont été enregistrées ! Vous pouvez maintenant paramétrer 'Nos Services'.";
+        savingMessage.value = "✓ Enregistré avec succès !";
+      } else {
+        saveSuccess.value = "Vos modifications ont été enregistrées !";
+        savingMessage.value = "✓ Enregistré avec succès !";
+      }
+      
       // Afficher l'icône de succès et le message
-      savingMessage.value = "✓ Enregistré avec succès !";
       showSuccessIcon.value = true;
 
       // Les données du formulaire restent intactes, pas besoin de les recharger
       // Elles seront automatiquement rechargées par le watcher quand l'utilisateur reviendra
 
-      // Rediriger vers le Dashboard après 1.5 secondes (pour que l'utilisateur voie le message de succès)
+      // Ne pas rediriger vers le Dashboard - l'utilisateur peut maintenant paramétrer "Nos Services"
+      // L'interface basculera automatiquement vers l'onglet "Nos Services" dans SettingsView
       setTimeout(() => {
         isSaving.value = false;
-        router.push({ name: "Dashboard" });
+        // Ne pas rediriger, rester sur la page de paramétrage
       }, 1500);
     } catch (error) {
       console.error("Erreur lors de la sauvegarde:", error.response?.data || error);

@@ -22,97 +22,18 @@
 
       <h1 class="text-3xl sm:text-4xl font-bold text-center mb-8">Paramétrer votre Carte</h1>
 
-      <!-- Sélecteur de commande (affiché en haut si une commande est déjà sélectionnée) -->
-      <div v-if="!showOrderSelection && selectedOrderId && orders.length > 1" class="max-w-4xl mx-auto mb-6">
-        <div class="bg-slate-800/50 rounded-lg border border-slate-700 p-4">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <span class="text-sm text-slate-400">Commande sélectionnée:</span>
-              <span class="text-white font-semibold"> #{{ getSelectedOrder()?.order_number || "Chargement..." }} </span>
-            </div>
-            <button
-              @click="
-                showOrderSelection = true;
-                selectedOrderId = null;
-              "
-              class="text-sky-400 hover:text-sky-300 text-sm font-medium transition-colors"
-            >
-              🔄 Changer de commande
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Onglets pour business admin -->
-      <div v-if="user && user.role === 'business_admin'" class="max-w-md mx-auto mb-8">
-        <div class="flex gap-2 bg-slate-800 p-2 rounded-lg border border-slate-700">
-          <button
-            @click="activeTab = 'card'"
-            :class="[
-              'flex-1 py-2 px-4 rounded-lg font-semibold transition-colors',
-              activeTab === 'card' ? 'bg-sky-500 text-white' : 'text-slate-400 hover:text-white',
-            ]"
-          >
-            ⚙️ Ma Carte
-          </button>
-          <button
-            @click="activeTab = 'services'"
-            :class="[
-              'flex-1 py-2 px-4 rounded-lg font-semibold transition-colors',
-              activeTab === 'services' ? 'bg-green-500 text-white' : 'text-slate-400 hover:text-white',
-            ]"
-          >
-            🏢 Nos Services
-          </button>
-        </div>
-      </div>
-
-      <!-- Onglets pour particuliers -->
-      <div v-if="user && user.role === 'individual'" class="max-w-md mx-auto mb-8">
-        <div class="flex gap-2 bg-slate-800 p-2 rounded-lg border border-slate-700">
-          <button
-            @click="activeTab = 'card'"
-            :class="[
-              'flex-1 py-2 px-4 rounded-lg font-semibold transition-colors',
-              activeTab === 'card' ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:text-white',
-            ]"
-          >
-            ⚙️ Ma Carte
-          </button>
-          <button
-            @click="activeTab = 'profile'"
-            :class="[
-              'flex-1 py-2 px-4 rounded-lg font-semibold transition-colors',
-              activeTab === 'profile' ? 'bg-purple-500 text-white' : 'text-slate-400 hover:text-white',
-            ]"
-          >
-            👤 Mon Profil
-          </button>
-        </div>
-      </div>
-
-      <!-- Contenu de l'onglet "Nos Services" pour business admin -->
-      <div v-if="user && user.role === 'business_admin' && activeTab === 'services'" class="max-w-4xl mx-auto">
-        <CompanyServicesForm :order-id="selectedOrderId" />
-      </div>
-
-      <!-- Contenu de l'onglet "Mon Profil" pour particuliers -->
-      <div v-if="user && user.role === 'individual' && activeTab === 'profile'" class="max-w-4xl mx-auto">
-        <UserPortfolioForm />
-      </div>
-
-      <!-- Contenu de l'onglet "Ma Carte" (par défaut) -->
-      <div v-if="activeTab === 'card'">
-        <!-- Indicateur de chargement circulaire pour le chargement initial -->
+      <!-- Sélection de commande (affichée en premier si aucune commande n'est sélectionnée) -->
+      <div v-if="showOrderSelection">
+        <!-- Indicateur de chargement -->
         <div v-if="isLoading" class="flex flex-col items-center justify-center py-20">
           <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-sky-500"></div>
-          <p class="mt-4 text-slate-400 font-medium">Chargement de vos paramètres...</p>
+          <p class="mt-4 text-slate-400 font-medium">Chargement de vos commandes...</p>
         </div>
         <div v-else-if="loadingError" class="text-center text-red-400 py-10">{{ loadingError }}</div>
 
         <!-- Aucune commande -->
         <div
-          v-else-if="showOrderSelection && orders.filter((o) => o.status !== 'cancelled').length === 0"
+          v-else-if="orders.filter((o) => o.status !== 'cancelled').length === 0"
           class="max-w-2xl mx-auto"
         >
           <div class="bg-slate-800 rounded-lg p-8 text-center border border-slate-700">
@@ -150,9 +71,9 @@
           </div>
         </div>
 
-        <!-- Sélecteur de commandes -->
+        <!-- Liste des commandes à sélectionner -->
         <div
-          v-else-if="showOrderSelection && orders.filter((o) => o.status !== 'cancelled').length > 0"
+          v-else
           class="max-w-4xl mx-auto"
         >
           <p class="text-slate-400 text-center mb-8">Sélectionnez la commande que vous souhaitez paramétrer</p>
@@ -278,9 +199,100 @@
             </button>
           </div>
         </div>
+      </div>
 
-        <!-- Formulaire de paramétrage -->
-        <form
+      <!-- Contenu après sélection d'une commande -->
+      <div v-else-if="selectedOrderId && !showOrderSelection">
+        <!-- Sélecteur de commande (affiché en haut si une commande est déjà sélectionnée) -->
+        <div v-if="orders.length > 1" class="max-w-4xl mx-auto mb-6">
+          <div class="bg-slate-800/50 rounded-lg border border-slate-700 p-4">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="text-sm text-slate-400">Commande sélectionnée:</span>
+                <span class="text-white font-semibold"> #{{ getSelectedOrder()?.order_number || "Chargement..." }} </span>
+              </div>
+              <button
+                @click="
+                  showOrderSelection = true;
+                  selectedOrderId = null;
+                "
+                class="text-sky-400 hover:text-sky-300 text-sm font-medium transition-colors"
+              >
+                🔄 Changer de commande
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Onglets pour business admin -->
+        <div v-if="user && user.role === 'business_admin'" class="max-w-md mx-auto mb-8">
+          <div class="flex gap-2 bg-slate-800 p-2 rounded-lg border border-slate-700">
+            <button
+              @click="activeTab = 'card'"
+              :class="[
+                'flex-1 py-2 px-4 rounded-lg font-semibold transition-colors',
+                activeTab === 'card' ? 'bg-sky-500 text-white' : 'text-slate-400 hover:text-white',
+              ]"
+            >
+              ⚙️ Ma Carte
+            </button>
+            <button
+              @click="activeTab = 'services'"
+              :class="[
+                'flex-1 py-2 px-4 rounded-lg font-semibold transition-colors',
+                activeTab === 'services' ? 'bg-green-500 text-white' : 'text-slate-400 hover:text-white',
+              ]"
+            >
+              🏢 Nos Services
+            </button>
+          </div>
+        </div>
+
+        <!-- Onglets pour particuliers -->
+        <div v-if="user && user.role === 'individual'" class="max-w-md mx-auto mb-8">
+          <div class="flex gap-2 bg-slate-800 p-2 rounded-lg border border-slate-700">
+            <button
+              @click="activeTab = 'card'"
+              :class="[
+                'flex-1 py-2 px-4 rounded-lg font-semibold transition-colors',
+                activeTab === 'card' ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:text-white',
+              ]"
+            >
+              ⚙️ Ma Carte
+            </button>
+            <button
+              @click="activeTab = 'profile'"
+              :class="[
+                'flex-1 py-2 px-4 rounded-lg font-semibold transition-colors',
+                activeTab === 'profile' ? 'bg-purple-500 text-white' : 'text-slate-400 hover:text-white',
+              ]"
+            >
+              👤 Mon Profil
+            </button>
+          </div>
+        </div>
+
+        <!-- Contenu de l'onglet "Nos Services" pour business admin -->
+        <div v-if="user && user.role === 'business_admin' && activeTab === 'services'" class="max-w-4xl mx-auto">
+          <CompanyServicesForm :order-id="selectedOrderId" />
+        </div>
+
+        <!-- Contenu de l'onglet "Mon Profil" pour particuliers -->
+        <div v-if="user && user.role === 'individual' && activeTab === 'profile'" class="max-w-4xl mx-auto">
+          <UserPortfolioForm />
+        </div>
+
+        <!-- Contenu de l'onglet "Ma Carte" (par défaut) -->
+        <div v-if="activeTab === 'card'">
+          <!-- Indicateur de chargement circulaire pour le chargement initial -->
+          <div v-if="isLoading" class="flex flex-col items-center justify-center py-20">
+            <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-sky-500"></div>
+            <p class="mt-4 text-slate-400 font-medium">Chargement de vos paramètres...</p>
+          </div>
+          <div v-else-if="loadingError" class="text-center text-red-400 py-10">{{ loadingError }}</div>
+
+          <!-- Formulaire de paramétrage -->
+          <form
           v-else
           @submit.prevent="handleSaveSettings"
           class="relative max-w-3xl mx-auto space-y-10 pb-20 overflow-x-hidden"
@@ -395,13 +407,14 @@
             <p v-if="saveSuccess" class="text-sm text-green-400 text-center mt-3 h-5">{{ saveSuccess }}</p>
           </div>
         </form>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-  import { ref, computed, onMounted } from "vue";
+  import { ref, computed, onMounted, watch } from "vue";
   import { useRouter } from "vue-router";
   import { useAuth } from "@/composables/useAuth";
   import { useOrderModal } from "@/composables/useOrderModal";
@@ -521,6 +534,16 @@
     }
   });
 
+  // Réinitialiser l'onglet actif à "Ma Carte" quand on change de commande
+  watch(
+    () => selectedOrderId.value,
+    (newOrderId, oldOrderId) => {
+      if (newOrderId && newOrderId !== oldOrderId) {
+        activeTab.value = "card";
+      }
+    }
+  );
+
   // Fonction pour mettre à jour le form de manière réactive
   const updateForm = (newFormData) => {
     console.log("SettingsView: updateForm called with", newFormData);
@@ -584,6 +607,17 @@
       selectedDesignType.value,
       selectedDesignNumber.value
     );
+    
+    // Après la sauvegarde de "Ma Carte", basculer vers l'onglet "Nos Services" pour les business_admin
+    // pour qu'ils puissent paramétrer la section "Nos Services"
+    if (user.value && user.value.role === 'business_admin') {
+      // Attendre un peu pour que le message de succès s'affiche
+      setTimeout(() => {
+        activeTab.value = 'services';
+        // Faire défiler vers le haut de la page pour voir les onglets
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 1500);
+    }
   };
 
   // ========== GESTION DES COMMANDES (Simplifié) ==========
