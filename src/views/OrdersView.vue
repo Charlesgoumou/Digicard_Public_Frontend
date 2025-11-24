@@ -724,7 +724,7 @@
 
   const router = useRouter();
   const route = useRoute();
-  const { user } = useAuth();
+  const { user, fetchUser } = useAuth();
   const { openOrderModal } = useOrderModal();
 
   const orders = ref([]);
@@ -803,9 +803,26 @@
     try {
       console.log("OrdersView: Début du chargement des commandes...");
       
+      // ✅ CRITIQUE: Récupérer le cookie CSRF avant de charger les commandes
+      // Cela garantit que la session est bien établie après une redirection depuis un service externe
+      try {
+        await apiClient.get("/sanctum/csrf-cookie");
+        // Attendre un peu pour que le cookie soit bien défini
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Mettre à jour le header CSRF
+        const csrfToken = Cookies.get("XSRF-TOKEN");
+        if (csrfToken) {
+          apiClient.defaults.headers.common["X-XSRF-TOKEN"] = decodeURIComponent(csrfToken);
+        }
+      } catch (csrfError) {
+        console.warn("OrdersView: Erreur lors de la récupération du cookie CSRF:", csrfError);
+        // Continuer quand même, le cookie peut déjà être présent
+      }
+      
       // Charger les prix avant de charger les commandes
       await loadPricing();
-      
+
       // ✅ OPTIMISATION : Ne pas ajouter de timestamp pour permettre le cache du navigateur
       // Le backend retourne déjà les données optimisées
       console.log("OrdersView: Appel API pour charger les commandes...");
@@ -1722,7 +1739,34 @@
   // Charger les commandes au montage du composant
   onMounted(async () => {
     try {
-      console.log("OrdersView: Composant monté, chargement des commandes...");
+      console.log("OrdersView: Composant monté, vérification de la session...");
+      
+      // ✅ CRITIQUE: Vérifier et récupérer la session utilisateur AVANT de charger les commandes
+      // Cela garantit que l'utilisateur reste connecté après la redirection depuis le service de paiement
+      try {
+        const currentUser = await fetchUser();
+        if (!currentUser) {
+          console.warn("OrdersView: Utilisateur non connecté, redirection vers l'accueil");
+          router.push({ name: 'Home' });
+          return;
+        }
+        console.log("OrdersView: Session utilisateur vérifiée", {
+          user_id: currentUser.id,
+          email: currentUser.email
+        });
+      } catch (error) {
+        console.error("OrdersView: Erreur lors de la vérification de la session", error);
+        // Si l'utilisateur n'est pas connecté, rediriger vers la page d'accueil
+        if (error.response?.status === 401 || error.response?.status === 419) {
+          console.warn("OrdersView: Utilisateur non connecté (401/419), redirection vers l'accueil");
+          router.push({ name: 'Home' });
+          return;
+        }
+        // Pour les autres erreurs, continuer quand même (peut être un problème réseau temporaire)
+        console.warn("OrdersView: Erreur lors de la vérification de la session, continuation...");
+      }
+      
+      console.log("OrdersView: Chargement des commandes...");
       await loadOrders();
       console.log("OrdersView: Commandes chargées après montage");
       
