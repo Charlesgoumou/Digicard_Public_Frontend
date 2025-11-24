@@ -731,6 +731,12 @@
   const isLoading = ref(true);
   const loadingError = ref("");
   
+  // ✅ CORRECTION: Flag pour éviter les réessais multiples simultanés
+  const isRetryingLoad = ref(false);
+  const loadRetryCount = ref(0);
+  const maxLoadRetries = 3; // Maximum 3 réessais
+  const isLoadingOrders = ref(false); // Flag pour éviter les appels multiples simultanés
+  
   // Prix dynamiques chargés depuis l'API
   const BASE_PRICE = ref(200000); // Prix par défaut (sera remplacé par l'API)
   const EXTRA_PRICE = ref(60000); // Prix par défaut (sera remplacé par l'API)
@@ -797,6 +803,18 @@
 
   // Charger les commandes
   const loadOrders = async () => {
+    // ✅ CORRECTION: Éviter les appels multiples simultanés
+    if (isLoadingOrders.value) {
+      console.log("OrdersView: Un chargement est déjà en cours, annulation de l'appel...");
+      return;
+    }
+    
+    if (isRetryingLoad.value) {
+      console.log("OrdersView: Un réessai est déjà en cours, annulation de l'appel...");
+      return;
+    }
+    
+    isLoadingOrders.value = true;
     isLoading.value = true;
     loadingError.value = "";
 
@@ -852,6 +870,11 @@
       
       orders.value = response.data || [];
       
+      // ✅ CORRECTION: Réinitialiser le compteur de réessais en cas de succès
+      loadRetryCount.value = 0;
+      isRetryingLoad.value = false;
+      isLoadingOrders.value = false;
+      
       console.log("OrdersView: Commandes chargées avec succès", {
         count: orders.value.length,
         orders: orders.value.map(o => ({ id: o.id, order_number: o.order_number, status: o.status }))
@@ -864,18 +887,51 @@
       const isPaymentReturn = route.query.payment === 'success' && (route.query.order_id || route.query.additional_payment_id);
       
       // Si c'est un retour de paiement et une erreur 401/419, réessayer après un délai
+      // Mais seulement si on n'est pas déjà en train de réessayer et qu'on n'a pas dépassé le maximum
       if (isPaymentReturn && error.response && (error.response.status === 401 || error.response.status === 419)) {
-        console.warn("OrdersView: Erreur 401/419 lors du chargement des commandes (retour de paiement). Réessai en cours...");
-        // Réessayer après 1 seconde
-        setTimeout(async () => {
-          try {
-            await loadOrders();
-          } catch (retryError) {
-            console.error("OrdersView: Erreur lors du réessai de chargement des commandes:", retryError);
-            loadingError.value = "Erreur lors du chargement des commandes. Veuillez rafraîchir la page.";
-          }
-        }, 1000);
-        return; // Sortir sans définir d'erreur
+        if (!isRetryingLoad.value && loadRetryCount.value < maxLoadRetries) {
+          loadRetryCount.value++;
+          isRetryingLoad.value = true;
+          console.warn(`OrdersView: Erreur 401/419 lors du chargement des commandes (retour de paiement). Réessai ${loadRetryCount.value}/${maxLoadRetries} en cours...`);
+          
+          // Réessayer après 1 seconde
+          setTimeout(async () => {
+            try {
+              // Réessayer de récupérer la session avant de charger les commandes
+              try {
+                await fetchUser();
+                // Récupérer le cookie CSRF à nouveau
+                await apiClient.get("/sanctum/csrf-cookie");
+                await new Promise(resolve => setTimeout(resolve, 200));
+                const csrfToken = Cookies.get("XSRF-TOKEN");
+                if (csrfToken) {
+                  apiClient.defaults.headers.common["X-XSRF-TOKEN"] = decodeURIComponent(csrfToken);
+                }
+              } catch (sessionError) {
+                console.warn("OrdersView: Erreur lors de la récupération de la session pour le réessai:", sessionError);
+              }
+              
+              // ✅ CORRECTION: Réinitialiser le flag avant d'appeler loadOrders pour permettre l'appel
+              isRetryingLoad.value = false;
+              await loadOrders();
+            } catch (retryError) {
+              console.error("OrdersView: Erreur lors du réessai de chargement des commandes:", retryError);
+              isRetryingLoad.value = false;
+              
+              // Si on a atteint le maximum de réessais, afficher l'erreur
+              if (loadRetryCount.value >= maxLoadRetries) {
+                loadingError.value = "Impossible de charger vos commandes. Veuillez rafraîchir la page ou vous reconnecter.";
+              } else {
+                // Si ce n'est pas le dernier essai, ne pas définir d'erreur pour permettre un autre réessai
+                console.warn(`OrdersView: Réessai ${loadRetryCount.value}/${maxLoadRetries} échoué, mais d'autres tentatives peuvent être faites.`);
+              }
+            }
+          }, 1000);
+          return; // Sortir sans définir d'erreur
+        } else if (loadRetryCount.value >= maxLoadRetries) {
+          console.error("OrdersView: Maximum de réessais atteint. Arrêt des tentatives.");
+          loadingError.value = "Impossible de charger vos commandes après plusieurs tentatives. Veuillez rafraîchir la page ou vous reconnecter.";
+        }
       }
       
       console.error("OrdersView: Détails de l'erreur:", {
@@ -887,8 +943,20 @@
       loadingError.value = error.response?.data?.message || "Impossible de charger vos commandes. Veuillez réessayer.";
       // S'assurer que orders est toujours un tableau même en cas d'erreur
       orders.value = [];
+      
+      // ✅ CORRECTION: Si ce n'est pas un retour de paiement ou qu'on a atteint le maximum de réessais,
+      // réinitialiser le flag pour permettre de nouveaux appels
+      const isPaymentReturnInError = route.query.payment === 'success' && (route.query.order_id || route.query.additional_payment_id);
+      if (!isPaymentReturnInError || loadRetryCount.value >= maxLoadRetries) {
+        isRetryingLoad.value = false;
+        isLoadingOrders.value = false;
+      }
     } finally {
       isLoading.value = false;
+      // ✅ CORRECTION: Réinitialiser le flag seulement si ce n'est pas un réessai en cours
+      if (!isRetryingLoad.value) {
+        isLoadingOrders.value = false;
+      }
       console.log("OrdersView: Fin du chargement des commandes", {
         isLoading: isLoading.value,
         hasError: !!loadingError.value,
@@ -1841,6 +1909,10 @@
         router.push({ name: 'Home' });
         return;
       }
+      
+      // ✅ CORRECTION: Réinitialiser le compteur de réessais au montage du composant
+      loadRetryCount.value = 0;
+      isRetryingLoad.value = false;
       
       console.log("OrdersView: Chargement des commandes...");
       await loadOrders();
