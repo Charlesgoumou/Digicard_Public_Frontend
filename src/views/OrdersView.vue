@@ -805,19 +805,36 @@
       
       // ✅ CRITIQUE: Récupérer le cookie CSRF avant de charger les commandes
       // Cela garantit que la session est bien établie après une redirection depuis un service externe
-      try {
-        await apiClient.get("/sanctum/csrf-cookie");
-        // Attendre un peu pour que le cookie soit bien défini
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        // Mettre à jour le header CSRF
-        const csrfToken = Cookies.get("XSRF-TOKEN");
-        if (csrfToken) {
-          apiClient.defaults.headers.common["X-XSRF-TOKEN"] = decodeURIComponent(csrfToken);
+      // Pour les retours de paiement, faire plusieurs tentatives car la session peut prendre du temps
+      const isPaymentReturn = route.query.payment === 'success' && (route.query.order_id || route.query.additional_payment_id);
+      const maxCsrfRetries = isPaymentReturn ? 3 : 1;
+      const csrfRetryDelay = 300;
+      
+      for (let csrfAttempt = 1; csrfAttempt <= maxCsrfRetries; csrfAttempt++) {
+        try {
+          await apiClient.get("/sanctum/csrf-cookie");
+          // Attendre un peu pour que le cookie soit bien défini
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          // Mettre à jour le header CSRF
+          const csrfToken = Cookies.get("XSRF-TOKEN");
+          if (csrfToken) {
+            apiClient.defaults.headers.common["X-XSRF-TOKEN"] = decodeURIComponent(csrfToken);
+            console.log(`OrdersView: Cookie CSRF récupéré (tentative ${csrfAttempt}/${maxCsrfRetries})`);
+            break; // Cookie récupéré, sortir de la boucle
+          } else if (csrfAttempt < maxCsrfRetries) {
+            console.log(`OrdersView: Cookie CSRF non trouvé, nouvelle tentative dans ${csrfRetryDelay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, csrfRetryDelay));
+          }
+        } catch (csrfError) {
+          console.warn(`OrdersView: Erreur lors de la tentative ${csrfAttempt} de récupération du cookie CSRF:`, csrfError);
+          if (csrfAttempt < maxCsrfRetries) {
+            await new Promise(resolve => setTimeout(resolve, csrfRetryDelay));
+          } else {
+            console.warn("OrdersView: Cookie CSRF non récupéré après toutes les tentatives, continuation...");
+            // Continuer quand même, le cookie peut déjà être présent
+          }
         }
-      } catch (csrfError) {
-        console.warn("OrdersView: Erreur lors de la récupération du cookie CSRF:", csrfError);
-        // Continuer quand même, le cookie peut déjà être présent
       }
       
       // Charger les prix avant de charger les commandes
@@ -841,6 +858,26 @@
       });
     } catch (error) {
       console.error("OrdersView: Erreur lors du chargement des commandes:", error);
+      
+      // ✅ CORRECTION: Pour les retours de paiement, ne pas afficher d'erreur immédiatement
+      // La session peut être récupérée en arrière-plan
+      const isPaymentReturn = route.query.payment === 'success' && (route.query.order_id || route.query.additional_payment_id);
+      
+      // Si c'est un retour de paiement et une erreur 401/419, réessayer après un délai
+      if (isPaymentReturn && error.response && (error.response.status === 401 || error.response.status === 419)) {
+        console.warn("OrdersView: Erreur 401/419 lors du chargement des commandes (retour de paiement). Réessai en cours...");
+        // Réessayer après 1 seconde
+        setTimeout(async () => {
+          try {
+            await loadOrders();
+          } catch (retryError) {
+            console.error("OrdersView: Erreur lors du réessai de chargement des commandes:", retryError);
+            loadingError.value = "Erreur lors du chargement des commandes. Veuillez rafraîchir la page.";
+          }
+        }, 1000);
+        return; // Sortir sans définir d'erreur
+      }
+      
       console.error("OrdersView: Détails de l'erreur:", {
         message: error.message,
         response: error.response?.data,
@@ -1741,29 +1778,68 @@
     try {
       console.log("OrdersView: Composant monté, vérification de la session...");
       
+      // ✅ Détecter si c'est un retour de paiement
+      const isPaymentReturn = route.query.payment === 'success' && (route.query.order_id || route.query.additional_payment_id);
+      
       // ✅ CRITIQUE: Vérifier et récupérer la session utilisateur AVANT de charger les commandes
-      // Cela garantit que l'utilisateur reste connecté après la redirection depuis le service de paiement
-      try {
-        const currentUser = await fetchUser();
-        if (!currentUser) {
-          console.warn("OrdersView: Utilisateur non connecté, redirection vers l'accueil");
-          router.push({ name: 'Home' });
-          return;
+      // Pour les retours de paiement, faire plusieurs tentatives car la session peut prendre du temps à être accessible
+      const maxSessionRetries = isPaymentReturn ? 5 : 1;
+      const sessionRetryDelay = 500;
+      let currentUser = null;
+      
+      for (let attempt = 1; attempt <= maxSessionRetries; attempt++) {
+        try {
+          console.log(`OrdersView: Tentative ${attempt}/${maxSessionRetries} de vérification de la session...`);
+          currentUser = await fetchUser();
+          
+          if (currentUser) {
+            console.log("OrdersView: Session utilisateur vérifiée", {
+              user_id: currentUser.id,
+              email: currentUser.email,
+              attempt: attempt
+            });
+            break; // Session trouvée, sortir de la boucle
+          }
+          
+          // Si pas d'utilisateur et que ce n'est pas le dernier essai, attendre avant de réessayer
+          if (attempt < maxSessionRetries) {
+            console.log(`OrdersView: Utilisateur non trouvé, nouvelle tentative dans ${sessionRetryDelay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, sessionRetryDelay));
+          }
+        } catch (error) {
+          console.error(`OrdersView: Erreur lors de la tentative ${attempt} de vérification de la session`, error);
+          
+          // Si c'est une erreur 401/419 et que ce n'est pas le dernier essai, réessayer
+          if ((error.response?.status === 401 || error.response?.status === 419) && attempt < maxSessionRetries) {
+            console.log(`OrdersView: Erreur 401/419, nouvelle tentative dans ${sessionRetryDelay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, sessionRetryDelay));
+            continue;
+          }
+          
+          // Si c'est le dernier essai ou une autre erreur, vérifier si on doit rediriger
+          if (attempt === maxSessionRetries) {
+            // Pour les retours de paiement, ne pas rediriger immédiatement
+            // Laisser le composant charger les commandes - la session peut être récupérée par la suite
+            if (isPaymentReturn) {
+              console.warn("OrdersView: Utilisateur non trouvé après plusieurs tentatives, mais retour de paiement détecté. Continuation...");
+              break; // Sortir de la boucle et continuer le chargement
+            }
+            
+            // Pour les autres cas, rediriger vers l'accueil
+            if (error.response?.status === 401 || error.response?.status === 419) {
+              console.warn("OrdersView: Utilisateur non connecté (401/419), redirection vers l'accueil");
+              router.push({ name: 'Home' });
+              return;
+            }
+          }
         }
-        console.log("OrdersView: Session utilisateur vérifiée", {
-          user_id: currentUser.id,
-          email: currentUser.email
-        });
-      } catch (error) {
-        console.error("OrdersView: Erreur lors de la vérification de la session", error);
-        // Si l'utilisateur n'est pas connecté, rediriger vers la page d'accueil
-        if (error.response?.status === 401 || error.response?.status === 419) {
-          console.warn("OrdersView: Utilisateur non connecté (401/419), redirection vers l'accueil");
-          router.push({ name: 'Home' });
-          return;
-        }
-        // Pour les autres erreurs, continuer quand même (peut être un problème réseau temporaire)
-        console.warn("OrdersView: Erreur lors de la vérification de la session, continuation...");
+      }
+      
+      // Si l'utilisateur n'est toujours pas trouvé et que ce n'est pas un retour de paiement, rediriger
+      if (!currentUser && !isPaymentReturn) {
+        console.warn("OrdersView: Utilisateur non connecté après toutes les tentatives, redirection vers l'accueil");
+        router.push({ name: 'Home' });
+        return;
       }
       
       console.log("OrdersView: Chargement des commandes...");
