@@ -1914,10 +1914,6 @@
       loadRetryCount.value = 0;
       isRetryingLoad.value = false;
       
-      console.log("OrdersView: Chargement des commandes...");
-      await loadOrders();
-      console.log("OrdersView: Commandes chargées après montage");
-      
       // ✅ NOUVEAU: Détecter si on vient d'un retour de paiement réussi
       const paymentSuccess = route.query.payment === 'success';
       const orderIdFromQuery = route.query.order_id;
@@ -1927,27 +1923,95 @@
       // En production, si la session n'est pas accessible, ne pas lancer les vérifications
       // pour éviter les boucles infinies d'erreurs 401
       if (paymentSuccess && !currentUser) {
-        console.warn("OrdersView: Retour de paiement détecté mais utilisateur non connecté. Attente de la récupération de la session...");
-        // Attendre un peu et réessayer de récupérer la session avant de vérifier le paiement
-        setTimeout(async () => {
+        console.warn("OrdersView: Retour de paiement détecté mais utilisateur non connecté. Tentative de récupération de la session...");
+        
+        // Fonction pour récupérer la session avec plusieurs tentatives
+        const recoverSession = async (attempt = 1, maxAttempts = 5) => {
           try {
+            console.log(`OrdersView: Tentative ${attempt}/${maxAttempts} de récupération de la session...`);
+            
+            // ✅ CRITIQUE: Forcer la récupération du cookie CSRF avant chaque tentative
+            try {
+              await apiClient.get("/sanctum/csrf-cookie");
+              // Attendre un peu plus longtemps pour que le cookie soit bien défini
+              await new Promise(resolve => setTimeout(resolve, 500));
+              
+              // Vérifier que le cookie est bien présent
+              const csrfToken = Cookies.get("XSRF-TOKEN");
+              if (csrfToken) {
+                apiClient.defaults.headers.common["X-XSRF-TOKEN"] = decodeURIComponent(csrfToken);
+                console.log("OrdersView: Cookie CSRF récupéré");
+              } else {
+                console.warn("OrdersView: Cookie CSRF non trouvé après récupération");
+              }
+            } catch (csrfError) {
+              console.warn("OrdersView: Erreur lors de la récupération du cookie CSRF:", csrfError);
+            }
+            
+            // Essayer de récupérer l'utilisateur
             const retryUser = await fetchUser();
+            
             if (retryUser) {
-              console.log("OrdersView: Session récupérée, vérification du paiement...");
+              console.log("OrdersView: Session récupérée avec succès!", {
+                user_id: retryUser.id,
+                email: retryUser.email,
+                attempt: attempt
+              });
+              
               // Relancer la vérification du paiement maintenant que la session est récupérée
               // En rechargeant la page avec les mêmes paramètres de requête
               window.location.reload();
+              return true;
             } else {
-              console.error("OrdersView: Impossible de récupérer la session après le paiement. L'utilisateur devra rafraîchir la page.");
-              loadingError.value = "Impossible de vérifier le statut du paiement. Veuillez rafraîchir la page ou vous reconnecter.";
+              // Si ce n'est pas la dernière tentative, réessayer avec un délai progressif
+              if (attempt < maxAttempts) {
+                const delay = attempt * 1000; // Délai progressif : 1s, 2s, 3s, 4s
+                console.log(`OrdersView: Session non récupérée, nouvelle tentative dans ${delay}ms...`);
+                setTimeout(() => {
+                  recoverSession(attempt + 1, maxAttempts);
+                }, delay);
+                return false;
+              } else {
+                // Dernière tentative échouée
+                console.error("OrdersView: Impossible de récupérer la session après toutes les tentatives.");
+                loadingError.value = "Impossible de vérifier le statut du paiement. Veuillez rafraîchir la page ou vous reconnecter.";
+                return false;
+              }
             }
           } catch (error) {
-            console.error("OrdersView: Erreur lors de la récupération de la session après le paiement:", error);
-            loadingError.value = "Erreur lors de la vérification du paiement. Veuillez rafraîchir la page.";
+            console.error(`OrdersView: Erreur lors de la tentative ${attempt} de récupération de la session:`, error);
+            
+            // Si c'est une erreur 401/419 et qu'on n'a pas atteint le maximum, réessayer
+            if ((error.response?.status === 401 || error.response?.status === 419) && attempt < maxAttempts) {
+              const delay = attempt * 1000;
+              console.log(`OrdersView: Erreur 401/419, nouvelle tentative dans ${delay}ms...`);
+              setTimeout(() => {
+                recoverSession(attempt + 1, maxAttempts);
+              }, delay);
+              return false;
+            } else if (attempt >= maxAttempts) {
+              // Toutes les tentatives ont échoué
+              console.error("OrdersView: Toutes les tentatives de récupération de session ont échoué.");
+              loadingError.value = "Erreur lors de la vérification du paiement. Veuillez rafraîchir la page ou vous reconnecter.";
+              return false;
+            }
+            return false;
           }
-        }, 2000);
+        };
+        
+        // Démarrer la récupération de session avec un petit délai initial
+        setTimeout(() => {
+          recoverSession(1, 5);
+        }, 1000);
+        
         return; // Sortir pour éviter de lancer les vérifications sans session
       }
+      
+      // ✅ Charger les commandes seulement si l'utilisateur est connecté
+      // (ou si ce n'est pas un retour de paiement)
+      console.log("OrdersView: Chargement des commandes...");
+      await loadOrders();
+      console.log("OrdersView: Commandes chargées après montage");
       
       // ✅ NOUVEAU: Gérer le retour de paiement pour les cartes supplémentaires
       if (paymentSuccess && additionalPaymentIdFromQuery) {
