@@ -1923,6 +1923,32 @@
       const orderIdFromQuery = route.query.order_id;
       const additionalPaymentIdFromQuery = route.query.additional_payment_id;
       
+      // ✅ CRITIQUE: Ne vérifier le statut du paiement QUE si l'utilisateur est connecté
+      // En production, si la session n'est pas accessible, ne pas lancer les vérifications
+      // pour éviter les boucles infinies d'erreurs 401
+      if (paymentSuccess && !currentUser) {
+        console.warn("OrdersView: Retour de paiement détecté mais utilisateur non connecté. Attente de la récupération de la session...");
+        // Attendre un peu et réessayer de récupérer la session avant de vérifier le paiement
+        setTimeout(async () => {
+          try {
+            const retryUser = await fetchUser();
+            if (retryUser) {
+              console.log("OrdersView: Session récupérée, vérification du paiement...");
+              // Relancer la vérification du paiement maintenant que la session est récupérée
+              // En rechargeant la page avec les mêmes paramètres de requête
+              window.location.reload();
+            } else {
+              console.error("OrdersView: Impossible de récupérer la session après le paiement. L'utilisateur devra rafraîchir la page.");
+              loadingError.value = "Impossible de vérifier le statut du paiement. Veuillez rafraîchir la page ou vous reconnecter.";
+            }
+          } catch (error) {
+            console.error("OrdersView: Erreur lors de la récupération de la session après le paiement:", error);
+            loadingError.value = "Erreur lors de la vérification du paiement. Veuillez rafraîchir la page.";
+          }
+        }, 2000);
+        return; // Sortir pour éviter de lancer les vérifications sans session
+      }
+      
       // ✅ NOUVEAU: Gérer le retour de paiement pour les cartes supplémentaires
       if (paymentSuccess && additionalPaymentIdFromQuery) {
         console.log("OrdersView: Retour de paiement cartes supplémentaires détecté", {
@@ -2013,6 +2039,56 @@
         const checkAndShowSuccessModal = async (retryCount = 0, maxRetries = 10) => {
           console.log(`OrdersView: Vérification du statut de la commande (tentative ${retryCount + 1}/${maxRetries + 1})`);
           
+          // ✅ CRITIQUE: Vérifier que l'utilisateur est connecté AVANT de faire des appels API
+          // Si l'utilisateur n'est pas connecté après plusieurs tentatives, arrêter immédiatement
+          if (retryCount === 0 || retryCount % 3 === 0) {
+            // Vérifier la session tous les 3 essais
+            try {
+              const currentUser = await fetchUser();
+              if (!currentUser) {
+                console.warn("OrdersView: Utilisateur non connecté lors de la vérification du paiement");
+                // Si c'est la première tentative, réessayer une fois
+                if (retryCount === 0) {
+                  await new Promise(resolve => setTimeout(resolve, 1000));
+                  const retryUser = await fetchUser();
+                  if (!retryUser) {
+                    console.error("OrdersView: Impossible de récupérer la session, arrêt des vérifications");
+                    loadingError.value = "Impossible de vérifier le statut du paiement. Veuillez rafraîchir la page ou vous reconnecter.";
+                    router.replace({ name: 'Orders', query: {} });
+                    return false;
+                  }
+                } else {
+                  // Si ce n'est pas la première tentative et que l'utilisateur n'est toujours pas connecté, arrêter
+                  console.error("OrdersView: Utilisateur toujours non connecté après plusieurs tentatives, arrêt");
+                  loadingError.value = "Session expirée. Veuillez vous reconnecter.";
+                  router.replace({ name: 'Orders', query: {} });
+                  return false;
+                }
+              }
+            } catch (sessionError) {
+              console.error("OrdersView: Erreur lors de la vérification de la session:", sessionError);
+              if (sessionError.response && (sessionError.response.status === 401 || sessionError.response.status === 419)) {
+                console.error("OrdersView: Session non accessible (401/419), arrêt des vérifications");
+                loadingError.value = "Session expirée. Veuillez vous reconnecter.";
+                router.replace({ name: 'Orders', query: {} });
+                return false;
+              }
+            }
+          }
+          
+          // ✅ CRITIQUE: Récupérer le cookie CSRF avant chaque vérification
+          try {
+            await apiClient.get("/sanctum/csrf-cookie");
+            await new Promise(resolve => setTimeout(resolve, 200));
+            const csrfToken = Cookies.get("XSRF-TOKEN");
+            if (csrfToken) {
+              apiClient.defaults.headers.common["X-XSRF-TOKEN"] = decodeURIComponent(csrfToken);
+            }
+          } catch (csrfError) {
+            console.warn("OrdersView: Erreur lors de la récupération du cookie CSRF:", csrfError);
+            // Continuer quand même, le cookie peut déjà être présent
+          }
+          
           // Si un order_id est spécifié, vérifier d'abord via l'API
           if (orderIdFromQuery) {
             try {
@@ -2067,7 +2143,33 @@
               }
             } catch (error) {
               console.error("OrdersView: Erreur lors de la vérification du statut de paiement", error);
-              // En cas d'erreur, continuer avec la vérification classique
+              
+              // ✅ CORRECTION: Si c'est une erreur 401/419, arrêter les tentatives après plusieurs échecs
+              if (error.response && (error.response.status === 401 || error.response.status === 419)) {
+                console.warn("OrdersView: Erreur 401/419 lors de la vérification du paiement", {
+                  retry_count: retryCount,
+                  max_retries: maxRetries
+                });
+                
+                // ✅ CRITIQUE: Arrêter immédiatement après 3 erreurs 401/419 pour éviter les boucles infinies
+                if (retryCount >= 3) {
+                  console.error("OrdersView: Trop d'erreurs 401/419 (session non accessible), arrêt des tentatives de vérification");
+                  loadingError.value = "Impossible de vérifier le statut du paiement. Veuillez rafraîchir la page ou vous reconnecter.";
+                  router.replace({ name: 'Orders', query: {} });
+                  return false;
+                }
+                
+                // Sinon, réessayer après un délai plus long pour laisser le temps à la session de se rétablir
+                if (retryCount < maxRetries) {
+                  const delay = (retryCount + 1) * 2000; // Délai progressif : 2s, 4s, 6s...
+                  console.log(`OrdersView: Réessai dans ${delay}ms...`);
+                  setTimeout(() => {
+                    checkAndShowSuccessModal(retryCount + 1, maxRetries);
+                  }, delay);
+                  return false;
+                }
+              }
+              // En cas d'erreur autre que 401/419, continuer avec la vérification classique
             }
           }
           
