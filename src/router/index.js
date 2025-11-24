@@ -94,6 +94,10 @@ router.beforeEach(async (to, from, next) => {
   const isGoogleOAuthRedirect = to.query.google_oauth === '1' || to.query.google_oauth === 1;
   const isNewUser = to.query.new_user === '1' || to.query.new_user === 1;
   const oauthToken = to.query.token; // Token temporaire pour valider la session
+  
+  // ✅ Détecter si c'est un retour de paiement réussi
+  const isPaymentReturn = to.query.payment === 'success' && (to.query.order_id || to.query.additional_payment_id);
+  const ordersRoute = to.name === "Orders";
 
   // 1. Si l'utilisateur est déjà chargé localement
   if (user.value) {
@@ -132,6 +136,14 @@ router.beforeEach(async (to, from, next) => {
     // Le composant FinalizeRegistrationView.vue gérera la validation du token et l'authentification
     if (finalizeRoute && isGoogleOAuthRedirect && oauthToken) {
       console.log("[Guard] FinalizeRegistration with Google OAuth token detected. Skipping fetchUser() - component will handle token validation and authentication.");
+      return next();
+    }
+    
+    // ✅ EXCEPTION: Si c'est un retour de paiement réussi sur /mes-commandes,
+    // autoriser l'accès même si l'utilisateur n'est pas trouvé immédiatement
+    // Le composant OrdersView.vue gérera la récupération de la session et l'affichage du message de félicitation
+    if (ordersRoute && isPaymentReturn) {
+      console.log("[Guard] Payment return detected on Orders route. Allowing access - component will handle session recovery and success message.");
       return next();
     }
     
@@ -189,12 +201,12 @@ router.beforeEach(async (to, from, next) => {
           return next();
         }
         
-        // Si on vient de SelectAccount ou qu'on redirige vers Dashboard,
+        // Si on vient de SelectAccount, qu'on redirige vers Dashboard, ou qu'on revient d'un paiement,
         // réessayer plusieurs fois car la session peut prendre du temps à être accessible
         const isFromSelectAccount = from.name === "SelectAccount";
         const isRedirectingToDashboard = to.name === "Dashboard";
         
-        if (isFromSelectAccount || isRedirectingToDashboard) {
+        if (isFromSelectAccount || isRedirectingToDashboard || isPaymentReturn) {
           console.log("[Guard] No user found, but coming from SelectAccount or redirecting to Dashboard. Retrying...");
           const maxRetries = 5;
           const delay = 500;
@@ -219,12 +231,19 @@ router.beforeEach(async (to, from, next) => {
           }
           
           // Si l'utilisateur n'est toujours pas trouvé après plusieurs tentatives,
-          // mais qu'on vient de SelectAccount, la session devrait être établie
+          // mais qu'on vient de SelectAccount ou qu'on revient d'un paiement, la session devrait être établie
           // Autoriser l'accès quand même (le composant pourra gérer l'erreur)
-          if (isFromSelectAccount) {
-            console.warn("[Guard] User not found after retries, but coming from SelectAccount. Session should be established. Allowing access.");
+          if (isFromSelectAccount || isPaymentReturn) {
+            console.warn(`[Guard] User not found after retries, but ${isFromSelectAccount ? 'coming from SelectAccount' : 'returning from payment'}. Session should be established. Allowing access.`);
             return next();
           }
+        }
+        
+        // Si c'est un retour de paiement mais qu'on n'est pas dans le bloc de retry ci-dessus,
+        // autoriser quand même l'accès - le composant gérera la récupération de la session
+        if (isPaymentReturn) {
+          console.warn("[Guard] Payment return detected but user not found. Allowing access - component will handle session recovery.");
+          return next();
         }
         
         console.log("[Guard] No user found via API. Redirecting to home.");
@@ -271,6 +290,13 @@ router.beforeEach(async (to, from, next) => {
       // Le composant gérera l'authentification et les erreurs
       if (finalizeRoute) {
         console.log("[Guard] Error on finalize route. Allowing access - component will handle authentication and errors.");
+        return next();
+      }
+      
+      // ✅ EXCEPTION: Si c'est un retour de paiement, autoriser l'accès même en cas d'erreur
+      // Le composant OrdersView gérera la récupération de la session
+      if (isPaymentReturn) {
+        console.log("[Guard] Payment return detected with error. Allowing access - component will handle session recovery.");
         return next();
       }
       
