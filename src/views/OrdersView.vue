@@ -1914,106 +1914,18 @@
       loadRetryCount.value = 0;
       isRetryingLoad.value = false;
       
+      console.log("OrdersView: Chargement des commandes...");
+      await loadOrders();
+      console.log("OrdersView: Commandes chargées après montage");
+      
       // ✅ NOUVEAU: Détecter si on vient d'un retour de paiement réussi
       const paymentSuccess = route.query.payment === 'success';
       const orderIdFromQuery = route.query.order_id;
       const additionalPaymentIdFromQuery = route.query.additional_payment_id;
       
-      // ✅ CRITIQUE: Ne vérifier le statut du paiement QUE si l'utilisateur est connecté
-      // En production, si la session n'est pas accessible, ne pas lancer les vérifications
-      // pour éviter les boucles infinies d'erreurs 401
-      if (paymentSuccess && !currentUser) {
-        console.warn("OrdersView: Retour de paiement détecté mais utilisateur non connecté. Tentative de récupération de la session...");
-        
-        // Fonction pour récupérer la session avec plusieurs tentatives
-        const recoverSession = async (attempt = 1, maxAttempts = 5) => {
-          try {
-            console.log(`OrdersView: Tentative ${attempt}/${maxAttempts} de récupération de la session...`);
-            
-            // ✅ CRITIQUE: Forcer la récupération du cookie CSRF avant chaque tentative
-            try {
-              await apiClient.get("/sanctum/csrf-cookie");
-              // Attendre un peu plus longtemps pour que le cookie soit bien défini
-              await new Promise(resolve => setTimeout(resolve, 500));
-              
-              // Vérifier que le cookie est bien présent
-              const csrfToken = Cookies.get("XSRF-TOKEN");
-              if (csrfToken) {
-                apiClient.defaults.headers.common["X-XSRF-TOKEN"] = decodeURIComponent(csrfToken);
-                console.log("OrdersView: Cookie CSRF récupéré");
-              } else {
-                console.warn("OrdersView: Cookie CSRF non trouvé après récupération");
-              }
-            } catch (csrfError) {
-              console.warn("OrdersView: Erreur lors de la récupération du cookie CSRF:", csrfError);
-            }
-            
-            // Essayer de récupérer l'utilisateur
-            const retryUser = await fetchUser();
-            
-            if (retryUser) {
-              console.log("OrdersView: Session récupérée avec succès!", {
-                user_id: retryUser.id,
-                email: retryUser.email,
-                attempt: attempt
-              });
-              
-              // Relancer la vérification du paiement maintenant que la session est récupérée
-              // En rechargeant la page avec les mêmes paramètres de requête
-              window.location.reload();
-              return true;
-            } else {
-              // Si ce n'est pas la dernière tentative, réessayer avec un délai progressif
-              if (attempt < maxAttempts) {
-                const delay = attempt * 1000; // Délai progressif : 1s, 2s, 3s, 4s
-                console.log(`OrdersView: Session non récupérée, nouvelle tentative dans ${delay}ms...`);
-                setTimeout(() => {
-                  recoverSession(attempt + 1, maxAttempts);
-                }, delay);
-                return false;
-              } else {
-                // Dernière tentative échouée
-                console.error("OrdersView: Impossible de récupérer la session après toutes les tentatives.");
-                loadingError.value = "Impossible de vérifier le statut du paiement. Veuillez rafraîchir la page ou vous reconnecter.";
-                return false;
-              }
-            }
-          } catch (error) {
-            console.error(`OrdersView: Erreur lors de la tentative ${attempt} de récupération de la session:`, error);
-            
-            // Si c'est une erreur 401/419 et qu'on n'a pas atteint le maximum, réessayer
-            if ((error.response?.status === 401 || error.response?.status === 419) && attempt < maxAttempts) {
-              const delay = attempt * 1000;
-              console.log(`OrdersView: Erreur 401/419, nouvelle tentative dans ${delay}ms...`);
-              setTimeout(() => {
-                recoverSession(attempt + 1, maxAttempts);
-              }, delay);
-              return false;
-            } else if (attempt >= maxAttempts) {
-              // Toutes les tentatives ont échoué
-              console.error("OrdersView: Toutes les tentatives de récupération de session ont échoué.");
-              loadingError.value = "Erreur lors de la vérification du paiement. Veuillez rafraîchir la page ou vous reconnecter.";
-              return false;
-            }
-            return false;
-          }
-        };
-        
-        // Démarrer la récupération de session avec un petit délai initial
-        setTimeout(() => {
-          recoverSession(1, 5);
-        }, 1000);
-        
-        return; // Sortir pour éviter de lancer les vérifications sans session
-      }
-      
-      // ✅ Charger les commandes seulement si l'utilisateur est connecté
-      // (ou si ce n'est pas un retour de paiement)
-      console.log("OrdersView: Chargement des commandes...");
-      await loadOrders();
-      console.log("OrdersView: Commandes chargées après montage");
-      
       // ✅ NOUVEAU: Gérer le retour de paiement pour les cartes supplémentaires
+      // Pour les paiements supplémentaires, on utilise une route publique qui ne nécessite pas d'authentification
+      // Donc on peut vérifier le statut même si l'utilisateur n'est pas connecté
       if (paymentSuccess && additionalPaymentIdFromQuery) {
         console.log("OrdersView: Retour de paiement cartes supplémentaires détecté", {
           payment: route.query.payment,
@@ -2021,17 +1933,71 @@
         });
         
         // Fonction pour vérifier et afficher le modal de succès
+        // ✅ IMPORTANT: Cette fonction utilise une route publique, donc elle fonctionne même sans session
         const checkAndShowAdditionalCardsSuccessModal = async (retryCount = 0, maxRetries = 10) => {
           console.log(`OrdersView: Vérification du statut du paiement supplémentaire (tentative ${retryCount + 1}/${maxRetries + 1})`);
           
+          // ✅ CRITIQUE: Maintenir le chargement actif pendant la vérification
+          isLoading.value = true;
+          
           try {
-            // Vérifier le statut du paiement via l'API backend
-            const checkResponse = await apiClient.get(`/api/additional-payments/${additionalPaymentIdFromQuery}/check-status`);
-            console.log("OrdersView: Statut du paiement supplémentaire vérifié via API", checkResponse.data);
+            // ✅ CORRECTION: Utiliser la route publique pour vérifier le statut sans authentification
+            // Après une redirection externe, la session peut être perdue
+            let checkResponse;
+            try {
+              // Essayer d'abord la route publique (sans authentification)
+              checkResponse = await apiClient.get(`/api/additional-payments/${additionalPaymentIdFromQuery}/check-status-public`);
+              console.log("OrdersView: Statut du paiement supplémentaire vérifié via API publique", checkResponse.data);
+            } catch (publicError) {
+              // Si la route publique échoue avec 404, c'est que le paiement n'existe pas
+              if (publicError.response && publicError.response.status === 404) {
+                console.error("OrdersView: Paiement supplémentaire non trouvé (404)");
+                loadingError.value = "Paiement supplémentaire non trouvé. Veuillez vérifier votre commande.";
+                isLoading.value = false;
+                router.replace({ name: 'Orders', query: {} });
+                return false;
+              }
+              
+              // Si la route publique échoue pour une autre raison, essayer la route authentifiée
+              console.warn("OrdersView: Route publique échouée, tentative avec route authentifiée...", publicError);
+              try {
+                checkResponse = await apiClient.get(`/api/additional-payments/${additionalPaymentIdFromQuery}/check-status`);
+                console.log("OrdersView: Statut du paiement supplémentaire vérifié via API authentifiée", checkResponse.data);
+              } catch (authError) {
+                // Si la route authentifiée échoue aussi, c'est probablement un problème de session
+                console.error("OrdersView: Les deux routes ont échoué", { publicError, authError });
+                throw publicError; // Relancer l'erreur publique pour le traitement ci-dessous
+              }
+            }
             
             if (checkResponse.data.status === 'paid') {
-              // Le paiement a été confirmé, recharger les commandes pour avoir le statut à jour
-              await loadOrders();
+              console.log("OrdersView: Paiement supplémentaire confirmé, chargement des commandes...");
+              
+              // ✅ CRITIQUE: Arrêter le chargement avant d'afficher le modal
+              isLoading.value = false;
+              
+              // Le paiement a été confirmé, essayer de recharger les commandes seulement si l'utilisateur est connecté
+              // Ne pas bloquer si ça échoue (l'utilisateur peut être déconnecté après redirection externe)
+              try {
+                const currentUser = await fetchUser();
+                if (currentUser) {
+                  console.log("OrdersView: Utilisateur connecté, chargement des commandes...");
+                  // ✅ IMPORTANT: Ne pas afficher d'erreur si loadOrders() échoue
+                  // car le paiement est déjà confirmé et le modal sera affiché
+                  try {
+                    await loadOrders();
+                  } catch (loadError) {
+                    console.warn("OrdersView: Erreur lors du chargement des commandes, mais le paiement est confirmé", loadError);
+                    // Ne pas définir loadingError car le paiement est confirmé
+                  }
+                } else {
+                  console.warn("OrdersView: Utilisateur non connecté, mais le paiement est confirmé. Le modal sera affiché.");
+                }
+              } catch (userError) {
+                console.warn("OrdersView: Erreur lors de la vérification de l'utilisateur, mais le paiement est confirmé", userError);
+                // Ne pas définir loadingError car le paiement est confirmé
+              }
+              
               await nextTick();
               
               // Stocker les données de succès
@@ -2045,7 +2011,12 @@
               showAdditionalCardsSuccessModal.value = true;
               
               // Nettoyer l'URL SEULEMENT après avoir affiché le modal avec succès
+              await nextTick();
               router.replace({ name: 'Orders', query: {} });
+              
+              // ✅ CRITIQUE: S'assurer que le chargement reste arrêté
+              isLoading.value = false;
+              
               return true; // Succès
             } else if (checkResponse.data.status === 'pending') {
               // Le paiement est encore en attente, réessayer plus tard
@@ -2075,22 +2046,70 @@
           } catch (error) {
             console.error("OrdersView: Erreur lors de la vérification du statut du paiement supplémentaire", error);
             
-            // En cas d'erreur, réessayer si on n'a pas atteint le maximum
+            // ✅ CORRECTION: Si c'est une erreur 404, le paiement n'existe pas
+            if (error.response && error.response.status === 404) {
+              console.error("OrdersView: Paiement supplémentaire non trouvé (404). Arrêt des tentatives.");
+              loadingError.value = "Paiement supplémentaire non trouvé. Veuillez vérifier votre commande.";
+              isLoading.value = false;
+              router.replace({ name: 'Orders', query: {} });
+              return false;
+            }
+            
+            // ✅ CORRECTION: Si c'est une erreur 401, la route publique devrait fonctionner
+            // Si elle échoue aussi, c'est probablement un problème de configuration
+            if (error.response && error.response.status === 401) {
+              console.error("OrdersView: Erreur d'authentification même avec la route publique. Arrêt des tentatives.");
+              loadingError.value = "Impossible de vérifier le statut du paiement. Veuillez rafraîchir la page.";
+              isLoading.value = false;
+              router.replace({ name: 'Orders', query: {} });
+              return false;
+            }
+            
+            // En cas d'erreur réseau ou autre, réessayer si on n'a pas atteint le maximum
             if (retryCount < maxRetries) {
+              console.log(`OrdersView: Erreur réseau, nouvelle tentative dans 2 secondes... (${retryCount + 1}/${maxRetries})`);
               setTimeout(() => {
                 checkAndShowAdditionalCardsSuccessModal(retryCount + 1, maxRetries);
               }, 2000);
               return false;
             } else {
+              console.error("OrdersView: Toutes les tentatives ont échoué");
+              loadingError.value = "Impossible de vérifier le statut du paiement après plusieurs tentatives. Veuillez rafraîchir la page.";
+              isLoading.value = false;
               router.replace({ name: 'Orders', query: {} });
               return false;
             }
           }
         };
         
-        // Démarrer la vérification
+        // Démarrer la vérification (même si l'utilisateur n'est pas connecté, la route publique fonctionne)
         await checkAndShowAdditionalCardsSuccessModal();
-      } else if (paymentSuccess) {
+      } else if (paymentSuccess && orderIdFromQuery) {
+        // ✅ CORRECTION: Pour les paiements normaux, vérifier la session d'abord
+        // Car la route check-payment nécessite une authentification
+        if (!currentUser) {
+          console.warn("OrdersView: Retour de paiement détecté mais utilisateur non connecté. Tentative de récupération de la session...");
+          // Attendre un peu et réessayer de récupérer la session avant de vérifier le paiement
+          setTimeout(async () => {
+            try {
+              const retryUser = await fetchUser();
+              if (retryUser) {
+                console.log("OrdersView: Session récupérée, vérification du paiement...");
+                // Relancer la vérification du paiement maintenant que la session est récupérée
+                window.location.reload();
+              } else {
+                console.error("OrdersView: Impossible de récupérer la session après le paiement. L'utilisateur devra rafraîchir la page.");
+                loadingError.value = "Impossible de vérifier le statut du paiement. Veuillez rafraîchir la page ou vous reconnecter.";
+                isLoading.value = false;
+              }
+            } catch (error) {
+              console.error("OrdersView: Erreur lors de la récupération de la session après le paiement:", error);
+              loadingError.value = "Erreur lors de la vérification du paiement. Veuillez rafraîchir la page.";
+              isLoading.value = false;
+            }
+          }, 2000);
+          return; // Sortir pour éviter de lancer les vérifications sans session
+        }
         console.log("OrdersView: Retour de paiement réussi détecté", {
           payment: route.query.payment,
           order_id: orderIdFromQuery
