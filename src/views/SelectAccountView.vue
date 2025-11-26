@@ -3,12 +3,12 @@
     <div class="relative max-w-md w-full p-8 bg-slate-800 rounded-xl border border-slate-700">
       <!-- Indicateur de chargement -->
       <div
-        v-if="isLoading || isSubmitting"
+        v-if="isLoading || isSubmitting || isAutoSelecting"
         class="absolute inset-0 bg-slate-900/70 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center z-20"
       >
         <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-sky-500"></div>
         <p class="mt-4 text-white font-medium">
-          {{ isLoading ? 'Chargement...' : 'Connexion en cours...' }}
+          {{ isAutoSelecting ? 'Connexion automatique au compte...' : (isLoading ? 'Chargement...' : 'Connexion en cours...') }}
         </p>
       </div>
 
@@ -109,6 +109,7 @@ const { user, fetchUser, updateUserLocally } = useAuth();
 const availableAccounts = ref([]);
 const isSubmitting = ref(false);
 const isLoading = ref(true);
+const isAutoSelecting = ref(false); // Indique si on est en train de sélectionner automatiquement un compte unique
 const errorMessage = ref("");
 const selectionToken = ref(null); // Token pour récupérer les données depuis le cache
 
@@ -158,16 +159,18 @@ const loadPendingAccounts = async () => {
         setTimeout(() => {
           router.push({ name: "Home" });
         }, 3000);
-      } 
-      // ✅ NOUVEAU: Si un seul compte est disponible, lancer la connexion automatiquement
-      else if (availableAccounts.value.length === 1) {
-        console.log("Un seul compte détecté, connexion automatique...");
-        // Afficher un message de chargement
-        isLoading.value = true;
-        // Lancer la connexion automatiquement après un court délai pour que l'UI se mette à jour
-        setTimeout(() => {
-          selectAccountAndLogin(availableAccounts.value[0].id);
-        }, 300);
+        return;
+      }
+      
+      // ✅ MODIFICATION: Si un seul compte est disponible, le sélectionner automatiquement
+      if (availableAccounts.value.length === 1) {
+        console.log("Un seul compte détecté, sélection automatique...");
+        // Afficher un message de chargement spécifique pour la sélection automatique
+        isAutoSelecting.value = true;
+        isLoading.value = false; // Désactiver le chargement initial car on passe en mode auto-sélection
+        // Appeler immédiatement selectAccount pour connecter l'utilisateur
+        await selectAccountAndLogin(availableAccounts.value[0].id);
+        return;
       }
     } else {
       errorMessage.value = "Aucun compte en attente de sélection.";
@@ -188,7 +191,11 @@ const loadPendingAccounts = async () => {
       errorMessage.value = error.response?.data?.message || "Erreur lors du chargement des comptes.";
     }
   } finally {
-    isLoading.value = false;
+    // Ne pas désactiver isLoading si on est en train de sélectionner automatiquement
+    // (selectAccountAndLogin gérera le chargement)
+    if (!isAutoSelecting.value) {
+      isLoading.value = false;
+    }
   }
 };
 
@@ -291,6 +298,7 @@ const selectAccountAndLogin = async (accountId) => {
     }
   } finally {
     isSubmitting.value = false;
+    isAutoSelecting.value = false; // Réinitialiser le flag de sélection automatique
   }
 };
 
