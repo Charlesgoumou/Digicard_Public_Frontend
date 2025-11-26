@@ -33,9 +33,9 @@
   // Vérifie si l'utilisateur est connecté
   const { isLoggedIn, logout } = useAuth();
 
-  // Crée une propriété calculée qui vérifie si on est sur une route spéciale (Dashboard, CompanyPublic, FinalizeRegistration, SelectAccount)
+  // Crée une propriété calculée qui vérifie si on est sur une route spéciale (Dashboard, CompanyPublic, FinalizeRegistration, SelectAccount, PaymentProcessing)
   const isDashboardRoute = computed(() => {
-    return route.name === "Dashboard" || route.name === "CompanyPublic" || route.name === "FinalizeRegistration" || route.name === "SelectAccount";
+    return route.name === "Dashboard" || route.name === "CompanyPublic" || route.name === "FinalizeRegistration" || route.name === "SelectAccount" || route.name === "PaymentProcessing";
   });
 
   // Vérifie si on est sur une route utilisateur connecté où le footer doit être caché
@@ -295,6 +295,20 @@
       if (!inactivityCheckInterval) {
         inactivityCheckInterval = setInterval(checkInactivity, CHECK_INTERVAL);
       }
+      
+      // ✅ NOUVEAU: Nettoyer les anciens cookies de session APRÈS que l'utilisateur soit connecté
+      // Cela évite de supprimer le cookie de session actif au rechargement
+      // Désactivé temporairement pour éviter les erreurs - sera réactivé si nécessaire
+      // setTimeout(() => {
+      //   try {
+      //     const allCookies = document.cookie.split(';').filter(c => c.trim());
+      //     if (allCookies.length > 10) {
+      //       // Nettoyage des cookies désactivé pour éviter les problèmes
+      //     }
+      //   } catch (error) {
+      //     console.error('[App.vue] Erreur lors du nettoyage des cookies:', error);
+      //   }
+      // }, 2000);
     } else {
       // Utilisateur déconnecté : nettoyer
       removeActivityTracking();

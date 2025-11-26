@@ -43,28 +43,46 @@ export function useAuth() {
     try {
       // ✅ CRITIQUE: Récupérer le cookie CSRF avant de faire la requête utilisateur
       // Nécessaire pour établir la session Laravel et éviter les erreurs 419/401
+      // ✅ CORRECTION: Augmenter le délai pour s'assurer que le cookie est bien défini,
+      // surtout lors d'un rechargement de page (F5)
       try {
+        console.log("[_fetchUser] Récupération du cookie CSRF...");
         await apiClient.get("/sanctum/csrf-cookie");
-        // Attendre un peu pour que le cookie soit bien défini
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // ✅ CORRECTION: Augmenter le délai à 500ms pour s'assurer que la session est bien établie
+        // après un rechargement de page, la session peut prendre plus de temps à être restaurée
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        console.log("[_fetchUser] Cookie CSRF récupéré, attente de 500ms pour établir la session");
       } catch (csrfError) {
         console.warn("Erreur lors de la récupération du cookie CSRF:", csrfError);
         // Continuer quand même, le cookie peut déjà être présent
       }
-      
+
       // ✅ CRITIQUE: Mettre à jour le header CSRF après avoir récupéré le cookie
       await setCsrfHeader();
       
+      // ✅ NOUVEAU: Vérifier que le cookie XSRF-TOKEN est bien présent
+      const xsrfToken = Cookies.get("XSRF-TOKEN");
+      if (!xsrfToken) {
+        console.warn("[_fetchUser] Cookie XSRF-TOKEN non trouvé après récupération, réessai...");
+        // Réessayer une fois
+        await apiClient.get("/sanctum/csrf-cookie");
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        await setCsrfHeader();
+      }
+      
+      console.log("[_fetchUser] Header CSRF mis à jour, appel de /api/user...");
+
       const response = await apiClient.get("/api/user");
+      console.log("[_fetchUser] Réponse reçue de /api/user:", response.data);
       // Le backend retourne {user: null} ou {user: {...}}
       // Il faut accéder à response.data.user pour obtenir l'utilisateur ou null
       const fetchedUser = response.data.user || null;
-      
+
       // ✅ CORRECTION : Construire l'URL complète de l'avatar si présent
       if (fetchedUser && fetchedUser.avatar_url) {
         const backendUrl = import.meta.env.VITE_APP_URL_BACKEND || "http://localhost:8000";
         let fullAvatarUrl = fetchedUser.avatar_url;
-        
+
         // Si ce n'est pas déjà une URL complète, la construire
         if (!fullAvatarUrl.startsWith("http://") && !fullAvatarUrl.startsWith("https://")) {
           // Gérer les deux formats (/api/storage/ et /storage/)
@@ -76,17 +94,22 @@ export function useAuth() {
         }
         fetchedUser.avatar_url = fullAvatarUrl;
       }
-      
+
       user.value = fetchedUser;
       return user.value;
     } catch (error) {
+      // ✅ IMPORTANT: Ne pas bloquer la navigation si fetchUser() échoue
+      // Mettre user à null et retourner null au lieu de lancer une erreur
       if (error.response && (error.response.status === 401 || error.response.status === 419)) {
+        // Session expirée ou non authentifié - c'est normal, mettre user à null
         user.value = null;
+        return null; // ✅ Retourner null au lieu de lancer l'erreur
       } else {
-        console.error("Erreur _fetchUser:", error);
+        // Erreur réseau ou autre - ne pas bloquer, juste mettre user à null
+        console.warn("Erreur _fetchUser (non bloquante):", error.message);
         user.value = null;
+        return null; // ✅ Retourner null au lieu de lancer l'erreur
       }
-      throw error;
     }
   };
 
@@ -126,12 +149,12 @@ export function useAuth() {
       if (response.data.two_factor_required || response.data.verification_required) {
         // L'utilisateur doit entrer le code 2FA qui a été envoyé par email
         closeAuthModal();
-        router.push({ 
-          name: "Verification", 
-          query: { 
+        router.push({
+          name: "Verification",
+          query: {
             email: credentials.email,
-            account_type: credentials.account_type || response.data.account_type
-          } 
+            account_type: credentials.account_type || response.data.account_type,
+          },
         });
       } else if (response.data.password_reset_required) {
         // Cas 2: L'employé doit changer son mot de passe (après validation 2FA)
@@ -218,9 +241,39 @@ export function useAuth() {
       // Nettoyer l'état utilisateur
       user.value = null;
 
-      // Nettoyer tous les cookies Sanctum
-      Cookies.remove("XSRF-TOKEN");
-      Cookies.remove("laravel_session");
+      // ✅ CORRECTION: Nettoyer tous les cookies de manière exhaustive
+      // Supprimer les cookies avec différents domaines et chemins
+      const cookieNames = ['XSRF-TOKEN', 'laravel_session'];
+      const backendUrl = import.meta.env.VITE_APP_URL_BACKEND || 'http://localhost:8000';
+      const isLocalhost = backendUrl.includes('localhost') || backendUrl.includes('127.0.0.1');
+      
+      cookieNames.forEach(cookieName => {
+        // Supprimer avec path=/
+        Cookies.remove(cookieName, { path: '/' });
+        Cookies.remove(cookieName, { path: '/', domain: window.location.hostname });
+        
+        // En production, supprimer aussi pour les domaines possibles
+        if (!isLocalhost) {
+          Cookies.remove(cookieName, { path: '/', domain: '.arccenciel.com' });
+          Cookies.remove(cookieName, { path: '/', domain: '.digicard.arccenciel.com' });
+        }
+        
+        // Supprimer aussi via document.cookie pour être sûr
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+        if (!isLocalhost) {
+          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.arccenciel.com;`;
+          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.digicard.arccenciel.com;`;
+        }
+      });
+      
+      // Nettoyer tous les autres cookies de session potentiels
+      const allCookies = document.cookie.split(';');
+      allCookies.forEach(cookie => {
+        const [name] = cookie.trim().split('=');
+        if (name && (name.includes('session') || name.includes('laravel') || name.includes('sanctum'))) {
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+        }
+      });
 
       // Nettoyer le localStorage si nécessaire
       localStorage.clear();
@@ -235,12 +288,21 @@ export function useAuth() {
 
   /**
    * Vérifie la session de l'utilisateur (pour la garde de navigation).
+   * Retourne l'utilisateur si trouvé, null si non authentifié, ou lance une erreur si problème réseau.
    */
   const checkUserSession = async () => {
     if (user.value) return user.value;
     try {
-      return await _fetchUser();
+      const result = await _fetchUser();
+      // Si _fetchUser() retourne null, c'est qu'il n'y a pas d'utilisateur authentifié
+      // Mais on ne lance pas d'erreur pour permettre au Guard de gérer
+      return result;
     } catch (error) {
+      // Si c'est une erreur réseau (pas de réponse), la lancer pour que le Guard puisse réessayer
+      if (!error.response && (error.code === "ERR_NETWORK" || error.message?.includes("Network"))) {
+        throw error; // Relancer les erreurs réseau pour permettre les retries
+      }
+      // Pour les erreurs 401/419, _fetchUser() retourne déjà null, donc on retourne null ici aussi
       return null;
     }
   };

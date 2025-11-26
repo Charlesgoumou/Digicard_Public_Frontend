@@ -80,7 +80,7 @@
 
         <!-- Message -->
         <div class="text-center mt-8">
-          <p class="text-slate-400 text-sm">Chargement de votre espace...</p>
+          <p class="text-slate-400 text-sm">Chargement du dashboard...</p>
         </div>
       </div>
     </div>
@@ -121,10 +121,7 @@
         <div v-else-if="user.role === 'business_admin'">
           <h1 class="text-4xl font-bold text-center mb-12">Espace Entreprise</h1>
           <!-- ✅ Masquer le contenu jusqu'à ce que le chargement des commandes business soit terminé -->
-          <div v-if="isLoadingBusinessOrders" class="flex flex-col items-center justify-center py-12">
-            <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-sky-500"></div>
-            <p class="mt-4 text-slate-400 text-sm">Chargement de vos commandes...</p>
-          </div>
+          <LoadingSpinner v-if="isLoadingBusinessOrders" :is-loading="isLoadingBusinessOrders" />
           <div
             v-else
             class="grid gap-6 md:gap-8 max-w-6xl mx-auto mb-16 justify-items-center"
@@ -168,9 +165,9 @@
           <div
             v-if="!isLoadingBusinessOrders && hasBusinessOrder"
             id="employee-section"
-            class="max-w-6xl mx-auto p-6 bg-slate-800/50 rounded-lg border border-slate-700 scroll-mt-24"
+            class="max-w-6xl mx-auto p-4 sm:p-6 bg-slate-800/50 rounded-lg border border-slate-700 scroll-mt-24"
           >
-            <h2 class="text-2xl font-semibold mb-6">Gérer le Personnel</h2>
+            <h2 class="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">Gérer le Personnel</h2>
 
             <!-- Sélecteur de commande si plusieurs commandes business -->
             <div v-if="businessOrders.length > 1" class="mb-6">
@@ -193,37 +190,37 @@
               <!-- Skeleton Slot 1 -->
               <div class="bg-slate-700/30 rounded-lg border border-slate-600 p-4">
                 <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-3 flex-1">
-                    <div class="h-8 w-24 bg-slate-600/50 rounded-full"></div>
-                    <div class="h-6 w-32 bg-slate-600/50 rounded"></div>
-                    <div class="h-6 w-20 bg-slate-600/50 rounded-full"></div>
-                    <div class="h-6 w-28 bg-slate-600/50 rounded-full"></div>
+                  <div class="flex flex-wrap items-center gap-2 sm:gap-3 flex-1">
+                    <div class="h-6 sm:h-8 w-20 sm:w-24 bg-slate-600/50 rounded-full"></div>
+                    <div class="h-5 sm:h-6 w-24 sm:w-32 bg-slate-600/50 rounded"></div>
+                    <div class="h-5 sm:h-6 w-16 sm:w-20 bg-slate-600/50 rounded-full"></div>
+                    <div class="h-5 sm:h-6 w-24 sm:w-28 bg-slate-600/50 rounded-full"></div>
                   </div>
                 </div>
               </div>
               <!-- Skeleton Slot 2 -->
               <div class="bg-slate-700/30 rounded-lg border border-slate-600 p-4">
                 <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-3 flex-1">
-                    <div class="h-8 w-24 bg-slate-600/50 rounded-full"></div>
-                    <div class="h-6 w-32 bg-slate-600/50 rounded"></div>
-                    <div class="h-6 w-20 bg-slate-600/50 rounded-full"></div>
-                    <div class="h-6 w-28 bg-slate-600/50 rounded-full"></div>
+                  <div class="flex flex-wrap items-center gap-2 sm:gap-3 flex-1">
+                    <div class="h-6 sm:h-8 w-20 sm:w-24 bg-slate-600/50 rounded-full"></div>
+                    <div class="h-5 sm:h-6 w-24 sm:w-32 bg-slate-600/50 rounded"></div>
+                    <div class="h-5 sm:h-6 w-16 sm:w-20 bg-slate-600/50 rounded-full"></div>
+                    <div class="h-5 sm:h-6 w-24 sm:w-28 bg-slate-600/50 rounded-full"></div>
                   </div>
                 </div>
               </div>
               <!-- Skeleton Slot 3 -->
               <div class="bg-slate-700/30 rounded-lg border border-slate-600 p-4">
                 <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-3 flex-1">
-                    <div class="h-8 w-24 bg-slate-600/50 rounded-full"></div>
-                    <div class="h-6 w-32 bg-slate-600/50 rounded"></div>
-                    <div class="h-6 w-20 bg-slate-600/50 rounded-full"></div>
-                    <div class="h-6 w-28 bg-slate-600/50 rounded-full"></div>
+                  <div class="flex flex-wrap items-center gap-2 sm:gap-3 flex-1">
+                    <div class="h-6 sm:h-8 w-20 sm:w-24 bg-slate-600/50 rounded-full"></div>
+                    <div class="h-5 sm:h-6 w-24 sm:w-32 bg-slate-600/50 rounded"></div>
+                    <div class="h-5 sm:h-6 w-16 sm:w-20 bg-slate-600/50 rounded-full"></div>
+                    <div class="h-5 sm:h-6 w-24 sm:w-28 bg-slate-600/50 rounded-full"></div>
                   </div>
                 </div>
               </div>
-              <p class="text-center text-slate-400 text-sm mt-4">Chargement du personnel...</p>
+              <p class="text-center text-slate-400 text-xs sm:text-sm mt-4">Chargement du personnel...</p>
             </div>
 
             <!-- Liste des slots -->
@@ -231,22 +228,22 @@
               <div
                 v-for="slot in currentOrderSlots"
                 :key="slot.slot_number"
-                class="bg-slate-700/30 rounded-lg border border-slate-600 p-4 transition-all hover:border-slate-500"
+                class="bg-slate-700/30 rounded-lg border border-slate-600 p-3 sm:p-4 transition-all hover:border-slate-500"
               >
                 <!-- Slot non assigné -->
                 <div v-if="!slot.is_assigned" class="space-y-3">
                   <div class="flex items-center justify-between mb-3">
-                    <div class="flex items-center gap-3">
+                    <div class="flex flex-wrap items-center gap-2 sm:gap-3">
                       <span
-                        class="px-3 py-1 bg-slate-600 text-slate-200 rounded-full text-sm font-semibold border border-slate-500"
+                        class="px-2 sm:px-3 py-1 bg-slate-600 text-slate-200 rounded-full text-xs sm:text-sm font-semibold border border-slate-500 whitespace-nowrap"
                       >
                         Personnel {{ slot.display_number }}
                       </span>
-                      <span class="px-3 py-1 bg-sky-500/20 text-sky-400 rounded-full text-xs border border-sky-500/30">
+                      <span class="px-2 sm:px-3 py-1 bg-sky-500/20 text-sky-400 rounded-full text-xs border border-sky-500/30 whitespace-nowrap">
                         {{ slot.cards_quantity }} carte{{ slot.cards_quantity > 1 ? "s" : "" }}
                       </span>
                       <span
-                        class="px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-xs border border-yellow-500/30"
+                        class="px-2 sm:px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-xs border border-yellow-500/30 whitespace-nowrap"
                       >
                         ⏳ Non assigné
                       </span>
@@ -307,17 +304,17 @@
                   @click="openEmployeeModal(slot)"
                   class="cursor-pointer hover:bg-slate-700/50 transition-colors rounded-lg p-2 -m-2"
                 >
-                  <div class="flex items-center justify-between">
-                    <div class="flex-1">
-                      <div class="flex items-center gap-3 mb-2">
+                  <div class="flex items-start sm:items-center justify-between gap-2 sm:gap-0">
+                    <div class="flex-1 min-w-0">
+                      <div class="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
                         <span
-                          class="px-3 py-1 bg-slate-600 text-slate-200 rounded-full text-sm font-semibold border border-slate-500"
+                          class="px-2 sm:px-3 py-1 bg-slate-600 text-slate-200 rounded-full text-xs sm:text-sm font-semibold border border-slate-500 whitespace-nowrap"
                         >
                           Personnel {{ slot.display_number }}
                         </span>
-                        <strong class="text-white font-semibold text-lg">{{ slot.employee_name }}</strong>
+                        <strong class="text-white font-semibold text-base sm:text-lg break-words">{{ slot.employee_name }}</strong>
                         <span
-                          class="px-3 py-1 bg-sky-500/20 text-sky-400 rounded-full text-xs border border-sky-500/30"
+                          class="px-2 sm:px-3 py-1 bg-sky-500/20 text-sky-400 rounded-full text-xs border border-sky-500/30 whitespace-nowrap"
                         >
                           {{ slot.cards_quantity }} carte{{ slot.cards_quantity > 1 ? "s" : "" }}
                         </span>
@@ -327,15 +324,15 @@
                               ? 'bg-green-500/20 text-green-400 border-green-500/30'
                               : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
                           "
-                          class="px-3 py-1 rounded-full text-xs border"
+                          class="px-2 sm:px-3 py-1 rounded-full text-xs border whitespace-nowrap"
                         >
                           {{ slot.is_configured ? "✓ Configuré" : "⏳ Non configuré" }}
                         </span>
                       </div>
-                      <p class="text-slate-400 text-sm">{{ slot.employee_email }}</p>
+                      <p class="text-slate-400 text-xs sm:text-sm break-words">{{ slot.employee_email }}</p>
                     </div>
                     <svg
-                      class="w-5 h-5 text-slate-400 flex-shrink-0"
+                      class="w-5 h-5 text-slate-400 flex-shrink-0 mt-1 sm:mt-0"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -648,17 +645,20 @@
       @save="handleImageSave"
     />
   </div>
+  <LoadingSpinner :is-loading="isNavigatingToSettings" />
 </template>
 
 <script setup>
   import { ref, watch, reactive, onMounted, onUnmounted, nextTick } from "vue";
-  import { useRouter } from "vue-router";
+  import { useRouter, useRoute } from "vue-router";
   import { useAuth } from "@/composables/useAuth";
   import apiClient from "@/api";
   import ProfilePictureModal from "@/components/ProfilePictureModal.vue";
+  import LoadingSpinner from "@/components/layout/LoadingSpinner.vue";
   import Cookies from "js-cookie";
 
   const router = useRouter();
+  const route = useRoute();
   const { user, logout, fetchUser, updateUserAvatar } = useAuth();
 
   const isCropperOpen = ref(false);
@@ -694,6 +694,7 @@
   const employeeModalFeedback = ref("");
   const employeeModalError = ref(false);
   const showDeleteConfirmation = ref(false);
+  const isNavigatingToSettings = ref(false);
 
   // --- Helper to set CSRF header ---
   const setCsrfHeader = () => {
@@ -1287,7 +1288,14 @@
   const goToHome = () => {
     router.push({ name: "Home" });
   };
-  const goToSettings = () => {
+  const goToSettings = async () => {
+    // Afficher la bulle immédiatement
+    isNavigatingToSettings.value = true;
+    // Attendre que le DOM soit mis à jour pour afficher la bulle
+    await nextTick();
+    // Petite pause pour s'assurer que la bulle est visible avant la navigation
+    await new Promise(resolve => setTimeout(resolve, 50));
+    // Naviguer vers Settings
     router.push({ name: "Settings" });
   };
   const viewPublicProfile = () => {
@@ -1378,6 +1386,22 @@
       }
     },
     { immediate: true },
+  );
+
+  // --- Watch pour masquer la bulle quand on arrive sur Settings ---
+  watch(
+    () => route.name,
+    (newRouteName) => {
+      if (newRouteName === "Settings" && isNavigatingToSettings.value) {
+        // Masquer la bulle après un court délai pour permettre à la page de se charger
+        setTimeout(() => {
+          isNavigatingToSettings.value = false;
+        }, 500);
+      } else if (newRouteName !== "Settings" && isNavigatingToSettings.value) {
+        // Si on quitte Settings sans y être arrivé, masquer la bulle aussi
+        isNavigatingToSettings.value = false;
+      }
+    },
   );
 
   // --- ✅ OPTIMISATION : Intersection Observer pour lazy loading des slots ---

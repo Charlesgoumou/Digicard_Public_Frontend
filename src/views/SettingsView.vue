@@ -25,10 +25,7 @@
       <!-- Sélection de commande (affichée en premier si aucune commande n'est sélectionnée) -->
       <div v-if="showOrderSelection">
         <!-- Indicateur de chargement -->
-        <div v-if="isLoading" class="flex flex-col items-center justify-center py-20">
-          <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-sky-500"></div>
-          <p class="mt-4 text-slate-400 font-medium">Chargement de vos commandes...</p>
-        </div>
+        <LoadingSpinner v-if="isLoading" :is-loading="isLoading" />
         <div v-else-if="loadingError" class="text-center text-red-400 py-10">{{ loadingError }}</div>
 
         <!-- Aucune commande -->
@@ -285,10 +282,7 @@
         <!-- Contenu de l'onglet "Ma Carte" (par défaut) -->
         <div v-if="activeTab === 'card'">
           <!-- Indicateur de chargement circulaire pour le chargement initial -->
-          <div v-if="isLoading" class="flex flex-col items-center justify-center py-20">
-            <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-sky-500"></div>
-            <p class="mt-4 text-slate-400 font-medium">Chargement de vos paramètres...</p>
-          </div>
+          <LoadingSpinner v-if="isLoading" :is-loading="isLoading" />
           <div v-else-if="loadingError" class="text-center text-red-400 py-10">{{ loadingError }}</div>
 
           <!-- Formulaire de paramétrage -->
@@ -401,7 +395,7 @@
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                 ></path>
               </svg>
-              {{ isSaving ? "Sauvegarde..." : "Enregistrer et quitter" }}
+              {{ isSaving ? "Sauvegarde..." : (user && user.role === 'individual' ? "Enregistrer" : "Enregistrer et quitter") }}
             </button>
             <p v-if="saveError" class="text-sm text-red-400 text-center mt-3 h-5">{{ saveError }}</p>
             <p v-if="saveSuccess" class="text-sm text-green-400 text-center mt-3 h-5">{{ saveSuccess }}</p>
@@ -425,6 +419,7 @@
   import ProfileSettingsForm from "@/components/Settings/ProfileSettingsForm.vue";
   import SocialLinksForm from "@/components/Settings/SocialLinksForm.vue";
   import CardDesignSelector from "@/components/Settings/CardDesignSelector.vue";
+  import LoadingSpinner from "@/components/layout/LoadingSpinner.vue";
 
   // ========== GESTION DES ONGLETS ==========
   const activeTab = ref("card");
@@ -614,6 +609,13 @@
       // Attendre un peu pour que le message de succès s'affiche
       setTimeout(() => {
         activeTab.value = 'services';
+        // Faire défiler vers le haut de la page pour voir les onglets
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 1500);
+    } else if (user.value && user.value.role === 'individual') {
+      // Pour les particuliers, après la sauvegarde de "Ma Carte", basculer vers l'onglet "Mon Profil"
+      setTimeout(() => {
+        activeTab.value = 'profile';
         // Faire défiler vers le haut de la page pour voir les onglets
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }, 1500);

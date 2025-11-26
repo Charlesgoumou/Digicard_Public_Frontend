@@ -39,6 +39,8 @@
   </head>
   <body>
     <div id="app"></div>
+    <!-- ✅ CORRECTION: Ne PAS nettoyer les cookies au démarrage pour éviter de supprimer le cookie de session actif -->
+    <!-- Le nettoyage sera fait après que l'application ait vérifié la session (dans App.vue) -->
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

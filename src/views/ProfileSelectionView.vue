@@ -23,10 +23,7 @@
       <h1 class="text-4xl font-bold mb-8 text-center">Choisissez le profil à afficher</h1>
 
       <!-- État de chargement -->
-      <div v-if="isLoading" class="text-center text-slate-400 py-10">
-        <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-sky-500"></div>
-        <p class="mt-4">Chargement...</p>
-      </div>
+      <LoadingSpinner v-if="isLoading" :is-loading="isLoading" />
 
       <!-- Erreur -->
       <div v-else-if="loadingError" class="text-center text-red-400 py-10">
@@ -194,6 +191,7 @@
   import { useRouter } from "vue-router";
   import { useAuth } from "@/composables/useAuth";
   import apiClient from "@/api";
+  import LoadingSpinner from "@/components/layout/LoadingSpinner.vue";
 
   const router = useRouter();
   const { user } = useAuth();
