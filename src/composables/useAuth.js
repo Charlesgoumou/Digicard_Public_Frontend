@@ -48,10 +48,11 @@ export function useAuth() {
       try {
         console.log("[_fetchUser] Récupération du cookie CSRF...");
         await apiClient.get("/sanctum/csrf-cookie");
-        // ✅ CORRECTION: Augmenter le délai à 500ms pour s'assurer que la session est bien établie
+        // ✅ CORRECTION: Augmenter le délai à 800ms pour s'assurer que la session est bien établie
         // après un rechargement de page, la session peut prendre plus de temps à être restaurée
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        console.log("[_fetchUser] Cookie CSRF récupéré, attente de 500ms pour établir la session");
+        // Le délai plus long permet à Laravel de restaurer la session depuis la base de données
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        console.log("[_fetchUser] Cookie CSRF récupéré, attente de 800ms pour établir la session");
       } catch (csrfError) {
         console.warn("Erreur lors de la récupération du cookie CSRF:", csrfError);
         // Continuer quand même, le cookie peut déjà être présent
@@ -64,11 +65,15 @@ export function useAuth() {
       const xsrfToken = Cookies.get("XSRF-TOKEN");
       if (!xsrfToken) {
         console.warn("[_fetchUser] Cookie XSRF-TOKEN non trouvé après récupération, réessai...");
-        // Réessayer une fois
+        // Réessayer une fois avec un délai plus long
         await apiClient.get("/sanctum/csrf-cookie");
-        await new Promise((resolve) => setTimeout(resolve, 300));
+        await new Promise((resolve) => setTimeout(resolve, 500));
         await setCsrfHeader();
       }
+      
+      // ✅ NOUVEAU: Attendre un peu plus avant d'appeler /api/user pour laisser le temps
+      // à la session Laravel d'être complètement restaurée depuis la base de données
+      await new Promise((resolve) => setTimeout(resolve, 200));
       
       console.log("[_fetchUser] Header CSRF mis à jour, appel de /api/user...");
 
