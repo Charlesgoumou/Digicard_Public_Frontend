@@ -158,6 +158,16 @@ const loadPendingAccounts = async () => {
         setTimeout(() => {
           router.push({ name: "Home" });
         }, 3000);
+      } 
+      // ✅ NOUVEAU: Si un seul compte est disponible, lancer la connexion automatiquement
+      else if (availableAccounts.value.length === 1) {
+        console.log("Un seul compte détecté, connexion automatique...");
+        // Afficher un message de chargement
+        isLoading.value = true;
+        // Lancer la connexion automatiquement après un court délai pour que l'UI se mette à jour
+        setTimeout(() => {
+          selectAccountAndLogin(availableAccounts.value[0].id);
+        }, 300);
       }
     } else {
       errorMessage.value = "Aucun compte en attente de sélection.";
