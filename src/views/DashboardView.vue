@@ -38,7 +38,9 @@
         <p v-if="user.company_name" class="text-lg text-slate-400">{{ user.company_name }}</p>
       </div>
     </div>
-    <!-- Skeleton Loader pendant le chargement -->
+    <!-- ✅ OPTIMISATION: Skeleton Loader SEULEMENT si user n'existe vraiment pas (premier chargement absolu) -->
+    <!-- Ne pas afficher le skeleton si user existe déjà en cache -->
+    <!-- Le contenu du dashboard sera affiché même si user est en train d'être rechargé -->
     <div v-else class="min-h-screen bg-slate-900">
       <!-- Header Skeleton -->
       <div
@@ -1253,9 +1255,9 @@
           fullAvatarUrl = backendUrl + "/" + response.data.avatar_url.replace(/^\//, "");
         }
         
-        // Ajouter un timestamp pour forcer le rechargement de l'image
-        const newUrlWithTimestamp = fullAvatarUrl + "?t=" + new Date().getTime();
-        updateUserAvatar(newUrlWithTimestamp);
+        // ✅ OPTIMISATION CACHE: Ne pas ajouter de timestamp - le navigateur utilisera ETag/Last-Modified
+        // pour détecter automatiquement si l'image a changé
+        updateUserAvatar(fullAvatarUrl);
       }
       console.log("Avatar mis à jour:", response.data.avatar_url);
       uploadSuccess = true;

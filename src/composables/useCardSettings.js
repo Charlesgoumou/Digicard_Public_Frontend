@@ -144,11 +144,130 @@ export function useCardSettings(
 
     console.log("useCardSettings: Loading order data for orderId:", orderId);
 
-    // Activer l'indicateur de chargement
-    isLoadingOrderData.value = true;
+    // ✅ OPTIMISATION: Ne pas afficher le spinner si les données sont déjà chargées pour cet orderId
+    // Cela évite le scintillement lors de la navigation
+    const hasExistingData = loadedOrderData.value && loadedOrderData.value.id === parseInt(orderId);
+    
+    // ✅ OPTIMISATION: Si les données existent déjà, les utiliser immédiatement pour remplir le formulaire
+    // avant de faire l'appel API en arrière-plan
+    if (hasExistingData) {
+      console.log("useCardSettings: Using existing data for orderId:", orderId);
+      const selectedOrder = loadedOrderData.value;
+      const currentUser = user.value;
+      
+      // Utiliser les données existantes pour remplir le formulaire immédiatement
+      const isBusinessAdminInOrder = 
+        currentUser.role === "business_admin" && 
+        selectedOrder.order_type === "business" &&
+        (selectedOrder.employee_card_quantity !== undefined || selectedOrder.employee_profile);
+      
+      const profileData =
+        ((currentUser.role === "employee" || isBusinessAdminInOrder) && selectedOrder.employee_profile)
+          ? selectedOrder.employee_profile
+          : selectedOrder;
+      
+      const isOrderConfigured =
+        (currentUser.role === "employee" || isBusinessAdminInOrder)
+          ? selectedOrder.employee_profile && selectedOrder.employee_profile.profile_name
+          : selectedOrder.is_configured;
+      
+      // Remplir le formulaire avec les données existantes
+      if (isOrderConfigured) {
+        form.name = profileData.profile_name || currentUser.name || "";
+        form.title = profileData.profile_title || "";
+        form.profile_border_color = profileData.profile_border_color || "#facc15";
+        form.save_contact_button_color = profileData.save_contact_button_color || "#ca8a04";
+        form.services_button_color = profileData.services_button_color || "#0ea5e9";
+        
+        if (profileData.phone_numbers && Array.isArray(profileData.phone_numbers)) {
+          form.phone_numbers = profileData.phone_numbers.filter((item) => item !== null && item !== "");
+        }
+        if (profileData.emails && Array.isArray(profileData.emails)) {
+          form.emails = profileData.emails.filter((item) => item !== null && item !== "");
+        }
+        form.birth_day = profileData.birth_day || null;
+        form.birth_month = profileData.birth_month || null;
+        form.website_url = profileData.website_url || "";
+        form.address_neighborhood = profileData.address_neighborhood || "";
+        form.address_commune = profileData.address_commune || "";
+        form.address_city = profileData.address_city || "";
+        form.address_country = profileData.address_country || "";
+        form.whatsapp_url = profileData.whatsapp_url || "";
+        form.linkedin_url = profileData.linkedin_url || "";
+        form.facebook_url = profileData.facebook_url || "";
+        form.twitter_url = profileData.twitter_url || "";
+        form.youtube_url = profileData.youtube_url || "";
+        form.deezer_url = profileData.deezer_url || "";
+        form.spotify_url = profileData.spotify_url || "";
+        form.card_design_type = profileData.card_design_type || null;
+        form.card_design_number = profileData.card_design_number || null;
+        form.card_design_custom_url = profileData.card_design_custom_url || null;
+        form.no_design_yet = profileData.no_design_yet || false;
+        
+        if (onDesignStateUpdate) {
+          onDesignStateUpdate({
+            selectedDesignType: form.card_design_type,
+            selectedDesignNumber: form.card_design_number,
+            noDesignYet: form.no_design_yet,
+          });
+        }
+        
+        if (form.card_design_custom_url && onCustomDesignPreviewUpdate && getAvatarUrl) {
+          onCustomDesignPreviewUpdate(getAvatarUrl(form.card_design_custom_url));
+        }
+      }
+      
+      // ✅ OPTIMISATION: Charger l'avatar depuis les données existantes IMMÉDIATEMENT
+      // Cela permet d'afficher l'avatar à la frame 0, sans attendre l'appel API
+      const backendUrl = import.meta.env.VITE_APP_URL_BACKEND || "http://localhost:8000";
+      let avatarUrl = null;
+      let orderAvatarUrl = null;
+      
+      if ((currentUser.role === "employee" || isBusinessAdminInOrder) && selectedOrder.employee_profile) {
+        orderAvatarUrl = profileData.employee_avatar_url || null;
+        avatarUrl = orderAvatarUrl || currentUser.avatar_url;
+      } else {
+        orderAvatarUrl = selectedOrder.order_avatar_url || null;
+        avatarUrl = orderAvatarUrl || currentUser.avatar_url;
+      }
+      
+      // ✅ CRITIQUE: Mettre à jour l'avatar IMMÉDIATEMENT (synchroniquement) pour éviter le scintillement
+      if (avatarUrl && onAvatarPreviewUpdate) {
+        let constructedUrl;
+        if (avatarUrl.startsWith("/api/storage/") || avatarUrl.startsWith("/storage/")) {
+          constructedUrl = backendUrl + avatarUrl;
+        } else if (avatarUrl.startsWith("http://") || avatarUrl.startsWith("https://")) {
+          constructedUrl = avatarUrl;
+        } else {
+          constructedUrl = backendUrl + "/" + avatarUrl.replace(/^\//, "");
+        }
+        // ✅ CRITIQUE: Appel synchrone pour que l'avatar s'affiche immédiatement
+        onAvatarPreviewUpdate(constructedUrl);
+      } else if (onAvatarPreviewUpdate && currentUser.avatar_url) {
+        // ✅ FALLBACK: Si pas d'avatar de commande, utiliser l'avatar utilisateur
+        let constructedUrl;
+        if (currentUser.avatar_url.startsWith("/api/storage/") || currentUser.avatar_url.startsWith("/storage/")) {
+          constructedUrl = backendUrl + currentUser.avatar_url;
+        } else if (currentUser.avatar_url.startsWith("http://") || currentUser.avatar_url.startsWith("https://")) {
+          constructedUrl = currentUser.avatar_url;
+        } else {
+          constructedUrl = backendUrl + "/" + currentUser.avatar_url.replace(/^\//, "");
+        }
+        onAvatarPreviewUpdate(constructedUrl);
+      } else if (onAvatarPreviewUpdate) {
+        onAvatarPreviewUpdate(null);
+      }
+      
+      // ✅ CRITIQUE: Ne JAMAIS mettre isLoadingOrderData à true si on a déjà des données
+      // Les données sont déjà affichées, l'appel API se fera en arrière-plan
+      // Cela évite complètement le scintillement
+    } else {
+      // Activer l'indicateur de chargement SEULEMENT si on n'a pas déjà les données
+      isLoadingOrderData.value = true;
+    }
 
     try {
-      // Charger les données complètes de la commande depuis l'API
+      // Charger les données complètes de la commande depuis l'API (en arrière-plan si données existent)
       const response = await apiClient.get(`/api/orders/${orderId}`);
       const selectedOrder = response.data;
       
@@ -293,6 +412,21 @@ export function useCardSettings(
         form.deezer_url = currentUser.deezer_url || "";
         form.spotify_url = currentUser.spotify_url || "";
 
+        // ✅ OPTIMISATION: Charger l'avatar utilisateur immédiatement pour les commandes non configurées
+        // Cela évite le scintillement lors de la navigation
+        if (currentUser.avatar_url && onAvatarPreviewUpdate) {
+          const backendUrl = import.meta.env.VITE_APP_URL_BACKEND || "http://localhost:8000";
+          let constructedUrl;
+          if (currentUser.avatar_url.startsWith("/api/storage/") || currentUser.avatar_url.startsWith("/storage/")) {
+            constructedUrl = backendUrl + currentUser.avatar_url;
+          } else if (currentUser.avatar_url.startsWith("http://") || currentUser.avatar_url.startsWith("https://")) {
+            constructedUrl = currentUser.avatar_url;
+          } else {
+            constructedUrl = backendUrl + "/" + currentUser.avatar_url.replace(/^\//, "");
+          }
+          onAvatarPreviewUpdate(constructedUrl);
+        }
+
         // Pour le business admin inclus, charger les données de design depuis employee_profile si disponibles
         if (hasDesignData && selectedOrder.employee_profile) {
           form.card_design_type = selectedOrder.employee_profile.card_design_type || null;
@@ -382,7 +516,8 @@ export function useCardSettings(
         // Le préchargement avec Image() peut causer des problèmes de timing et de CORS
         // Mieux vaut laisser le navigateur gérer le chargement de l'image directement
         // Si l'image ne se charge pas, l'événement @error dans le composant gérera l'affichage
-        onAvatarPreviewUpdate(constructedUrl + "?t=" + new Date().getTime());
+        // ✅ OPTIMISATION CACHE: Ne pas ajouter de timestamp - le navigateur utilisera ETag/Last-Modified
+        onAvatarPreviewUpdate(constructedUrl);
       } else if (onAvatarPreviewUpdate) {
         onAvatarPreviewUpdate(null);
       }

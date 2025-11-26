@@ -473,7 +473,6 @@
       });
       
       const backendUrl = import.meta.env.VITE_APP_URL_BACKEND || "http://localhost:8000";
-      const timestamp = new Date().getTime();
       const avatarUrl = response.data.avatar_url;
       let fullAvatarUrl;
       // ✅ CORRECTION : Gérer les deux formats (/storage/ et /api/storage/)
@@ -485,8 +484,9 @@
         fullAvatarUrl = backendUrl + "/" + avatarUrl.replace(/^\//, "");
       }
       
-      // Mettre à jour l'aperçu de l'avatar immédiatement
-      emit("update:avatar", fullAvatarUrl + "?t=" + timestamp);
+      // ✅ OPTIMISATION CACHE: Ne pas ajouter de timestamp - le navigateur utilisera ETag/Last-Modified
+      // pour détecter automatiquement si l'image a changé
+      emit("update:avatar", fullAvatarUrl);
       
       // ✅ CORRECTION : Pour les business admin, recharger les données de la commande
       // pour s'assurer que employee_avatar_url est bien chargé depuis le backend
@@ -557,13 +557,12 @@
       profileAvatarUrl = backendUrl + "/" + profileAvatarUrlRaw.replace(/^\//, "");
     }
     
-    // Mettre à jour l'aperçu immédiatement
-    emit("update:avatar", profileAvatarUrl + "?t=" + new Date().getTime());
+    // ✅ OPTIMISATION CACHE: Ne pas ajouter de timestamp - le navigateur utilisera ETag/Last-Modified
+    emit("update:avatar", profileAvatarUrl);
     
     try {
       setCsrfHeader();
       const response = await apiClient.post(`/api/orders/${props.selectedOrderId}/use-profile-avatar`);
-      const timestamp = new Date().getTime();
       const returnedAvatarUrlRaw = response.data.avatar_url;
       let returnedAvatarUrl;
       if (returnedAvatarUrlRaw.startsWith("/storage/")) {
@@ -574,8 +573,8 @@
         returnedAvatarUrl = backendUrl + "/" + returnedAvatarUrlRaw.replace(/^\//, "");
       }
       
-      // Mettre à jour l'aperçu avec l'URL retournée par le backend
-      emit("update:avatar", returnedAvatarUrl + "?t=" + timestamp);
+      // ✅ OPTIMISATION CACHE: Ne pas ajouter de timestamp - le navigateur utilisera ETag/Last-Modified
+      emit("update:avatar", returnedAvatarUrl);
       
       // ✅ CORRECTION : Recharger les données de la commande après avoir utilisé la photo de profil
       emit("reload-order-data");
@@ -614,9 +613,10 @@
       } else {
         fallbackAvatarUrl = backendUrl + "/" + userAvatarUrl.replace(/^\//, "");
       }
+      // ✅ OPTIMISATION CACHE: Ne pas ajouter de timestamp - le navigateur utilisera ETag/Last-Modified
       // Essayer une seule fois avec l'avatar utilisateur
       if (!avatarLoadError.value) {
-        emit("update:avatar", fallbackAvatarUrl + "?t=" + new Date().getTime());
+        emit("update:avatar", fallbackAvatarUrl);
       } else {
         // Si ça échoue aussi, marquer l'erreur
         avatarLoadError.value = true;

@@ -281,8 +281,9 @@
 
         <!-- Contenu de l'onglet "Ma Carte" (par défaut) -->
         <div v-if="activeTab === 'card'">
-          <!-- Indicateur de chargement circulaire pour le chargement initial -->
-          <LoadingSpinner v-if="isLoading" :is-loading="isLoading" />
+          <!-- ✅ OPTIMISATION: Ne pas afficher le spinner si les données sont déjà disponibles -->
+          <!-- Afficher le spinner SEULEMENT si on n'a aucune donnée (premier chargement absolu) -->
+          <LoadingSpinner v-if="isLoading && !loadedOrderData && !selectedOrderId" :is-loading="isLoading" />
           <div v-else-if="loadingError" class="text-center text-red-400 py-10">{{ loadingError }}</div>
 
           <!-- Formulaire de paramétrage -->
@@ -312,9 +313,11 @@
             <p class="mt-4 text-white font-medium">{{ savingMessage }}</p>
           </div>
 
-          <!-- Indicateur de chargement pour les données de commande -->
+          <!-- ✅ OPTIMISATION: Ne JAMAIS afficher le spinner si on a déjà des données en cache -->
+          <!-- Afficher le spinner SEULEMENT si on n'a aucune donnée (premier chargement absolu) -->
+          <!-- Vérifier aussi orderAvatarPreview pour l'avatar, et form.name pour les données du formulaire -->
           <div
-            v-if="isLoadingOrderData"
+            v-if="isLoadingOrderData && !loadedOrderData && !orderAvatarPreview && !form.name"
             class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex flex-col items-center justify-center z-50"
           >
             <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-sky-500"></div>
@@ -444,7 +447,23 @@
   } = useOrderManagement(user);
 
   // ========== GESTION DE L'AVATAR DE COMMANDE ==========
+  // ✅ OPTIMISATION: Initialiser l'avatar immédiatement depuis user.avatar_url si disponible
+  // Cela évite le scintillement lors de la navigation
   const orderAvatarPreview = ref(null);
+  
+  // ✅ OPTIMISATION: Initialiser l'avatar immédiatement si user.avatar_url existe
+  // Cela permet d'afficher l'avatar dès la première frame, même avant le chargement des données
+  if (user.value?.avatar_url) {
+    const backendUrl = import.meta.env.VITE_APP_URL_BACKEND || "http://localhost:8000";
+    let initialAvatarUrl = user.value.avatar_url;
+    if (initialAvatarUrl.startsWith("/api/storage/") || initialAvatarUrl.startsWith("/storage/")) {
+      orderAvatarPreview.value = backendUrl + initialAvatarUrl;
+    } else if (initialAvatarUrl.startsWith("http://") || initialAvatarUrl.startsWith("https://")) {
+      orderAvatarPreview.value = initialAvatarUrl;
+    } else {
+      orderAvatarPreview.value = backendUrl + "/" + initialAvatarUrl.replace(/^\//, "");
+    }
+  }
 
   // ========== GESTION DU DESIGN (pour CardDesignSelector) ==========
   const customDesignPreview = ref(null);
@@ -517,7 +536,15 @@
   // 'isLoadingOrderData' de useCardSettings contrôle le spinner.
   // Nous devons informer useCardSettings quand le chargement initial est terminé.
   onMounted(async () => {
+    // ✅ OPTIMISATION: Si les données sont déjà disponibles, ne pas afficher le spinner
+    // Les données seront utilisées immédiatement depuis le cache
     if (selectedOrderId.value) {
+      // Si les données sont déjà chargées, ne pas mettre isLoading à true
+      const hasExistingData = loadedOrderData.value && loadedOrderData.value.id === parseInt(selectedOrderId.value);
+      if (!hasExistingData) {
+        isLoading.value = true;
+      }
+      
       try {
         await loadOrderData(selectedOrderId.value);
         console.log("SettingsView: Order data loaded after mount");
@@ -526,6 +553,9 @@
       } finally {
         isLoading.value = false;
       }
+    } else {
+      // Si aucune commande n'est sélectionnée, ne pas afficher le spinner
+      isLoading.value = false;
     }
   });
 
@@ -535,6 +565,35 @@
     (newOrderId, oldOrderId) => {
       if (newOrderId && newOrderId !== oldOrderId) {
         activeTab.value = "card";
+        
+        // ✅ OPTIMISATION: Si on a déjà des données pour cette commande, initialiser l'avatar immédiatement
+        // Cela évite le scintillement lors du changement de commande
+        if (loadedOrderData.value && loadedOrderData.value.id === parseInt(newOrderId)) {
+          const backendUrl = import.meta.env.VITE_APP_URL_BACKEND || "http://localhost:8000";
+          const order = loadedOrderData.value;
+          let avatarUrl = null;
+          
+          // Déterminer l'avatar à utiliser selon le rôle
+          if (user.value?.role === "employee" && order.employee_profile?.employee_avatar_url) {
+            avatarUrl = order.employee_profile.employee_avatar_url;
+          } else if (order.order_avatar_url) {
+            avatarUrl = order.order_avatar_url;
+          } else if (user.value?.avatar_url) {
+            avatarUrl = user.value.avatar_url;
+          }
+          
+          if (avatarUrl) {
+            let constructedUrl;
+            if (avatarUrl.startsWith("/api/storage/") || avatarUrl.startsWith("/storage/")) {
+              constructedUrl = backendUrl + avatarUrl;
+            } else if (avatarUrl.startsWith("http://") || avatarUrl.startsWith("https://")) {
+              constructedUrl = avatarUrl;
+            } else {
+              constructedUrl = backendUrl + "/" + avatarUrl.replace(/^\//, "");
+            }
+            orderAvatarPreview.value = constructedUrl;
+          }
+        }
       }
     }
   );
