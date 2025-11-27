@@ -194,72 +194,55 @@ router.beforeEach(async (to, from, next) => {
     return next();
   }
 
-  // ✅ CAS DU REFRESH : L'utilisateur est null, on tente de le récupérer
+  // ✅ CAS DU REFRESH (F5) : L'utilisateur est null, on doit attendre fetchUser() avant de décider
+  // ✅ CRITIQUE: Ne pas rediriger vers login avant d'avoir attendu la réponse du serveur
+  // Même si fetchUser() met 500ms à répondre, on attend sans timeout arbitraire
   console.log("[Guard] User not loaded (refresh detected). Fetching user from API...");
   
   // ✅ Détecter si on vient de SelectAccount (après authentification Google)
   const isFromSelectAccount = from.name === "SelectAccount";
   
-  // ✅ SIMPLIFICATION: Si requiresAuth est true et !user.value, on doit toujours entrer dans la boucle de retry
-  // Supprimer la logique complexe de shouldRetry
-  if (!requiresAuth || user.value) {
-    // Si la route n'est pas protégée ou si l'utilisateur est déjà là, on ne devrait pas arriver ici
-    // Mais par sécurité, on laisse passer
-    console.log("[Guard] Route not protected or user already loaded. Allowing navigation.");
-    return next();
-  }
-  
-  // ✅ CRITIQUE: Boucle de retry simplifiée avec délais stricts pour éviter la boucle infinie
-  const maxRetries = 3;
-  
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    // ✅ 1. PAUSE DE SÉCURITÉ (Anti-boucle & Initialisation Cookie)
-    // ✅ CORRECTION: Augmenter le délai initial à 1000ms pour laisser le temps à la session de se restaurer
-    // 1000ms avant la première tentative (pour le F5), 1500ms entre les suivantes
-    const delay = attempt === 1 ? 1000 : 1500;
-    console.log(`[Guard] Tentative ${attempt}/${maxRetries}, attente de ${delay}ms avant de récupérer l'utilisateur...`);
-    await new Promise(resolve => setTimeout(resolve, delay));
-    
+  // ✅ 1. Si l'utilisateur n'est pas chargé en mémoire (cas du F5), attendre fetchUser()
+  // IMPORTANT : Ne pas mettre de timeout arbitraire court ici, attendre la réponse
+  if (!user.value) {
     try {
-      // ✅ 2. On tente de récupérer l'utilisateur
-      console.log(`[Guard] Tentative ${attempt}/${maxRetries}: Appel de fetchUser()...`);
+      console.log("[Guard] Awaiting fetchUser() to check session...");
+      // On attend la réponse du serveur (avec le cookie session)
+      // fetchUser() peut prendre du temps en production (latence réseau), mais on attend
       await fetchUser();
-      
-      // ✅ 3. Si succès immédiat, on laisse passer
-      if (user.value) {
-        console.log(`[Guard] Utilisateur trouvé à la tentative ${attempt}:`, user.value.email);
-        // ✅ Vérifier le profil après le fetch
-        if (user.value.is_profile_complete === false && !finalizeRoute) {
-          console.log("[Guard] Profile incomplete after fetch. Redirecting to /finaliser-inscription");
-          return next({ name: "FinalizeRegistration" });
-        }
-        
-        if (finalizeRoute && user.value.is_profile_complete === true) {
-          console.log("[Guard] Profile already complete after fetch. Redirecting to Dashboard.");
-          return next({ name: "Dashboard" });
-        }
-        
-        console.log(`[Guard] User found on attempt ${attempt}. Navigation allowed.`);
-        return next();
-      }
-      
-      // Si l'utilisateur n'est pas trouvé, on continue la boucle
-      console.warn(`[Guard] Attempt ${attempt}/${maxRetries} failed: User not found. Retrying...`);
+      console.log("[Guard] fetchUser() completed, user.value:", user.value ? "found" : "null");
     } catch (error) {
-      console.warn(`[Guard] Attempt ${attempt}/${maxRetries} failed:`, error.message || error);
-      // On ne fait rien ici, la boucle va continuer après le délai du prochain tour
+      console.error("[Guard] Echec récupération session:", error);
+      // On continue, la vérification 'requiresAuth' plus bas décidera de la redirection
     }
   }
   
-  // ✅ Si on sort de la boucle, c'est un échec définitif
-  // ✅ EXCEPTION: Si on vient de SelectAccount, la session devrait être établie
-  if (isFromSelectAccount) {
-    console.warn("[Guard] Session check failed after all retries, but coming from SelectAccount. Session should be established. Allowing access.");
+  // ✅ 2. Ensuite, on vérifie les droits normalement
+  if (requiresAuth && !user.value) {
+    console.log("[Guard] Route requires auth but user is null. Redirecting to Home.");
+    return next({ name: "Home" });
+  }
+  
+  // ✅ 3. Vérifier le profil si l'utilisateur est chargé
+  if (user.value) {
+    if (user.value.is_profile_complete === false && !finalizeRoute) {
+      console.log("[Guard] Profile incomplete. Redirecting to /finaliser-inscription");
+      return next({ name: "FinalizeRegistration" });
+    }
+    
+    if (finalizeRoute && user.value.is_profile_complete === true) {
+      console.log("[Guard] Profile already complete. Redirecting to Dashboard.");
+      return next({ name: "Dashboard" });
+    }
+    
+    console.log("[Guard] User authenticated. Allowing navigation.");
     return next();
   }
   
-  console.log("[Guard] Session check failed after all retries. Redirecting to Login.");
-  return next({ name: "Home" }); // Redirection vers Home (page de login)
+  // ✅ Si on arrive ici, c'est qu'il n'y a pas d'utilisateur et que la route n'est pas protégée
+  // (mais normalement on ne devrait pas arriver ici car requiresAuth est vérifié plus haut)
+  console.log("[Guard] Allowing navigation (route not protected).");
+  return next();
 });
 
 export default router;

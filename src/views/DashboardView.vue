@@ -1,7 +1,8 @@
 <template>
   <div class="min-h-screen bg-slate-900 text-white">
+    <!-- ✅ OPTIMISATION: Afficher le contenu immédiatement même si user n'est pas encore chargé -->
+    <!-- L'avatar sera affiché dès que user.value.avatar_url est disponible -->
     <div
-      v-if="user"
       class="w-full h-64 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center"
     >
       <div class="text-center relative">
@@ -9,7 +10,9 @@
           @click="openFileInput"
           class="relative w-40 h-40 mx-auto rounded-full border-4 border-slate-700 bg-slate-800 flex items-center justify-center cursor-pointer group overflow-hidden"
         >
-          <img v-if="userAvatarUrl" :src="userAvatarUrl" :key="userAvatarUrl" class="w-full h-full object-cover" alt="Avatar actuel" @error="handleAvatarError" @load="() => console.log('[Dashboard] Avatar image loaded:', userAvatarUrl)" />
+          <!-- ✅ OPTIMISATION: Afficher l'avatar immédiatement avec la valeur synchrone -->
+          <!-- Si userAvatarUrl est null, le SVG placeholder s'affichera automatiquement -->
+          <img v-if="userAvatarUrl" :src="userAvatarUrl" :key="userAvatarUrl" class="w-full h-full object-cover" alt="Avatar actuel" @error="handleAvatarError" />
           <svg v-else class="w-20 h-20 text-slate-500" fill="currentColor" viewBox="0 0 24 24">
             <path
               d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z"
@@ -34,64 +37,16 @@
             </svg>
           </div>
         </div>
-        <h1 class="mt-4 text-3xl font-bold tracking-tight">{{ user.name }}</h1>
-        <p v-if="user.company_name" class="text-lg text-slate-400">{{ user.company_name }}</p>
+        <h1 class="mt-4 text-3xl font-bold tracking-tight">{{ user?.name || "Chargement..." }}</h1>
+        <p v-if="user?.company_name" class="text-lg text-slate-400">{{ user.company_name }}</p>
       </div>
     </div>
-    <!-- ✅ OPTIMISATION: Skeleton Loader SEULEMENT si user n'existe vraiment pas (premier chargement absolu) -->
-    <!-- Ne pas afficher le skeleton si user existe déjà en cache -->
-    <!-- Le contenu du dashboard sera affiché même si user est en train d'être rechargé -->
-    <div v-else class="min-h-screen bg-slate-900">
-      <!-- Header Skeleton -->
-      <div
-        class="w-full h-64 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center"
-      >
-        <div class="text-center animate-pulse">
-          <!-- Avatar Skeleton -->
-          <div class="w-40 h-40 mx-auto rounded-full bg-slate-700/50 mb-4"></div>
-          <!-- Nom Skeleton -->
-          <div class="h-8 w-48 bg-slate-700/50 rounded mx-auto mb-2"></div>
-          <!-- Entreprise Skeleton -->
-          <div class="h-5 w-32 bg-slate-700/50 rounded mx-auto"></div>
-        </div>
-      </div>
+    <!-- ✅ SUPPRIMÉ: Le skeleton loader bloquant - le contenu s'affiche maintenant immédiatement -->
 
-      <!-- Dashboard Content Skeleton -->
-      <div class="container mx-auto px-4 py-12">
-        <!-- Titre Skeleton -->
-        <div class="h-10 w-64 bg-slate-700/50 rounded mx-auto mb-12 animate-pulse"></div>
-
-        <!-- Boutons Skeleton -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 max-w-4xl mx-auto animate-pulse">
-          <div class="bg-slate-800/50 rounded-xl p-6 border border-slate-700 h-44">
-            <div class="w-16 h-16 bg-slate-700/50 rounded-full mx-auto mb-4"></div>
-            <div class="h-6 w-32 bg-slate-700/50 rounded mx-auto mb-2"></div>
-            <div class="h-4 w-40 bg-slate-700/50 rounded mx-auto"></div>
-          </div>
-          <div class="bg-slate-800/50 rounded-xl p-6 border border-slate-700 h-44">
-            <div class="w-16 h-16 bg-slate-700/50 rounded-full mx-auto mb-4"></div>
-            <div class="h-6 w-32 bg-slate-700/50 rounded mx-auto mb-2"></div>
-            <div class="h-4 w-40 bg-slate-700/50 rounded mx-auto"></div>
-          </div>
-          <div class="bg-slate-800/50 rounded-xl p-6 border border-slate-700 h-44">
-            <div class="w-16 h-16 bg-slate-700/50 rounded-full mx-auto mb-4"></div>
-            <div class="h-6 w-32 bg-slate-700/50 rounded mx-auto mb-2"></div>
-            <div class="h-4 w-40 bg-slate-700/50 rounded mx-auto"></div>
-          </div>
-        </div>
-
-        <!-- Message -->
-        <div class="text-center mt-8">
-          <p class="text-slate-400 text-sm">Chargement du dashboard...</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Transition fluide pour le contenu du dashboard -->
-    <transition name="fade" mode="out-in">
-      <div v-if="user" key="dashboard-content" class="container mx-auto px-4 py-12">
-        <div v-if="user.role === 'individual'">
-          <h1 class="text-4xl font-bold text-center mb-12">Bienvenue, {{ user.name }} !</h1>
+    <!-- ✅ OPTIMISATION: Afficher le contenu immédiatement, même si user n'est pas encore chargé -->
+    <div class="container mx-auto px-4 py-12">
+        <div v-if="user?.role === 'individual'">
+          <h1 class="text-4xl font-bold text-center mb-12">Bienvenue, {{ user?.name || "Chargement..." }} !</h1>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 max-w-4xl mx-auto">
             <button
               @click="goToSettings"
@@ -120,7 +75,7 @@
           </div>
         </div>
 
-        <div v-else-if="user.role === 'business_admin'">
+        <div v-else-if="user?.role === 'business_admin'">
           <h1 class="text-4xl font-bold text-center mb-12">Espace Entreprise</h1>
           <!-- ✅ Masquer le contenu jusqu'à ce que le chargement des commandes business soit terminé -->
           <LoadingSpinner v-if="isLoadingBusinessOrders" :is-loading="isLoadingBusinessOrders" />
@@ -530,7 +485,7 @@
           </div>
         </div>
 
-        <div v-else-if="user.role === 'employee'">
+        <div v-else-if="user?.role === 'employee'">
           <h1 class="text-4xl font-bold text-center mb-4">Bienvenue, {{ user.name }} !</h1>
 
           <!-- ✅ Masquer le contenu jusqu'à ce que le chargement de la commande employé soit terminé -->
@@ -611,11 +566,11 @@
           </template>
         </div>
 
-        <div v-else-if="user">
+        <div v-else-if="user?.role">
           <p class="text-center text-red-400">Erreur : Rôle utilisateur inconnu ({{ user.role }}).</p>
         </div>
 
-        <div v-if="user" class="mt-12 text-center space-y-4">
+        <div v-if="user?.name" class="mt-12 text-center space-y-4">
           <button
             @click="goToHome"
             class="bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
@@ -638,7 +593,6 @@
           </button>
         </div>
       </div>
-    </transition>
     <ProfilePictureModal
       v-if="isCropperOpen"
       :imageUrl="selectedImageUrl"
@@ -730,22 +684,33 @@
     return backendUrl + "/" + avatarUrl.replace(/^\//, "");
   };
   
-  // ✅ CORRECTION : Computed pour obtenir l'URL de l'avatar de manière réactive
-  // Cela garantit que l'avatar s'affiche même si user.avatar_url change
-  const userAvatarUrl = computed(() => {
+  // ✅ OPTIMISATION: Initialisation synchrone de l'avatar pour affichage immédiat (0ms de délai)
+  // Utiliser user.value?.avatar_url directement depuis le composable useAuth
+  // Cela garantit que l'avatar s'affiche dès le premier rendu, sans attendre fetchUser()
+  const initialAvatarUrl = user.value?.avatar_url || null;
+  const userAvatarUrl = ref(initialAvatarUrl ? getUserAvatarUrl(initialAvatarUrl) : null);
+  
+  // ✅ Computed réactif pour mettre à jour l'avatar quand user.value.avatar_url change
+  // Mais on utilise aussi une ref pour l'initialisation synchrone
+  const userAvatarUrlComputed = computed(() => {
     if (user.value?.avatar_url) {
       const url = getUserAvatarUrl(user.value.avatar_url);
-      // ✅ DEBUG: Log pour vérifier que l'URL est bien construite
-      console.log("[Dashboard] userAvatarUrl computed:", {
-        hasUser: !!user.value,
-        avatar_url: user.value.avatar_url,
-        constructedUrl: url,
-      });
+      // Mettre à jour la ref pour que l'image se recharge si l'URL change
+      if (url !== userAvatarUrl.value) {
+        userAvatarUrl.value = url;
+      }
       return url;
     }
-    console.log("[Dashboard] userAvatarUrl computed: no avatar_url");
     return null;
   });
+  
+  // ✅ Utiliser la ref pour l'affichage immédiat, le computed pour la réactivité
+  // La ref est mise à jour par le computed, mais elle a une valeur initiale synchrone
+  watch(userAvatarUrlComputed, (newUrl) => {
+    if (newUrl) {
+      userAvatarUrl.value = newUrl;
+    }
+  }, { immediate: true });
   
   // ✅ CORRECTION : Watcher pour forcer la mise à jour de l'avatar quand user change
   // Cela garantit que l'avatar s'affiche immédiatement après une connexion
@@ -1002,62 +967,16 @@
     { immediate: true },
   );
   
-  // ✅ CORRECTION: Appeler fetchUser() au montage pour s'assurer que l'avatar est chargé immédiatement
-  // même si le watcher ne s'est pas encore déclenché
+  // ✅ OPTIMISATION: Le Router Guard a déjà appelé fetchUser() avant d'arriver ici
+  // L'avatar est initialisé de manière synchrone avec user.value?.avatar_url
+  // Plus besoin d'appeler fetchUser() au montage, l'avatar s'affiche immédiatement
   onMounted(async () => {
-    // ✅ CRITIQUE: Si l'utilisateur a déjà un avatar_url (par exemple depuis verifyCode),
-    // ne pas appeler fetchUser() immédiatement pour éviter de perdre l'avatar
-    // Attendre un peu pour laisser le temps à la session de se synchroniser
     console.log("[Dashboard] onMounted - user.value:", {
       hasUser: !!user.value,
-      userId: user.value?.id,
       hasAvatar: !!user.value?.avatar_url,
       avatarUrl: user.value?.avatar_url,
+      userAvatarUrl: userAvatarUrl.value,
     });
-    
-    // ✅ CRITIQUE: Si l'utilisateur a déjà un avatar, NE PAS appeler fetchUser() immédiatement
-    // pour éviter d'écraser l'avatar avec null (le backend peut ne pas avoir encore synchronisé)
-    if (user.value?.avatar_url) {
-      console.log("[Dashboard] User already has avatar_url, using it immediately:", user.value.avatar_url);
-      console.log("[Dashboard] userAvatarUrl computed:", userAvatarUrl.value);
-      // Attendre 2 secondes avant de rafraîchir pour laisser le temps au backend de synchroniser
-      setTimeout(async () => {
-        try {
-          // Préserver l'avatar existant avant d'appeler fetchUser()
-          const existingAvatar = user.value?.avatar_url;
-          const fetchedUser = await fetchUser();
-          console.log("[Dashboard] fetchUser() completed after delay:", {
-            hasUser: !!fetchedUser,
-            hasAvatar: !!fetchedUser?.avatar_url,
-            avatarUrl: fetchedUser?.avatar_url,
-            hadExistingAvatar: !!existingAvatar,
-          });
-          // Si fetchUser() a perdu l'avatar, le restaurer
-          if (!fetchedUser?.avatar_url && existingAvatar && fetchedUser?.id === user.value?.id) {
-            console.warn("[Dashboard] Avatar perdu après fetchUser(), restauration:", existingAvatar);
-            user.value.avatar_url = existingAvatar;
-          }
-        } catch (error) {
-          console.error("Erreur lors du chargement de l'utilisateur:", error);
-        }
-      }, 2000);
-    } else {
-      // Si l'utilisateur n'a pas d'avatar, appeler fetchUser() immédiatement
-      try {
-        const fetchedUser = await fetchUser();
-        console.log("[Dashboard] fetchUser() completed:", {
-          hasUser: !!fetchedUser,
-          hasAvatar: !!fetchedUser?.avatar_url,
-          avatarUrl: fetchedUser?.avatar_url,
-        });
-        
-        // ✅ FORCER la mise à jour du computed en utilisant nextTick
-        await nextTick();
-        console.log("[Dashboard] After nextTick - userAvatarUrl:", userAvatarUrl.value);
-      } catch (error) {
-        console.error("Erreur lors du chargement de l'utilisateur:", error);
-      }
-    }
     
     // ✅ Charger les commandes business si l'utilisateur est un business_admin
     if (user.value?.role === "business_admin") {
