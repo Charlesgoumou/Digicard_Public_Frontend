@@ -33,9 +33,9 @@
   // Vérifie si l'utilisateur est connecté
   const { isLoggedIn, logout } = useAuth();
 
-  // Crée une propriété calculée qui vérifie si on est sur une route spéciale (Dashboard, CompanyPublic, FinalizeRegistration, SelectAccount, PaymentProcessing)
+  // Crée une propriété calculée qui vérifie si on est sur une route spéciale (Dashboard, CompanyPublic, FinalizeRegistration, SelectAccount, PaymentProcessing, PaymentClose)
   const isDashboardRoute = computed(() => {
-    return route.name === "Dashboard" || route.name === "CompanyPublic" || route.name === "FinalizeRegistration" || route.name === "SelectAccount" || route.name === "PaymentProcessing";
+    return route.name === "Dashboard" || route.name === "CompanyPublic" || route.name === "FinalizeRegistration" || route.name === "SelectAccount" || route.name === "PaymentProcessing" || route.name === "PaymentClose";
   });
 
   // Vérifie si on est sur une route utilisateur connecté où le footer doit être caché
@@ -68,6 +68,10 @@
 
   // Propriété calculée pour déterminer si le header doit être affiché
   const shouldShowHeader = computed(() => {
+    // ✅ NOUVEAU: Vérifier si la route demande de masquer le header
+    if (route.meta.hideNavbar === true) {
+      return false;
+    }
     // Ne pas afficher sur les routes dashboard
     if (isDashboardRoute.value) {
       return false;
@@ -82,6 +86,10 @@
 
   // Propriété calculée pour déterminer si le footer doit être affiché
   const shouldShowFooter = computed(() => {
+    // ✅ NOUVEAU: Vérifier si la route demande de masquer le footer
+    if (route.meta.hideFooter === true) {
+      return false;
+    }
     // Ne pas afficher sur les routes dashboard
     if (isDashboardRoute.value) {
       return false;

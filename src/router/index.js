@@ -34,6 +34,17 @@ const router = createRouter({
       component: () => import("../views/PaymentProcessingView.vue"),
       meta: { requiresAuth: false } // ✅ CRUCIAL: Route publique, non bloquée par le Guard
     },
+    // ✅ NOUVEAU: Page simple de confirmation de paiement (pour l'onglet de paiement)
+    { 
+      path: "/payment/close", 
+      name: "PaymentClose", 
+      component: () => import("../views/PaymentCloseView.vue"),
+      meta: { 
+        requiresAuth: false, // Route publique
+        hideNavbar: true,    // ✅ Masquer le header
+        hideFooter: true     // ✅ Masquer le footer
+      }
+    },
     { path: "/finaliser-inscription", name: "FinalizeRegistration", component: () => import("../views/FinalizeRegistrationView.vue"), meta: { requiresAuth: true } },
 
     // --- Routes Protégées ---

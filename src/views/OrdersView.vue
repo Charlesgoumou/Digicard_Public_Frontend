@@ -669,6 +669,25 @@
       </div>
     </div>
 
+    <!-- ✅ NOUVEAU: Modal d'attente pour le paiement -->
+    <div
+      v-if="showPaymentWaitingModal"
+      class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+    >
+      <div class="bg-slate-800 rounded-xl p-8 max-w-md w-full border border-slate-700 shadow-2xl">
+        <div class="text-center">
+          <div class="inline-block animate-spin rounded-full h-16 w-16 border-b-2 border-sky-500 mb-6"></div>
+          <h3 class="text-xl font-bold text-white mb-3">Paiement en cours</h3>
+          <p class="text-slate-300 mb-4">
+            Paiement en cours dans un nouvel onglet... Nous attendons la confirmation.
+          </p>
+          <p class="text-slate-400 text-sm">
+            Vous pouvez fermer l'onglet de paiement une fois terminé. Cette fenêtre se mettra à jour automatiquement.
+          </p>
+        </div>
+      </div>
+    </div>
+
     <!-- ✅ NOUVEAU: Modal de Félicitation pour les Cartes Supplémentaires -->
     <div
       v-if="showAdditionalCardsSuccessModal"
@@ -749,6 +768,11 @@
   const showAdditionalCardsSuccessModal = ref(false);
   const additionalCardsSuccessData = ref(null);
   const showAddCardsModal = ref(false);
+  // ✅ NOUVEAU: Modal d'attente pour le paiement
+  const showPaymentWaitingModal = ref(false);
+  const paymentPollingInterval = ref(null);
+  const currentPollingOrderId = ref(null);
+  const currentPollingAdditionalPaymentId = ref(null);
   const selectedOrder = ref(null);
   const isProcessing = ref(false);
   const validatingOrderId = ref(null); // ID de la commande en cours de validation
@@ -1356,10 +1380,17 @@
 
       // ✅ MODIFICATION: Vérifier si la réponse contient un lien de paiement
       if (response.data.payment_url) {
-        // Rediriger vers le lien de paiement Chap Chap Pay
-        console.log('Redirection vers le paiement Chap Chap Pay:', response.data.payment_url);
-        window.location.href = response.data.payment_url;
-        return; // Sortir de la fonction car la redirection va se faire
+        // Ouvrir le paiement dans un nouvel onglet
+        console.log('Ouverture du paiement dans un nouvel onglet:', response.data.payment_url);
+        window.open(response.data.payment_url, '_blank');
+        
+        // Afficher le modal d'attente et démarrer le polling
+        showPaymentWaitingModal.value = true;
+        currentPollingOrderId.value = order.id;
+        currentPollingAdditionalPaymentId.value = null;
+        startPaymentPolling(order.id, null);
+        
+        return; // Sortir de la fonction
       }
 
       // Si pas de lien de paiement (ancien comportement pour compatibilité)
@@ -1594,11 +1625,129 @@
     }
   };
 
+  // ✅ NOUVEAU: Fonction de polling pour vérifier le statut du paiement
+  const startPaymentPolling = (orderId, additionalPaymentId = null) => {
+    // Arrêter le polling précédent s'il existe
+    if (paymentPollingInterval.value) {
+      clearInterval(paymentPollingInterval.value);
+      paymentPollingInterval.value = null;
+    }
+    
+    console.log('[Payment Polling] Démarrage du polling pour vérifier le paiement...', { 
+      orderId, 
+      additionalPaymentId,
+      timestamp: new Date().toISOString()
+    });
+    
+    // ✅ CORRECTION: Vérifier le statut toutes les 3 secondes (3000ms) comme demandé
+    paymentPollingInterval.value = setInterval(async () => {
+      try {
+        console.log('[Payment Polling] Vérification du statut...', { 
+          orderId, 
+          additionalPaymentId,
+          timestamp: new Date().toISOString()
+        });
+        
+        let isPaid = false;
+        let response = null;
+        
+        if (additionalPaymentId) {
+          // Vérifier le statut du paiement supplémentaire
+          response = await apiClient.get(`/api/additional-payments/${additionalPaymentId}/check-status`);
+          console.log('[Payment Polling] Réponse paiement supplémentaire:', response.data);
+          if (response.data.status === 'paid' || response.data.payment_status === 'paid') {
+            isPaid = true;
+          }
+        } else {
+          // ✅ OPTIMISATION: Utiliser l'endpoint léger /status pour le polling
+          response = await apiClient.get(`/api/orders/${orderId}/status`);
+          console.log('[Payment Polling] Réponse statut commande:', response.data);
+          
+          // Vérifier plusieurs conditions pour détecter le paiement réussi
+          if (
+            response.data.is_paid === true ||
+            response.data.status === 'validated' ||
+            response.data.status === 'paid' ||
+            response.data.payment_status === 'paid'
+          ) {
+            isPaid = true;
+            console.log('[Payment Polling] ✅ Paiement détecté comme réussi!', response.data);
+          }
+        }
+        
+        if (isPaid) {
+          console.log('[Payment Polling] ✅ Paiement confirmé! Arrêt du polling et mise à jour de l\'UI...');
+          
+          // Arrêter le polling
+          if (paymentPollingInterval.value) {
+            clearInterval(paymentPollingInterval.value);
+            paymentPollingInterval.value = null;
+          }
+          
+          // Fermer le modal d'attente
+          showPaymentWaitingModal.value = false;
+          
+          // Recharger les commandes pour avoir les données à jour
+          console.log('[Payment Polling] Rechargement des commandes...');
+          await loadOrders();
+          
+          // Afficher le modal de félicitations
+          if (additionalPaymentId) {
+            // Trouver les données du paiement supplémentaire
+            const order = orders.value.find(o => o.id === orderId);
+            if (order && order.paid_additional_payments) {
+              const payment = order.paid_additional_payments.find(p => p.id === additionalPaymentId);
+              if (payment) {
+                additionalCardsSuccessData.value = {
+                  quantity: payment.quantity,
+                  total_price: payment.total_price,
+                  order_number: order.order_number,
+                };
+                showAdditionalCardsSuccessModal.value = true;
+                console.log('[Payment Polling] Modal de félicitations (cartes supplémentaires) affiché');
+              }
+            }
+          } else {
+            showValidateModal.value = true;
+            console.log('[Payment Polling] Modal de félicitations (commande principale) affiché');
+          }
+          
+          // Réinitialiser les variables de polling
+          currentPollingOrderId.value = null;
+          currentPollingAdditionalPaymentId.value = null;
+        } else {
+          console.log('[Payment Polling] Paiement pas encore confirmé, nouvelle vérification dans 3 secondes...');
+        }
+      } catch (error) {
+        console.error('[Payment Polling] Erreur lors de la vérification du statut du paiement:', error);
+        // Continuer le polling même en cas d'erreur (réseau temporaire, etc.)
+      }
+    }, 3000); // ✅ CORRECTION: Vérifier toutes les 3 secondes (3000ms) comme demandé
+  };
+  
+  // ✅ NOUVEAU: Arrêter le polling
+  const stopPaymentPolling = () => {
+    if (paymentPollingInterval.value) {
+      clearInterval(paymentPollingInterval.value);
+      paymentPollingInterval.value = null;
+    }
+    showPaymentWaitingModal.value = false;
+    currentPollingOrderId.value = null;
+    currentPollingAdditionalPaymentId.value = null;
+  };
+
   // ✅ NOUVEAU: Gérer le paiement des cartes supplémentaires
   const handlePayment = () => {
     if (pendingAdditionalPayment.value && pendingAdditionalPayment.value.payment_url) {
-      // Rediriger vers l'URL de paiement
-      window.location.href = pendingAdditionalPayment.value.payment_url;
+      // Ouvrir le paiement dans un nouvel onglet
+      console.log('Ouverture du paiement des cartes supplémentaires dans un nouvel onglet:', pendingAdditionalPayment.value.payment_url);
+      window.open(pendingAdditionalPayment.value.payment_url, '_blank');
+      
+      // Afficher le modal d'attente et démarrer le polling
+      showPaymentWaitingModal.value = true;
+      currentPollingOrderId.value = pendingAdditionalPayment.value.order_id;
+      currentPollingAdditionalPaymentId.value = pendingAdditionalPayment.value.id;
+      startPaymentPolling(pendingAdditionalPayment.value.order_id, pendingAdditionalPayment.value.id);
     }
   };
 
@@ -2175,11 +2324,13 @@
     }
   });
 
-  // Nettoyer les écouteurs d'événements
+  // Nettoyer les écouteurs d'événements et le polling
   onBeforeUnmount(() => {
     document.removeEventListener("visibilitychange", handleVisibilityChange);
     window.removeEventListener("order-created", handleOrderCreated);
     window.removeEventListener("order-updated", handleOrderUpdated);
     window.removeEventListener("pricing-updated", handlePricingUpdate);
+    // ✅ NOUVEAU: Arrêter le polling si actif
+    stopPaymentPolling();
   });
 </script>
