@@ -429,7 +429,7 @@
 
   // ========== ROUTER ET AUTH ==========
   const router = useRouter();
-  const { user, updateUserLocally } = useAuth();
+  const { user, updateUserLocally, fetchUser } = useAuth();
   const { openOrderModal } = useOrderModal();
 
   // ========== NOUVELLE GESTION DES COMMANDES (propre) ==========
@@ -447,21 +447,85 @@
   } = useOrderManagement(user);
 
   // ========== GESTION DE L'AVATAR DE COMMANDE ==========
-  // ✅ OPTIMISATION: Initialiser l'avatar immédiatement depuis user.avatar_url si disponible
-  // Cela évite le scintillement lors de la navigation
+  // ✅ CORRECTION: Initialiser l'avatar avec l'avatar de la commande en priorité
+  // pour éviter l'effet visuel où l'avatar utilisateur s'affiche avant d'être remplacé
   const orderAvatarPreview = ref(null);
   
-  // ✅ OPTIMISATION: Initialiser l'avatar immédiatement si user.avatar_url existe
-  // Cela permet d'afficher l'avatar dès la première frame, même avant le chargement des données
-  if (user.value?.avatar_url) {
+  // ✅ Récupération intelligente de l'avatar initial depuis les commandes déjà chargées
+  const getInitialAvatarUrl = () => {
     const backendUrl = import.meta.env.VITE_APP_URL_BACKEND || "http://localhost:8000";
-    let initialAvatarUrl = user.value.avatar_url;
-    if (initialAvatarUrl.startsWith("/api/storage/") || initialAvatarUrl.startsWith("/storage/")) {
-      orderAvatarPreview.value = backendUrl + initialAvatarUrl;
-    } else if (initialAvatarUrl.startsWith("http://") || initialAvatarUrl.startsWith("https://")) {
-      orderAvatarPreview.value = initialAvatarUrl;
-    } else {
-      orderAvatarPreview.value = backendUrl + "/" + initialAvatarUrl.replace(/^\//, "");
+    
+    // Si une commande est sélectionnée, chercher son avatar dans la liste des commandes
+    if (selectedOrderId.value && orders.value && orders.value.length > 0) {
+      const cachedOrder = orders.value.find(o => o.id === parseInt(selectedOrderId.value));
+      
+      if (cachedOrder) {
+        // Priorité 1: Avatar de l'employé (si c'est un employé ou un business_admin inclus)
+        if (cachedOrder.employee_profile?.employee_avatar_url) {
+          let avatarUrl = cachedOrder.employee_profile.employee_avatar_url;
+          if (avatarUrl.startsWith("/api/storage/") || avatarUrl.startsWith("/storage/")) {
+            return backendUrl + avatarUrl;
+          } else if (avatarUrl.startsWith("http://") || avatarUrl.startsWith("https://")) {
+            return avatarUrl;
+          } else {
+            return backendUrl + "/" + avatarUrl.replace(/^\//, "");
+          }
+        }
+        
+        // Priorité 2: Avatar de la commande
+        if (cachedOrder.order_avatar_url) {
+          let avatarUrl = cachedOrder.order_avatar_url;
+          if (avatarUrl.startsWith("/api/storage/") || avatarUrl.startsWith("/storage/")) {
+            return backendUrl + avatarUrl;
+          } else if (avatarUrl.startsWith("http://") || avatarUrl.startsWith("https://")) {
+            return avatarUrl;
+          } else {
+            return backendUrl + "/" + avatarUrl.replace(/^\//, "");
+          }
+        }
+      }
+    }
+    
+    // Priorité 3: Avatar utilisateur (seulement en dernier recours)
+    if (user.value?.avatar_url) {
+      let initialAvatarUrl = user.value.avatar_url;
+      if (initialAvatarUrl.startsWith("/api/storage/") || initialAvatarUrl.startsWith("/storage/")) {
+        return backendUrl + initialAvatarUrl;
+      } else if (initialAvatarUrl.startsWith("http://") || initialAvatarUrl.startsWith("https://")) {
+        return initialAvatarUrl;
+      } else {
+        return backendUrl + "/" + initialAvatarUrl.replace(/^\//, "");
+      }
+    }
+    
+    return null;
+  };
+  
+  // Initialiser l'avatar avec la valeur correcte dès le début
+  // ✅ IMPORTANT: Ne pas initialiser avec l'avatar utilisateur si une commande est sélectionnée
+  // Le watcher s'occupera de mettre à jour l'avatar dès que les commandes seront chargées
+  // Si aucune commande n'est sélectionnée, on peut utiliser l'avatar utilisateur comme fallback
+  if (!selectedOrderId.value) {
+    // Seulement si aucune commande n'est sélectionnée, utiliser l'avatar utilisateur
+    const initialAvatar = getInitialAvatarUrl();
+    if (initialAvatar) {
+      orderAvatarPreview.value = initialAvatar;
+    }
+  } else {
+    // Si une commande est sélectionnée, essayer de trouver son avatar dans les commandes déjà chargées
+    const initialAvatar = getInitialAvatarUrl();
+    if (initialAvatar) {
+      // Vérifier si c'est l'avatar de la commande (pas l'avatar utilisateur)
+      const cachedOrder = orders.value.find(o => o.id === parseInt(selectedOrderId.value));
+      const isOrderAvatar = cachedOrder && (
+        cachedOrder.order_avatar_url || 
+        cachedOrder.employee_profile?.employee_avatar_url
+      );
+      
+      if (isOrderAvatar) {
+        orderAvatarPreview.value = initialAvatar;
+      }
+      // Sinon, laisser null - le watcher mettra à jour dès que les commandes seront chargées
     }
   }
 
@@ -516,6 +580,7 @@
     (url) => (customDesignPreview.value = url),
     getAvatarUrl,
     () => (isLoading.value = false),
+    null, // ✅ IMPORTANT: Ne pas passer fetchUser - l'avatar du Dashboard doit rester celui de l'utilisateur
   );
 
   // ✅ CORRECTION : Fonction pour recharger les données de la commande après un upload d'avatar
@@ -526,6 +591,9 @@
       console.log("SettingsView: Reloading order data after avatar upload...");
       await loadOrderData(selectedOrderId.value);
       console.log("SettingsView: Order data reloaded successfully after avatar upload");
+      
+      // ✅ IMPORTANT: Ne PAS appeler fetchUser() ici - l'avatar du Dashboard doit rester celui de l'utilisateur
+      // et ne pas être affecté par l'upload d'une nouvelle photo dans les paramètres de la commande
     } catch (error) {
       console.error("SettingsView: Error reloading order data after avatar upload", error);
       // Ne pas afficher d'erreur à l'utilisateur, car l'avatar a déjà été mis à jour visuellement
@@ -558,6 +626,45 @@
       isLoading.value = false;
     }
   });
+
+  // ✅ CORRECTION: Watcher pour mettre à jour l'avatar dès que les commandes sont chargées
+  // et qu'une commande est sélectionnée, pour éviter l'affichage de l'avatar utilisateur
+  // Ce watcher remplace toujours l'avatar utilisateur par l'avatar de la commande si disponible
+  watch(
+    [() => selectedOrderId.value, () => orders.value],
+    ([newOrderId, newOrders]) => {
+      if (newOrderId && newOrders && newOrders.length > 0) {
+        const cachedOrder = newOrders.find(o => o.id === parseInt(newOrderId));
+        if (cachedOrder) {
+          const backendUrl = import.meta.env.VITE_APP_URL_BACKEND || "http://localhost:8000";
+          let avatarUrl = null;
+          
+          // Priorité 1: Avatar de l'employé (si c'est un employé ou un business_admin inclus)
+          if (cachedOrder.employee_profile?.employee_avatar_url) {
+            avatarUrl = cachedOrder.employee_profile.employee_avatar_url;
+          }
+          // Priorité 2: Avatar de la commande
+          else if (cachedOrder.order_avatar_url) {
+            avatarUrl = cachedOrder.order_avatar_url;
+          }
+          
+          // Si on a trouvé un avatar de commande, l'utiliser (même si l'avatar utilisateur était déjà défini)
+          if (avatarUrl) {
+            let constructedUrl;
+            if (avatarUrl.startsWith("/api/storage/") || avatarUrl.startsWith("/storage/")) {
+              constructedUrl = backendUrl + avatarUrl;
+            } else if (avatarUrl.startsWith("http://") || avatarUrl.startsWith("https://")) {
+              constructedUrl = avatarUrl;
+            } else {
+              constructedUrl = backendUrl + "/" + avatarUrl.replace(/^\//, "");
+            }
+            orderAvatarPreview.value = constructedUrl;
+          }
+        }
+      }
+    },
+    { immediate: true }
+  );
 
   // Réinitialiser l'onglet actif à "Ma Carte" quand on change de commande
   watch(
@@ -592,6 +699,15 @@
               constructedUrl = backendUrl + "/" + avatarUrl.replace(/^\//, "");
             }
             orderAvatarPreview.value = constructedUrl;
+          }
+        } else {
+          // Si loadedOrderData n'est pas encore disponible, utiliser les données de orders
+          const cachedOrder = orders.value.find(o => o.id === parseInt(newOrderId));
+          if (cachedOrder) {
+            const avatarUrl = getInitialAvatarUrl();
+            if (avatarUrl) {
+              orderAvatarPreview.value = avatarUrl;
+            }
           }
         }
       }

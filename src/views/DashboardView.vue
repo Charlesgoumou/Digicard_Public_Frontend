@@ -9,7 +9,7 @@
           @click="openFileInput"
           class="relative w-40 h-40 mx-auto rounded-full border-4 border-slate-700 bg-slate-800 flex items-center justify-center cursor-pointer group overflow-hidden"
         >
-          <img v-if="user.avatar_url" :src="getUserAvatarUrl(user.avatar_url)" class="w-full h-full object-cover" alt="Avatar actuel" @error="handleAvatarError" />
+          <img v-if="userAvatarUrl" :src="userAvatarUrl" :key="userAvatarUrl" class="w-full h-full object-cover" alt="Avatar actuel" @error="handleAvatarError" @load="() => console.log('[Dashboard] Avatar image loaded:', userAvatarUrl)" />
           <svg v-else class="w-20 h-20 text-slate-500" fill="currentColor" viewBox="0 0 24 24">
             <path
               d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z"
@@ -651,7 +651,7 @@
 </template>
 
 <script setup>
-  import { ref, watch, reactive, onMounted, onUnmounted, nextTick } from "vue";
+  import { ref, watch, reactive, onMounted, onUnmounted, nextTick, computed } from "vue";
   import { useRouter, useRoute } from "vue-router";
   import { useAuth } from "@/composables/useAuth";
   import apiClient from "@/api";
@@ -710,11 +710,13 @@
   };
 
   // ✅ CORRECTION : Fonction helper pour construire l'URL complète de l'avatar utilisateur
+  // Cette fonction gère les URLs déjà complètes (depuis useAuth) et les chemins relatifs
   const getUserAvatarUrl = (avatarUrl) => {
     if (!avatarUrl) return null;
     const backendUrl = import.meta.env.VITE_APP_URL_BACKEND || "http://localhost:8000";
     
     // Si c'est déjà une URL complète (http:// ou https://), l'utiliser directement
+    // useAuth.js construit déjà l'URL complète, donc on peut la retourner telle quelle
     if (avatarUrl.startsWith("http://") || avatarUrl.startsWith("https://")) {
       return avatarUrl;
     }
@@ -727,6 +729,43 @@
     // Sinon, c'est probablement un chemin relatif, ajouter le backend URL
     return backendUrl + "/" + avatarUrl.replace(/^\//, "");
   };
+  
+  // ✅ CORRECTION : Computed pour obtenir l'URL de l'avatar de manière réactive
+  // Cela garantit que l'avatar s'affiche même si user.avatar_url change
+  const userAvatarUrl = computed(() => {
+    if (user.value?.avatar_url) {
+      const url = getUserAvatarUrl(user.value.avatar_url);
+      // ✅ DEBUG: Log pour vérifier que l'URL est bien construite
+      console.log("[Dashboard] userAvatarUrl computed:", {
+        hasUser: !!user.value,
+        avatar_url: user.value.avatar_url,
+        constructedUrl: url,
+      });
+      return url;
+    }
+    console.log("[Dashboard] userAvatarUrl computed: no avatar_url");
+    return null;
+  });
+  
+  // ✅ CORRECTION : Watcher pour forcer la mise à jour de l'avatar quand user change
+  // Cela garantit que l'avatar s'affiche immédiatement après une connexion
+  watch(
+    () => user.value?.avatar_url,
+    (newAvatarUrl, oldAvatarUrl) => {
+      if (newAvatarUrl && newAvatarUrl !== oldAvatarUrl) {
+        console.log("[Dashboard] Avatar URL changed:", {
+          old: oldAvatarUrl,
+          new: newAvatarUrl,
+          constructed: getUserAvatarUrl(newAvatarUrl),
+        });
+        // Le computed se mettra à jour automatiquement, mais on force un re-render
+        nextTick(() => {
+          console.log("[Dashboard] Avatar should be updated in DOM");
+        });
+      }
+    },
+    { immediate: true }
+  );
 
   // ✅ CORRECTION : Gérer les erreurs de chargement d'avatar
   const handleAvatarError = (event) => {
@@ -949,6 +988,7 @@
     (newUser, oldUser) => {
       if (!newUser && !initialUserFetchAttempted) {
         initialUserFetchAttempted = true;
+        // ✅ CORRECTION: Appeler fetchUser() immédiatement au montage pour charger l'avatar
         fetchUser().catch(() => {
           router.push({ name: "home" });
         });
@@ -961,6 +1001,94 @@
     },
     { immediate: true },
   );
+  
+  // ✅ CORRECTION: Appeler fetchUser() au montage pour s'assurer que l'avatar est chargé immédiatement
+  // même si le watcher ne s'est pas encore déclenché
+  onMounted(async () => {
+    // ✅ CRITIQUE: Si l'utilisateur a déjà un avatar_url (par exemple depuis verifyCode),
+    // ne pas appeler fetchUser() immédiatement pour éviter de perdre l'avatar
+    // Attendre un peu pour laisser le temps à la session de se synchroniser
+    console.log("[Dashboard] onMounted - user.value:", {
+      hasUser: !!user.value,
+      userId: user.value?.id,
+      hasAvatar: !!user.value?.avatar_url,
+      avatarUrl: user.value?.avatar_url,
+    });
+    
+    // ✅ CRITIQUE: Si l'utilisateur a déjà un avatar, NE PAS appeler fetchUser() immédiatement
+    // pour éviter d'écraser l'avatar avec null (le backend peut ne pas avoir encore synchronisé)
+    if (user.value?.avatar_url) {
+      console.log("[Dashboard] User already has avatar_url, using it immediately:", user.value.avatar_url);
+      console.log("[Dashboard] userAvatarUrl computed:", userAvatarUrl.value);
+      // Attendre 2 secondes avant de rafraîchir pour laisser le temps au backend de synchroniser
+      setTimeout(async () => {
+        try {
+          // Préserver l'avatar existant avant d'appeler fetchUser()
+          const existingAvatar = user.value?.avatar_url;
+          const fetchedUser = await fetchUser();
+          console.log("[Dashboard] fetchUser() completed after delay:", {
+            hasUser: !!fetchedUser,
+            hasAvatar: !!fetchedUser?.avatar_url,
+            avatarUrl: fetchedUser?.avatar_url,
+            hadExistingAvatar: !!existingAvatar,
+          });
+          // Si fetchUser() a perdu l'avatar, le restaurer
+          if (!fetchedUser?.avatar_url && existingAvatar && fetchedUser?.id === user.value?.id) {
+            console.warn("[Dashboard] Avatar perdu après fetchUser(), restauration:", existingAvatar);
+            user.value.avatar_url = existingAvatar;
+          }
+        } catch (error) {
+          console.error("Erreur lors du chargement de l'utilisateur:", error);
+        }
+      }, 2000);
+    } else {
+      // Si l'utilisateur n'a pas d'avatar, appeler fetchUser() immédiatement
+      try {
+        const fetchedUser = await fetchUser();
+        console.log("[Dashboard] fetchUser() completed:", {
+          hasUser: !!fetchedUser,
+          hasAvatar: !!fetchedUser?.avatar_url,
+          avatarUrl: fetchedUser?.avatar_url,
+        });
+        
+        // ✅ FORCER la mise à jour du computed en utilisant nextTick
+        await nextTick();
+        console.log("[Dashboard] After nextTick - userAvatarUrl:", userAvatarUrl.value);
+      } catch (error) {
+        console.error("Erreur lors du chargement de l'utilisateur:", error);
+      }
+    }
+    
+    // ✅ Charger les commandes business si l'utilisateur est un business_admin
+    if (user.value?.role === "business_admin") {
+      await checkBusinessOrders();
+    }
+
+    // Créer un observer pour détecter quand la section "Gérer le Personnel" devient visible
+    sectionObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          // Si la section est visible ET que les slots ne sont pas encore chargés
+          if (entry.isIntersecting && !slotsLoaded.value && hasBusinessOrder.value) {
+            loadOrderSlots();
+          }
+        });
+      },
+      {
+        root: null, // viewport
+        rootMargin: "50px", // Charger 50px avant que la section soit visible
+        threshold: 0.1, // Se déclenche quand 10% de la section est visible
+      },
+    );
+
+    // Observer la section après un court délai pour s'assurer qu'elle existe
+    setTimeout(() => {
+      const section = document.getElementById("employee-section");
+      if (section && sectionObserver) {
+        sectionObserver.observe(section);
+      }
+    }, 200);
+  });
 
   // --- Business Admin Functions ---
   const addEmployee = async () => {
@@ -1408,38 +1536,6 @@
 
   // --- ✅ OPTIMISATION : Intersection Observer pour lazy loading des slots ---
   let sectionObserver = null;
-
-  onMounted(async () => {
-    // ✅ Charger les commandes business si l'utilisateur est un business_admin
-    if (user.value?.role === "business_admin") {
-      await checkBusinessOrders();
-    }
-
-    // Créer un observer pour détecter quand la section "Gérer le Personnel" devient visible
-    sectionObserver = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          // Si la section est visible ET que les slots ne sont pas encore chargés
-          if (entry.isIntersecting && !slotsLoaded.value && hasBusinessOrder.value) {
-            loadOrderSlots();
-          }
-        });
-      },
-      {
-        root: null, // viewport
-        rootMargin: "50px", // Charger 50px avant que la section soit visible
-        threshold: 0.1, // Se déclenche quand 10% de la section est visible
-      },
-    );
-
-    // Observer la section après un court délai pour s'assurer qu'elle existe
-    setTimeout(() => {
-      const section = document.getElementById("employee-section");
-      if (section && sectionObserver) {
-        sectionObserver.observe(section);
-      }
-    }, 200);
-  });
 
   onUnmounted(() => {
     // Nettoyer l'observer quand le composant est détruit

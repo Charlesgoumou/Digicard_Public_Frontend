@@ -83,6 +83,23 @@ export function useAuth() {
       // Il faut accéder à response.data.user pour obtenir l'utilisateur ou null
       const fetchedUser = response.data.user || null;
 
+      // ✅ DEBUG: Log détaillé pour comprendre pourquoi avatar_url est undefined
+      console.log("[_fetchUser] Détails de l'utilisateur récupéré:", {
+        hasUser: !!fetchedUser,
+        userId: fetchedUser?.id,
+        userName: fetchedUser?.name,
+        hasAvatarUrl: !!fetchedUser?.avatar_url,
+        avatarUrl: fetchedUser?.avatar_url,
+        avatarUrlType: typeof fetchedUser?.avatar_url,
+        allKeys: fetchedUser ? Object.keys(fetchedUser) : [],
+      });
+
+      // ✅ CORRECTION : Préserver l'avatar existant si le backend retourne null
+      // Cela peut arriver si l'utilisateur a été défini dans verifyCode avec un avatar
+      // mais que le backend ne le retourne pas encore (problème de synchronisation)
+      const existingAvatarUrl = user.value?.avatar_url;
+      const existingUserId = user.value?.id;
+
       // ✅ CORRECTION : Construire l'URL complète de l'avatar si présent
       if (fetchedUser && fetchedUser.avatar_url) {
         const backendUrl = import.meta.env.VITE_APP_URL_BACKEND || "http://localhost:8000";
@@ -98,6 +115,22 @@ export function useAuth() {
           }
         }
         fetchedUser.avatar_url = fullAvatarUrl;
+        console.log("[_fetchUser] Avatar URL construite:", fullAvatarUrl);
+      } else if (fetchedUser && !fetchedUser.avatar_url && existingAvatarUrl && existingUserId === fetchedUser.id) {
+        // ✅ CRITIQUE: Si le backend ne retourne pas d'avatar mais qu'on en a déjà un pour le même utilisateur, le préserver
+        // Cela évite de perdre l'avatar après une connexion quand le backend n'a pas encore synchronisé
+        console.warn("[_fetchUser] Backend n'a pas retourné avatar_url, préservation de l'avatar existant:", {
+          userId: fetchedUser.id,
+          existingAvatarUrl: existingAvatarUrl,
+        });
+        fetchedUser.avatar_url = existingAvatarUrl;
+      } else if (fetchedUser && !fetchedUser.avatar_url) {
+        console.warn("[_fetchUser] Utilisateur trouvé mais avatar_url est null/undefined:", {
+          userId: fetchedUser.id,
+          userName: fetchedUser.name,
+          hadExistingAvatar: !!existingAvatarUrl,
+          existingUserId: existingUserId,
+        });
       }
 
       user.value = fetchedUser;
@@ -191,7 +224,55 @@ export function useAuth() {
     try {
       setCsrfHeader();
       const response = await apiClient.post("/api/verify", data);
-      user.value = response.data.user; // Met à jour l'état
+      const fetchedUser = response.data.user || null;
+
+      // ✅ DEBUG: Log détaillé pour voir ce que le backend retourne
+      console.log("[verifyCode] Réponse reçue de /api/verify:", {
+        hasUser: !!fetchedUser,
+        userId: fetchedUser?.id,
+        userName: fetchedUser?.name,
+        hasAvatarUrl: !!fetchedUser?.avatar_url,
+        avatarUrl: fetchedUser?.avatar_url,
+        avatarUrlType: typeof fetchedUser?.avatar_url,
+        allKeys: fetchedUser ? Object.keys(fetchedUser) : [],
+        fullResponse: response.data,
+      });
+
+      // ✅ CORRECTION : Construire l'URL complète de l'avatar si présent (comme dans _fetchUser)
+      // Cela garantit que l'avatar s'affiche immédiatement après la connexion
+      if (fetchedUser && fetchedUser.avatar_url) {
+        const backendUrl = import.meta.env.VITE_APP_URL_BACKEND || "http://localhost:8000";
+        let fullAvatarUrl = fetchedUser.avatar_url;
+
+        // Si ce n'est pas déjà une URL complète, la construire
+        if (!fullAvatarUrl.startsWith("http://") && !fullAvatarUrl.startsWith("https://")) {
+          // Gérer les deux formats (/api/storage/ et /storage/)
+          if (fullAvatarUrl.startsWith("/api/storage/") || fullAvatarUrl.startsWith("/storage/")) {
+            fullAvatarUrl = backendUrl + fullAvatarUrl;
+          } else {
+            fullAvatarUrl = backendUrl + "/" + fullAvatarUrl.replace(/^\//, "");
+          }
+        }
+        fetchedUser.avatar_url = fullAvatarUrl;
+        console.log("[verifyCode] Avatar URL construite:", fullAvatarUrl);
+      } else if (fetchedUser && !fetchedUser.avatar_url) {
+        console.warn("[verifyCode] Utilisateur trouvé mais avatar_url est null/undefined:", {
+          userId: fetchedUser.id,
+          userName: fetchedUser.name,
+        });
+      }
+
+      user.value = fetchedUser; // Met à jour l'état avec l'avatar correctement construit
+      console.log("[verifyCode] user.value défini:", {
+        hasUser: !!user.value,
+        hasAvatar: !!user.value?.avatar_url,
+        avatarUrl: user.value?.avatar_url,
+      });
+      
+      // ✅ CRITIQUE: Attendre un peu plus pour s'assurer que Vue a mis à jour la réactivité
+      // et que la session est bien établie avant de rediriger vers le Dashboard
+      // Cela garantit que l'avatar est bien disponible quand le Dashboard se monte
+      await new Promise(resolve => setTimeout(resolve, 200));
 
       // ✅ CORRECTION : Ajout de la vérification password_reset_required
       if (response.data.password_reset_required) {
@@ -200,7 +281,11 @@ export function useAuth() {
         router.push({ name: "EmployeeSetPassword" });
       } else if (user.value) {
         // Cas 2: Vérifié et prêt pour le Dashboard
-        console.log("Vérification réussie, redirection vers le Dashboard.");
+        console.log("Vérification réussie, redirection vers le Dashboard.", {
+          hasUser: !!user.value,
+          hasAvatar: !!user.value.avatar_url,
+          avatarUrl: user.value.avatar_url,
+        });
         router.push({ name: "Dashboard" });
       } else {
         throw new Error("Données utilisateur manquantes après vérification.");
@@ -324,14 +409,33 @@ export function useAuth() {
   const updateUserLocally = (updatedUserData) => {
     if (updatedUserData) {
       if (user.value) {
+        // ✅ CRITIQUE: Préserver l'avatar existant si les nouvelles données n'en ont pas
+        // Cela évite d'écraser l'avatar construit dans verifyCode
+        const existingAvatarUrl = user.value.avatar_url;
+        
         // Fusionne les nouvelles données dans l'objet utilisateur existant
         // Cela préserve la réactivité si user.value est déjà réactif
         user.value = { ...user.value, ...updatedUserData };
-        console.log("User state updated locally (merged):", user.value);
+        
+        // Si les nouvelles données n'ont pas d'avatar_url mais qu'on en avait un, le préserver
+        if (!updatedUserData.avatar_url && existingAvatarUrl) {
+          user.value.avatar_url = existingAvatarUrl;
+          console.log("[updateUserLocally] Avatar préservé:", existingAvatarUrl);
+        }
+        
+        console.log("[updateUserLocally] User state updated locally (merged):", {
+          hasUser: !!user.value,
+          hasAvatar: !!user.value.avatar_url,
+          avatarUrl: user.value.avatar_url,
+        });
       } else {
         // Si user.value est null, créer un nouvel utilisateur avec les données fournies
         user.value = { ...updatedUserData };
-        console.log("User state created locally:", user.value);
+        console.log("[updateUserLocally] User state created locally:", {
+          hasUser: !!user.value,
+          hasAvatar: !!user.value.avatar_url,
+          avatarUrl: user.value.avatar_url,
+        });
       }
     }
   };

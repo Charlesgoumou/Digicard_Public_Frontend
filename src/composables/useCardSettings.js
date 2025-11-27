@@ -13,6 +13,7 @@ import Cookies from "js-cookie";
  * @param {Function} onDesignStateUpdate - Callback pour mettre à jour l'état du design
  * @param {Function} onCustomDesignPreviewUpdate - Callback pour mettre à jour l'aperçu du design personnalisé
  * @param {Function} getAvatarUrl - Fonction utilitaire pour construire l'URL de l'avatar
+ * @param {Function} onDataLoadedCallback - Callback appelé après le chargement des données
  * @returns {Object} - Objet contenant form, état, et fonctions
  */
 export function useCardSettings(
@@ -728,6 +729,9 @@ export function useCardSettings(
       
       // Afficher l'icône de succès et le message
       showSuccessIcon.value = true;
+
+      // ✅ IMPORTANT: Ne PAS appeler fetchUser() ici - l'avatar du Dashboard doit rester celui de l'utilisateur
+      // et ne pas être affecté par les modifications dans les paramètres de la commande
 
       // Les données du formulaire restent intactes, pas besoin de les recharger
       // Elles seront automatiquement rechargées par le watcher quand l'utilisateur reviendra

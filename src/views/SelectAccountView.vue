@@ -236,17 +236,42 @@ const selectAccountAndLogin = async (accountId) => {
     if (response.data && response.data.user) {
       console.log("[SelectAccount] User data received, updating local state...");
       
+      // ✅ CORRECTION: Construire l'URL complète de l'avatar si présent (comme dans verifyCode)
+      const userData = { ...response.data.user };
+      if (userData.avatar_url) {
+        const backendUrl = import.meta.env.VITE_APP_URL_BACKEND || "http://localhost:8000";
+        let fullAvatarUrl = userData.avatar_url;
+
+        // Si ce n'est pas déjà une URL complète, la construire
+        if (!fullAvatarUrl.startsWith("http://") && !fullAvatarUrl.startsWith("https://")) {
+          // Gérer les deux formats (/api/storage/ et /storage/)
+          if (fullAvatarUrl.startsWith("/api/storage/") || fullAvatarUrl.startsWith("/storage/")) {
+            fullAvatarUrl = backendUrl + fullAvatarUrl;
+          } else {
+            fullAvatarUrl = backendUrl + "/" + fullAvatarUrl.replace(/^\//, "");
+          }
+        }
+        userData.avatar_url = fullAvatarUrl;
+        console.log("[SelectAccount] Avatar URL construite:", fullAvatarUrl);
+      }
+      
       // Mettre à jour l'utilisateur localement avec les données retournées
       if (updateUserLocally) {
         updateUserLocally({
-          ...response.data.user,
-          is_profile_complete: response.data.user.is_profile_complete ?? true
+          ...userData,
+          is_profile_complete: userData.is_profile_complete ?? true
         });
-        console.log("[SelectAccount] User updated locally");
+        console.log("[SelectAccount] User updated locally", {
+          hasAvatar: !!user.value?.avatar_url,
+          avatarUrl: user.value?.avatar_url,
+        });
       }
       
       // Attendre un peu pour que la session soit bien établie
       await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // ✅ CRITIQUE: Préserver l'avatar existant avant d'appeler fetchUser()
+      const existingAvatarUrl = user.value?.avatar_url;
       
       // Réessayer fetchUser() plusieurs fois pour s'assurer que la session est accessible
       let userFound = false;
@@ -256,7 +281,17 @@ const selectAccountAndLogin = async (accountId) => {
           console.log(`[SelectAccount] Fetching user attempt ${attempt}/${maxRetries}...`);
           await fetchUser();
           if (user.value) {
-            console.log(`[SelectAccount] User found on attempt ${attempt}`);
+            console.log(`[SelectAccount] User found on attempt ${attempt}`, {
+              hasAvatar: !!user.value?.avatar_url,
+              avatarUrl: user.value?.avatar_url,
+            });
+            
+            // ✅ CRITIQUE: Si fetchUser() a perdu l'avatar, le restaurer
+            if (!user.value.avatar_url && existingAvatarUrl && user.value.id === user.value.id) {
+              console.warn("[SelectAccount] Avatar perdu après fetchUser(), restauration:", existingAvatarUrl);
+              user.value.avatar_url = existingAvatarUrl;
+            }
+            
             userFound = true;
             break;
           }
