@@ -508,21 +508,29 @@
             <p v-if="successMessage" class="text-sm text-green-400 text-center pt-1">{{ successMessage }}</p>
 
             <button
+              v-if="!successMessage"
               type="submit"
               :disabled="isSubmitting"
               class="w-full bg-sky-500 text-white font-semibold py-2.5 rounded-lg hover:bg-sky-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {{ isSubmitting ? "Envoi..." : "Envoyer le lien" }}
             </button>
+            
+            <!-- ✅ NOUVEAU: Bouton "Envoyer à nouveau" (apparaît après le premier envoi) -->
+            <button
+              v-if="successMessage"
+              type="button"
+              :disabled="resendCountdown > 0 || isSubmitting"
+              @click="handleResendResetLink"
+              class="w-full bg-slate-700 text-white font-semibold py-2.5 rounded-lg hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {{ isSubmitting ? "Envoi..." : resendCountdown > 0 ? `Envoyer à nouveau dans ${resendCountdown}s` : "Envoyer à nouveau" }}
+            </button>
           </form>
           <p class="text-center text-sm text-slate-400 mt-6">
             <button
               type="button"
-              @click="
-                view = 'login';
-                errorMessage = '';
-                successMessage = '';
-              "
+              @click="handleBackToLogin"
               class="font-semibold text-sky-400 hover:text-sky-300 focus:outline-none"
             >
               ← Retour à la connexion
@@ -611,7 +619,7 @@
 </template>
 
 <script setup>
-  import { ref, reactive, computed } from "vue";
+  import { ref, reactive, computed, watch } from "vue";
   import { useAuth } from "@/composables/useAuth";
   import { useRouter } from "vue-router";
   import apiClient from "@/api";
@@ -625,6 +633,10 @@
   const isSubmitting = ref(false);
   const loadingMessage = ref(""); // Message affiché pendant le chargement
   const isGoogleLoading = ref(false); // État de chargement pour les boutons Google
+  // ✅ NOUVEAU: Variables pour le bouton "Envoyer à nouveau"
+  const canResendResetLink = ref(false);
+  const resendCountdown = ref(0);
+  const resendTimer = ref(null);
 
   // Visibilité des mots de passe
   const showLoginPassword = ref(false);
@@ -800,7 +812,11 @@
       
       // ✅ CRITIQUE: Afficher le message de succès et NE PAS fermer le modal
       successMessage.value = response.data.message || "Un lien de réinitialisation a été envoyé à votre adresse email.";
-      forgotPasswordEmail.value = "";
+      // ✅ IMPORTANT: Ne pas vider l'email pour permettre l'envoi à nouveau
+      // forgotPasswordEmail.value = "";
+      
+      // ✅ NOUVEAU: Démarrer le compte à rebours de 30 secondes pour le bouton "Envoyer à nouveau"
+      startResendCountdown();
       
       // Ne pas fermer le modal pour que l'utilisateur puisse voir le message de succès
     } catch (error) {
@@ -895,6 +911,107 @@
 
   // Debug: Vérifier que la variable d'environnement est chargée
   console.log("Google URL:", googleLoginUrl.value);
+
+  // ✅ NOUVEAU: Fonction pour démarrer le compte à rebours de 30 secondes
+  const startResendCountdown = () => {
+    // Réinitialiser le compte à rebours
+    resendCountdown.value = 30;
+    canResendResetLink.value = false;
+    
+    // Nettoyer le timer précédent s'il existe
+    if (resendTimer.value) {
+      clearInterval(resendTimer.value);
+    }
+    
+    // Démarrer le compte à rebours
+    resendTimer.value = setInterval(() => {
+      resendCountdown.value--;
+      
+      if (resendCountdown.value <= 0) {
+        clearInterval(resendTimer.value);
+        resendTimer.value = null;
+        canResendResetLink.value = true;
+      }
+    }, 1000);
+  };
+
+  // ✅ NOUVEAU: Fonction pour renvoyer le lien de réinitialisation
+  const handleResendResetLink = async () => {
+    if (resendCountdown.value > 0 || !forgotPasswordEmail.value) {
+      return;
+    }
+    
+    // Réinitialiser les messages
+    errorMessage.value = "";
+    successMessage.value = "";
+    isSubmitting.value = true;
+    
+    try {
+      // Récupérer le cookie CSRF
+      try {
+        await apiClient.get("/sanctum/csrf-cookie");
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (csrfError) {
+        console.warn("Erreur lors de la récupération du cookie CSRF:", csrfError);
+      }
+      
+      // Mettre à jour le header CSRF
+      const xsrfToken = Cookies.get("XSRF-TOKEN");
+      if (xsrfToken) {
+        apiClient.defaults.headers.common["X-XSRF-TOKEN"] = decodeURIComponent(xsrfToken);
+      }
+      
+      // Envoyer à nouveau le lien
+      const response = await apiClient.post("/api/password/reset-link", {
+        email: forgotPasswordEmail.value,
+      });
+      
+      successMessage.value = response.data.message || "Un nouveau lien de réinitialisation a été envoyé à votre adresse email.";
+      
+      // Redémarrer le compte à rebours
+      startResendCountdown();
+    } catch (error) {
+      console.error("Password reset link resend error:", error);
+      if (error.response?.status === 419) {
+        errorMessage.value = "Erreur de session. Veuillez réessayer.";
+      } else {
+        errorMessage.value = error.response?.data?.message || "Erreur lors de l'envoi de l'email.";
+      }
+    } finally {
+      isSubmitting.value = false;
+    }
+  };
+
+  // ✅ NOUVEAU: Fonction pour retourner à la connexion et nettoyer les variables
+  const handleBackToLogin = () => {
+    // Nettoyer le timer si actif
+    if (resendTimer.value) {
+      clearInterval(resendTimer.value);
+      resendTimer.value = null;
+    }
+    // Réinitialiser toutes les variables
+    view.value = 'login';
+    errorMessage.value = '';
+    successMessage.value = '';
+    forgotPasswordEmail.value = '';
+    resendCountdown.value = 0;
+    canResendResetLink.value = false;
+  };
+
+  // ✅ NOUVEAU: Nettoyer le timer lors du changement de vue
+  watch(view, (newView) => {
+    if (newView !== 'forgotPassword') {
+      // Réinitialiser les variables si on quitte la vue "mot de passe oublié"
+      if (resendTimer.value) {
+        clearInterval(resendTimer.value);
+        resendTimer.value = null;
+      }
+      resendCountdown.value = 0;
+      canResendResetLink.value = false;
+      successMessage.value = "";
+      errorMessage.value = "";
+    }
+  });
 </script>
 
 <style scoped>

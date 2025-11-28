@@ -13,9 +13,23 @@ import App from './App.vue'
 // 5. Importer notre configurateur de routes (le "GPS" de l'application)
 import router from './router'
 
-// ✅ CORRECTION: Nettoyer uniquement les cookies obsolètes/dupliqués, PAS les cookies de session valides
-// (Request Header Fields Too Large)
+// ⚠️ ATTENTION : Cette fonction est DÉSACTIVÉE et ne doit PAS être utilisée
+// 
+// PROBLÈME TECHNIQUE MAJEUR :
+// - Les cookies HttpOnly (comme laravel_session) ne sont PAS accessibles via document.cookie
+// - Cette fonction ne peut donc PAS voir ni supprimer le vrai cookie de session Laravel
+// - Elle ne peut voir que XSRF-TOKEN (qui n'est pas HttpOnly)
+// - Si elle tente de supprimer XSRF-TOKEN, cela provoque des erreurs 419 (CSRF token mismatch)
+//
+// SÉCURITÉ MODERNE :
+// - SESSION_SECURE_COOKIE=true et HttpOnly sont activés dans le backend
+// - Le navigateur et le backend gèrent correctement l'expiration des cookies
+// - Les erreurs "Header too large" viennent généralement de cookies tiers (Google, Facebook, etc.)
+//
+// ❌ NE PAS UTILISER CETTE FONCTION
 const cleanUpCookies = () => {
+  console.warn('[Cookie Cleanup] ⚠️ ATTENTION: Cette fonction est désactivée car elle ne peut pas gérer les cookies HttpOnly');
+  return; // Ne rien faire
   try {
     // ✅ CRITIQUE: Ne pas nettoyer les cookies si on est sur la route de traitement de paiement
     // Car on a besoin de tous les cookies pour établir la session après le retour de la passerelle
@@ -173,9 +187,24 @@ const cleanUpCookies = () => {
   }
 };
 
-// ✅ CORRECTION: Ne PAS exécuter le nettoyage au démarrage pour éviter de supprimer le cookie de session actif
-// Le nettoyage sera fait après que l'application ait vérifié la session
-// cleanUpCookies(); // Désactivé pour éviter la déconnexion au rechargement
+// ✅ CRITIQUE: NE PAS exécuter cleanUpCookies() - DÉSACTIVÉ POUR DES RAISONS DE SÉCURITÉ
+// 
+// PROBLÈME TECHNIQUE MAJEUR :
+// - Les cookies HttpOnly (comme laravel_session) ne sont PAS accessibles via document.cookie
+// - Cette fonction ne peut donc PAS voir ni supprimer le vrai cookie de session Laravel
+// - Elle ne peut voir que XSRF-TOKEN (qui n'est pas HttpOnly)
+// - Si elle tente de supprimer XSRF-TOKEN, cela provoque des erreurs 419 (CSRF token mismatch)
+//
+// SÉCURITÉ MODERNE :
+// - SESSION_SECURE_COOKIE=true et HttpOnly sont activés dans le backend
+// - Le navigateur et le backend gèrent correctement l'expiration des cookies
+// - Les erreurs "Header too large" viennent généralement de cookies tiers (Google, Facebook, etc.)
+// - Pas des cookies Laravel qui sont bien gérés
+//
+// RECOMMANDATION :
+// - Laisser cette fonction DÉSACTIVÉE (commentée)
+// - Laisser le navigateur et le backend gérer l'expiration des cookies automatiquement
+// cleanUpCookies(); // ❌ DÉSACTIVÉ - Ne pas utiliser avec des cookies HttpOnly
 
 // 6. Créer l'instance de Pinia
 const pinia = createPinia()
