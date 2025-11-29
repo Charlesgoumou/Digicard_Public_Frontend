@@ -45,11 +45,17 @@ onMounted(async () => {
       console.log('[PaymentClose] Mode développement détecté, simulation du webhook...', { orderId, additionalPaymentId });
       
       // ✅ Appeler la route spécifique pour simuler le webhook
-      const response = await apiClient.post(`/api/payment/simulate-webhook/${orderId}`);
+      // Si c'est un paiement supplémentaire, passer l'ID dans le body
+      const payload = additionalPaymentId ? { additional_payment_id: additionalPaymentId } : {};
+      const response = await apiClient.post(`/api/payment/simulate-webhook/${orderId}`, payload);
       
       if (response.data.success) {
         console.log('[PaymentClose] ✅ Simulation Webhook envoyée avec succès:', response.data);
-        console.log('[PaymentClose] Commande validée - Le polling de l\'onglet principal devrait détecter le changement');
+        if (additionalPaymentId) {
+          console.log('[PaymentClose] Paiement supplémentaire validé - Le polling de l\'onglet principal devrait détecter le changement');
+        } else {
+          console.log('[PaymentClose] Commande validée - Le polling de l\'onglet principal devrait détecter le changement');
+        }
       } else {
         console.warn('[PaymentClose] Simulation webhook retournée mais success=false:', response.data);
       }

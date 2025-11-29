@@ -670,23 +670,6 @@
     </div>
 
     <!-- ✅ NOUVEAU: Modal d'attente pour le paiement -->
-    <div
-      v-if="showPaymentWaitingModal"
-      class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-    >
-      <div class="bg-slate-800 rounded-xl p-8 max-w-md w-full border border-slate-700 shadow-2xl">
-        <div class="text-center">
-          <div class="inline-block animate-spin rounded-full h-16 w-16 border-b-2 border-sky-500 mb-6"></div>
-          <h3 class="text-xl font-bold text-white mb-3">Paiement en cours</h3>
-          <p class="text-slate-300 mb-4">
-            Paiement en cours dans un nouvel onglet... Nous attendons la confirmation.
-          </p>
-          <p class="text-slate-400 text-sm">
-            Vous pouvez fermer l'onglet de paiement une fois terminé. Cette fenêtre se mettra à jour automatiquement.
-          </p>
-        </div>
-      </div>
-    </div>
 
     <!-- ✅ NOUVEAU: Modal de Félicitation pour les Cartes Supplémentaires -->
     <div
@@ -768,8 +751,7 @@
   const showAdditionalCardsSuccessModal = ref(false);
   const additionalCardsSuccessData = ref(null);
   const showAddCardsModal = ref(false);
-  // ✅ NOUVEAU: Modal d'attente pour le paiement
-  const showPaymentWaitingModal = ref(false);
+  // ✅ NOUVEAU: Polling pour le paiement (sans modal d'attente)
   const paymentPollingInterval = ref(null);
   const currentPollingOrderId = ref(null);
   const currentPollingAdditionalPaymentId = ref(null);
@@ -1384,8 +1366,7 @@
         console.log('Ouverture du paiement dans un nouvel onglet:', response.data.payment_url);
         window.open(response.data.payment_url, '_blank');
         
-        // Afficher le modal d'attente et démarrer le polling
-        showPaymentWaitingModal.value = true;
+        // Démarrer le polling en arrière-plan (sans modal d'attente)
         currentPollingOrderId.value = order.id;
         currentPollingAdditionalPaymentId.value = null;
         startPaymentPolling(order.id, null);
@@ -1633,10 +1614,17 @@
       paymentPollingInterval.value = null;
     }
     
+    // ✅ NOUVEAU: Limite de temps pour le polling (5 minutes = 300000ms)
+    const POLLING_MAX_DURATION = 5 * 60 * 1000; // 5 minutes
+    const pollingStartTime = Date.now();
+    let pollingAttempts = 0;
+    const MAX_ATTEMPTS = 100; // Maximum 100 tentatives (environ 5 minutes à 3 secondes par tentative)
+    
     console.log('[Payment Polling] 🚀 Démarrage du polling pour vérifier le paiement...', { 
       orderId, 
       additionalPaymentId,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      maxDuration: POLLING_MAX_DURATION / 1000 + ' secondes'
     });
     
     // ✅ Vérification immédiate au démarrage (pas besoin d'attendre 3 secondes)
@@ -1652,7 +1640,6 @@
               clearInterval(paymentPollingInterval.value);
               paymentPollingInterval.value = null;
             }
-            showPaymentWaitingModal.value = false;
             await loadOrders();
             // Logique de succès pour paiement supplémentaire (sera gérée dans le polling normal)
             return;
@@ -1669,7 +1656,6 @@
               clearInterval(paymentPollingInterval.value);
               paymentPollingInterval.value = null;
             }
-            showPaymentWaitingModal.value = false;
             await loadOrders();
             showValidateModal.value = true;
             currentPollingOrderId.value = null;
@@ -1690,10 +1676,40 @@
     // ✅ CORRECTION: Vérifier le statut toutes les 3 secondes (3000ms) comme demandé
     paymentPollingInterval.value = setInterval(async () => {
       try {
+        pollingAttempts++;
+        const elapsedTime = Date.now() - pollingStartTime;
+        
+        // ✅ Vérifier si on a dépassé la limite de temps ou le nombre de tentatives
+        if (elapsedTime > POLLING_MAX_DURATION || pollingAttempts > MAX_ATTEMPTS) {
+          console.warn('[Payment Polling] ⏰ Limite de temps atteinte, arrêt du polling', {
+            elapsedTime: Math.round(elapsedTime / 1000) + ' secondes',
+            attempts: pollingAttempts,
+            maxDuration: POLLING_MAX_DURATION / 1000 + ' secondes',
+            maxAttempts: MAX_ATTEMPTS
+          });
+          
+          // Arrêter le polling
+          if (paymentPollingInterval.value) {
+            clearInterval(paymentPollingInterval.value);
+            paymentPollingInterval.value = null;
+          }
+          
+          // Réinitialiser les variables
+          currentPollingOrderId.value = null;
+          currentPollingAdditionalPaymentId.value = null;
+          
+          // Afficher un message à l'utilisateur
+          alert('Le paiement prend plus de temps que prévu. Veuillez rafraîchir la page pour vérifier le statut de votre commande.');
+          
+          return;
+        }
+        
         console.log('[Payment Polling] Vérification du statut...', { 
           orderId, 
           additionalPaymentId,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          attempt: pollingAttempts,
+          elapsedTime: Math.round(elapsedTime / 1000) + ' secondes'
         });
         
         let isPaid = false;
@@ -1758,12 +1774,7 @@
             console.log('[Payment Polling] ✅ Polling arrêté');
           }
           
-          // ✅ CRITIQUE: Fermer le modal d'attente AVANT de recharger les commandes
-          showPaymentWaitingModal.value = false;
-          console.log('[Payment Polling] ✅ Modal d\'attente fermé');
-          
-          // Attendre un court délai pour que le modal se ferme visuellement
-          await new Promise(resolve => setTimeout(resolve, 100));
+          // ✅ Le polling s'arrête et on passe directement à la mise à jour
           
           // ✅ CRITIQUE: Sauvegarder les données du paiement avant de les réinitialiser
           let savedPaymentData = null;
@@ -1867,7 +1878,6 @@
       clearInterval(paymentPollingInterval.value);
       paymentPollingInterval.value = null;
     }
-    showPaymentWaitingModal.value = false;
     currentPollingOrderId.value = null;
     currentPollingAdditionalPaymentId.value = null;
   };
@@ -1879,8 +1889,7 @@
       console.log('Ouverture du paiement des cartes supplémentaires dans un nouvel onglet:', pendingAdditionalPayment.value.payment_url);
       window.open(pendingAdditionalPayment.value.payment_url, '_blank');
       
-      // Afficher le modal d'attente et démarrer le polling
-      showPaymentWaitingModal.value = true;
+      // Démarrer le polling en arrière-plan (sans modal d'attente)
       currentPollingOrderId.value = pendingAdditionalPayment.value.order_id;
       currentPollingAdditionalPaymentId.value = pendingAdditionalPayment.value.id;
       startPaymentPolling(pendingAdditionalPayment.value.order_id, pendingAdditionalPayment.value.id);
