@@ -1721,6 +1721,29 @@
           console.log('[Payment Polling] Réponse paiement supplémentaire:', response.data);
           if (response.data.status === 'paid' || response.data.payment_status === 'paid') {
             isPaid = true;
+          } else {
+            // ✅ MODE DÉVELOPPEMENT: Si le paiement supplémentaire est en attente depuis plus de 30 secondes,
+            // appeler automatiquement le webhook simulé pour forcer la validation
+            if (import.meta.env.DEV && elapsedTime > 30000 && response.data.status !== 'paid') {
+              console.log('[Payment Polling] 🔧 Mode développement: Paiement supplémentaire en attente depuis plus de 30s, appel du webhook simulé...');
+              try {
+                const simulateResponse = await apiClient.post(`/api/payment/simulate-webhook/${orderId}`, {
+                  additional_payment_id: additionalPaymentId
+                });
+                if (simulateResponse.data.success) {
+                  console.log('[Payment Polling] ✅ Webhook simulé (cartes supplémentaires) appelé avec succès, rechargement des données...');
+                  // Recharger les commandes pour avoir le statut à jour
+                  await loadOrders();
+                  // La prochaine itération du polling devrait détecter le statut "paid"
+                  return;
+                } else {
+                  console.warn('[Payment Polling] ⚠️ Webhook simulé retourné mais success=false:', simulateResponse.data);
+                }
+              } catch (simulateError) {
+                console.error('[Payment Polling] ❌ Erreur lors de l\'appel du webhook simulé (cartes supplémentaires):', simulateError);
+                // Continuer le polling normalement même en cas d'erreur
+              }
+            }
           }
         } else {
           // ✅ OPTIMISATION: Utiliser l'endpoint léger /status pour le polling
@@ -1761,6 +1784,28 @@
               isPaidFlag,
               paymentStatus
             });
+            
+            // ✅ NOTE: La validation automatique se fait maintenant côté backend dans getOrderStatus
+            // Plus besoin d'attendre 30 secondes, la validation est immédiate en localhost
+            // Cette logique est conservée comme fallback au cas où la validation automatique échouerait
+            if (import.meta.env.DEV && elapsedTime > 10000 && status === 'configured' && !additionalPaymentId) {
+              console.log('[Payment Polling] 🔧 Mode développement: Paiement en attente depuis plus de 10s, appel du webhook simulé (fallback)...');
+              try {
+                const simulateResponse = await apiClient.post(`/api/payment/simulate-webhook/${orderId}`, {});
+                if (simulateResponse.data.success) {
+                  console.log('[Payment Polling] ✅ Webhook simulé appelé avec succès, rechargement des données...');
+                  // Recharger les commandes pour avoir le statut à jour
+                  await loadOrders();
+                  // La prochaine itération du polling devrait détecter le statut "validated"
+                  return;
+                } else {
+                  console.warn('[Payment Polling] ⚠️ Webhook simulé retourné mais success=false:', simulateResponse.data);
+                }
+              } catch (simulateError) {
+                console.error('[Payment Polling] ❌ Erreur lors de l\'appel du webhook simulé:', simulateError);
+                // Continuer le polling normalement même en cas d'erreur
+              }
+            }
           }
         }
         

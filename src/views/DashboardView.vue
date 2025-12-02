@@ -12,7 +12,14 @@
         >
           <!-- ✅ OPTIMISATION: Afficher l'avatar immédiatement avec la valeur synchrone -->
           <!-- Si userAvatarUrl est null, le SVG placeholder s'affichera automatiquement -->
-          <img v-if="userAvatarUrl" :src="userAvatarUrl" :key="userAvatarUrl" class="w-full h-full object-cover" alt="Avatar actuel" @error="handleAvatarError" />
+          <img
+            v-if="userAvatarUrl"
+            :src="userAvatarUrl"
+            :key="userAvatarUrl"
+            class="w-full h-full object-cover"
+            alt="Avatar actuel"
+            @error="handleAvatarError"
+          />
           <svg v-else class="w-20 h-20 text-slate-500" fill="currentColor" viewBox="0 0 24 24">
             <path
               d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z"
@@ -45,277 +52,393 @@
 
     <!-- ✅ OPTIMISATION: Afficher le contenu immédiatement, même si user n'est pas encore chargé -->
     <div class="container mx-auto px-4 py-12">
-        <div v-if="user?.role === 'individual'">
-          <h1 class="text-4xl font-bold text-center mb-12">Bienvenue, {{ user?.name || "Chargement..." }} !</h1>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 max-w-4xl mx-auto">
-            <button
-              @click="goToSettings"
-              class="bg-slate-800 rounded-xl p-6 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300"
-            >
-              <span class="text-5xl mb-4 block group-hover:scale-110 transition-transform duration-300">⚙️</span>
-              <h2 class="text-lg font-semibold text-white mb-1">Paramétrer ma Carte</h2>
-              <p class="text-sm text-slate-400 flex-grow">Configurez votre profil public.</p>
-            </button>
-            <button
-              @click="viewPublicProfile"
-              class="bg-slate-800 rounded-xl p-6 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300"
-            >
-              <span class="text-5xl mb-4 block group-hover:scale-110 transition-transform duration-300">👀</span>
-              <h2 class="text-lg font-semibold text-white mb-1">Afficher mon Profil</h2>
-              <p class="text-sm text-slate-400 flex-grow">Voyez votre profil public.</p>
-            </button>
-            <button
-              @click="goToOrders"
-              class="bg-slate-800 rounded-xl p-6 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300"
-            >
-              <span class="text-5xl mb-4 block group-hover:scale-110 transition-transform duration-300">🛒</span>
-              <h2 class="text-lg font-semibold text-white mb-1">Mes Commandes</h2>
-              <p class="text-sm text-slate-400 flex-grow">Consultez votre historique.</p>
-            </button>
-          </div>
+      <div v-if="user?.role === 'individual'">
+        <h1 class="text-4xl font-bold text-center mb-12">Bienvenue, {{ user?.name || "Chargement..." }} !</h1>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 max-w-4xl mx-auto">
+          <button
+            @click="goToSettings"
+            class="bg-slate-800 rounded-xl p-6 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300"
+          >
+            <span class="text-5xl mb-4 block group-hover:scale-110 transition-transform duration-300">⚙️</span>
+            <h2 class="text-lg font-semibold text-white mb-1">Paramétrer ma Carte</h2>
+            <p class="text-sm text-slate-400 flex-grow">Configurez votre profil public.</p>
+          </button>
+          <button
+            @click="viewPublicProfile"
+            class="bg-slate-800 rounded-xl p-6 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300"
+          >
+            <span class="text-5xl mb-4 block group-hover:scale-110 transition-transform duration-300">👀</span>
+            <h2 class="text-lg font-semibold text-white mb-1">Afficher mon Profil</h2>
+            <p class="text-sm text-slate-400 flex-grow">Voyez votre profil public.</p>
+          </button>
+          <button
+            @click="goToOrders"
+            class="bg-slate-800 rounded-xl p-6 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300"
+          >
+            <span class="text-5xl mb-4 block group-hover:scale-110 transition-transform duration-300">🛒</span>
+            <h2 class="text-lg font-semibold text-white mb-1">Mes Commandes</h2>
+            <p class="text-sm text-slate-400 flex-grow">Consultez votre historique.</p>
+          </button>
         </div>
+      </div>
 
-        <div v-else-if="user?.role === 'business_admin'">
-          <h1 class="text-4xl font-bold text-center mb-12">Espace Entreprise</h1>
-          <!-- ✅ Masquer le contenu jusqu'à ce que le chargement des commandes business soit terminé -->
-          <LoadingSpinner v-if="isLoadingBusinessOrders" :is-loading="isLoadingBusinessOrders" />
-          <div
-            v-else
-            class="grid gap-6 md:gap-8 max-w-6xl mx-auto mb-16 justify-items-center"
-            :class="hasBusinessOrder ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 md:grid-cols-3'"
+      <div v-else-if="user?.role === 'business_admin'">
+        <h1 class="text-4xl font-bold text-center mb-12">Espace Entreprise</h1>
+        <!-- ✅ Masquer le contenu jusqu'à ce que le chargement des commandes business soit terminé -->
+        <LoadingSpinner v-if="isLoadingBusinessOrders" :is-loading="isLoadingBusinessOrders" />
+        <div
+          v-else
+          class="grid gap-6 md:gap-8 max-w-6xl mx-auto mb-16 justify-items-center"
+          :class="hasBusinessOrder ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 md:grid-cols-3'"
+        >
+          <button
+            v-if="hasBusinessOrder"
+            @click="scrollToEmployeeSection"
+            class="bg-slate-800 rounded-xl p-6 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 w-full"
           >
-            <button
-              v-if="hasBusinessOrder"
-              @click="scrollToEmployeeSection"
-              class="bg-slate-800 rounded-xl p-6 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 w-full"
+            <span class="text-5xl mb-4 block group-hover:scale-110 transition-transform duration-300">📊</span>
+            <h2 class="text-lg font-semibold text-white mb-1">Tableau de bord</h2>
+            <p class="text-sm text-slate-400 flex-grow">Gérez votre personnel.</p>
+          </button>
+          <button
+            @click="goToSettings"
+            class="bg-slate-800 rounded-xl p-6 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 w-full"
+          >
+            <span class="text-5xl mb-4 block group-hover:scale-110 transition-transform duration-300">⚙️</span>
+            <h2 class="text-lg font-semibold text-white mb-1">Paramétrer ma Carte</h2>
+            <p class="text-sm text-slate-400 flex-grow">Configurez votre profil public.</p>
+          </button>
+          <button
+            @click="viewPublicProfile"
+            class="bg-slate-800 rounded-xl p-6 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 w-full"
+          >
+            <span class="text-5xl mb-4 block group-hover:scale-110 transition-transform duration-300">👀</span>
+            <h2 class="text-lg font-semibold text-white mb-1">Afficher mon Profil</h2>
+            <p class="text-sm text-slate-400 flex-grow">Voyez votre profil public.</p>
+          </button>
+          <button
+            @click="goToOrders"
+            class="bg-slate-800 rounded-xl p-6 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 w-full"
+          >
+            <span class="text-5xl mb-4 block group-hover:scale-110 transition-transform duration-300">🛒</span>
+            <h2 class="text-lg font-semibold text-white mb-1">Mes Commandes</h2>
+            <p class="text-sm text-slate-400 flex-grow">Consultez votre historique.</p>
+          </button>
+        </div>
+        <!-- ✅ Masquer la section "Tableau de bord" jusqu'à ce que le chargement soit terminé -->
+        <div
+          v-if="!isLoadingBusinessOrders && hasBusinessOrder"
+          id="employee-section"
+          class="max-w-6xl mx-auto p-4 sm:p-6 bg-slate-800/50 rounded-lg border border-slate-700 scroll-mt-24"
+        >
+          <h2 class="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">Gérer le Personnel</h2>
+
+          <!-- Sélecteur de commande si plusieurs commandes business -->
+          <div v-if="businessOrders.length > 1" class="mb-6">
+            <label class="block text-sm font-medium text-slate-300 mb-2">Sélectionner une commande :</label>
+            <select
+              v-model="selectedOrderId"
+              @change="onOrderChange"
+              class="w-full bg-slate-700 border border-slate-600 rounded-md py-2.5 px-4 text-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
             >
-              <span class="text-5xl mb-4 block group-hover:scale-110 transition-transform duration-300">📊</span>
-              <h2 class="text-lg font-semibold text-white mb-1">Tableau de bord</h2>
-              <p class="text-sm text-slate-400 flex-grow">Gérez votre personnel.</p>
-            </button>
-            <button
-              @click="goToSettings"
-              class="bg-slate-800 rounded-xl p-6 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 w-full"
-            >
-              <span class="text-5xl mb-4 block group-hover:scale-110 transition-transform duration-300">⚙️</span>
-              <h2 class="text-lg font-semibold text-white mb-1">Paramétrer ma Carte</h2>
-              <p class="text-sm text-slate-400 flex-grow">Configurez votre profil public.</p>
-            </button>
-            <button
-              @click="viewPublicProfile"
-              class="bg-slate-800 rounded-xl p-6 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 w-full"
-            >
-              <span class="text-5xl mb-4 block group-hover:scale-110 transition-transform duration-300">👀</span>
-              <h2 class="text-lg font-semibold text-white mb-1">Afficher mon Profil</h2>
-              <p class="text-sm text-slate-400 flex-grow">Voyez votre profil public.</p>
-            </button>
-            <button
-              @click="goToOrders"
-              class="bg-slate-800 rounded-xl p-6 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 w-full"
-            >
-              <span class="text-5xl mb-4 block group-hover:scale-110 transition-transform duration-300">🛒</span>
-              <h2 class="text-lg font-semibold text-white mb-1">Mes Commandes</h2>
-              <p class="text-sm text-slate-400 flex-grow">Consultez votre historique.</p>
-            </button>
+              <option v-for="order in businessOrders" :key="order.id" :value="order.id">
+                Commande #{{ order.order_number }} - {{ order.total_employees }} personne(s) -
+                {{ order.card_quantity }}
+                carte(s)
+              </option>
+            </select>
           </div>
-          <!-- ✅ Masquer la section "Tableau de bord" jusqu'à ce que le chargement soit terminé -->
-          <div
-            v-if="!isLoadingBusinessOrders && hasBusinessOrder"
-            id="employee-section"
-            class="max-w-6xl mx-auto p-4 sm:p-6 bg-slate-800/50 rounded-lg border border-slate-700 scroll-mt-24"
-          >
-            <h2 class="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">Gérer le Personnel</h2>
 
-            <!-- Sélecteur de commande si plusieurs commandes business -->
-            <div v-if="businessOrders.length > 1" class="mb-6">
-              <label class="block text-sm font-medium text-slate-300 mb-2">Sélectionner une commande :</label>
-              <select
-                v-model="selectedOrderId"
-                @change="loadOrderSlots"
-                class="w-full bg-slate-700 border border-slate-600 rounded-md py-2.5 px-4 text-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
-              >
-                <option v-for="order in businessOrders" :key="order.id" :value="order.id">
-                  Commande #{{ order.order_number }} - {{ order.total_employees }} personne(s) -
-                  {{ order.card_quantity }}
-                  carte(s)
-                </option>
-              </select>
+          <!-- Skeleton Loader pour les slots -->
+          <div v-if="isLoadingSlots" class="space-y-4 animate-pulse">
+            <!-- Skeleton Slot 1 -->
+            <div class="bg-slate-700/30 rounded-lg border border-slate-600 p-4">
+              <div class="flex items-center justify-between">
+                <div class="flex flex-wrap items-center gap-2 sm:gap-3 flex-1">
+                  <div class="h-6 sm:h-8 w-20 sm:w-24 bg-slate-600/50 rounded-full"></div>
+                  <div class="h-5 sm:h-6 w-24 sm:w-32 bg-slate-600/50 rounded"></div>
+                  <div class="h-5 sm:h-6 w-16 sm:w-20 bg-slate-600/50 rounded-full"></div>
+                  <div class="h-5 sm:h-6 w-24 sm:w-28 bg-slate-600/50 rounded-full"></div>
+                </div>
+              </div>
             </div>
-
-            <!-- Skeleton Loader pour les slots -->
-            <div v-if="isLoadingSlots" class="space-y-4 animate-pulse">
-              <!-- Skeleton Slot 1 -->
-              <div class="bg-slate-700/30 rounded-lg border border-slate-600 p-4">
-                <div class="flex items-center justify-between">
-                  <div class="flex flex-wrap items-center gap-2 sm:gap-3 flex-1">
-                    <div class="h-6 sm:h-8 w-20 sm:w-24 bg-slate-600/50 rounded-full"></div>
-                    <div class="h-5 sm:h-6 w-24 sm:w-32 bg-slate-600/50 rounded"></div>
-                    <div class="h-5 sm:h-6 w-16 sm:w-20 bg-slate-600/50 rounded-full"></div>
-                    <div class="h-5 sm:h-6 w-24 sm:w-28 bg-slate-600/50 rounded-full"></div>
-                  </div>
+            <!-- Skeleton Slot 2 -->
+            <div class="bg-slate-700/30 rounded-lg border border-slate-600 p-4">
+              <div class="flex items-center justify-between">
+                <div class="flex flex-wrap items-center gap-2 sm:gap-3 flex-1">
+                  <div class="h-6 sm:h-8 w-20 sm:w-24 bg-slate-600/50 rounded-full"></div>
+                  <div class="h-5 sm:h-6 w-24 sm:w-32 bg-slate-600/50 rounded"></div>
+                  <div class="h-5 sm:h-6 w-16 sm:w-20 bg-slate-600/50 rounded-full"></div>
+                  <div class="h-5 sm:h-6 w-24 sm:w-28 bg-slate-600/50 rounded-full"></div>
                 </div>
               </div>
-              <!-- Skeleton Slot 2 -->
-              <div class="bg-slate-700/30 rounded-lg border border-slate-600 p-4">
-                <div class="flex items-center justify-between">
-                  <div class="flex flex-wrap items-center gap-2 sm:gap-3 flex-1">
-                    <div class="h-6 sm:h-8 w-20 sm:w-24 bg-slate-600/50 rounded-full"></div>
-                    <div class="h-5 sm:h-6 w-24 sm:w-32 bg-slate-600/50 rounded"></div>
-                    <div class="h-5 sm:h-6 w-16 sm:w-20 bg-slate-600/50 rounded-full"></div>
-                    <div class="h-5 sm:h-6 w-24 sm:w-28 bg-slate-600/50 rounded-full"></div>
-                  </div>
-                </div>
-              </div>
-              <!-- Skeleton Slot 3 -->
-              <div class="bg-slate-700/30 rounded-lg border border-slate-600 p-4">
-                <div class="flex items-center justify-between">
-                  <div class="flex flex-wrap items-center gap-2 sm:gap-3 flex-1">
-                    <div class="h-6 sm:h-8 w-20 sm:w-24 bg-slate-600/50 rounded-full"></div>
-                    <div class="h-5 sm:h-6 w-24 sm:w-32 bg-slate-600/50 rounded"></div>
-                    <div class="h-5 sm:h-6 w-16 sm:w-20 bg-slate-600/50 rounded-full"></div>
-                    <div class="h-5 sm:h-6 w-24 sm:w-28 bg-slate-600/50 rounded-full"></div>
-                  </div>
-                </div>
-              </div>
-              <p class="text-center text-slate-400 text-xs sm:text-sm mt-4">Chargement du personnel...</p>
             </div>
+            <!-- Skeleton Slot 3 -->
+            <div class="bg-slate-700/30 rounded-lg border border-slate-600 p-4">
+              <div class="flex items-center justify-between">
+                <div class="flex flex-wrap items-center gap-2 sm:gap-3 flex-1">
+                  <div class="h-6 sm:h-8 w-20 sm:w-24 bg-slate-600/50 rounded-full"></div>
+                  <div class="h-5 sm:h-6 w-24 sm:w-32 bg-slate-600/50 rounded"></div>
+                  <div class="h-5 sm:h-6 w-16 sm:w-20 bg-slate-600/50 rounded-full"></div>
+                  <div class="h-5 sm:h-6 w-24 sm:w-28 bg-slate-600/50 rounded-full"></div>
+                </div>
+              </div>
+            </div>
+            <p class="text-center text-slate-400 text-xs sm:text-sm mt-4">Chargement du personnel...</p>
+          </div>
 
-            <!-- Liste des slots -->
-            <div v-else-if="currentOrderSlots.length > 0" class="space-y-4">
+          <!-- Liste des slots -->
+          <div v-else-if="currentOrderSlots.length > 0" class="space-y-4">
+            <div
+              v-for="slot in currentOrderSlots"
+              :key="slot.slot_number"
+              class="bg-slate-700/30 rounded-lg border border-slate-600 p-3 sm:p-4 transition-all hover:border-slate-500"
+            >
+              <!-- Slot non assigné -->
+              <div v-if="!slot.is_assigned" class="space-y-3">
+                <div class="flex items-center justify-between mb-3">
+                  <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <span
+                      class="px-2 sm:px-3 py-1 bg-slate-600 text-slate-200 rounded-full text-xs sm:text-sm font-semibold border border-slate-500 whitespace-nowrap"
+                    >
+                      Personnel {{ slot.display_number }}
+                    </span>
+                    <span
+                      class="px-2 sm:px-3 py-1 bg-sky-500/20 text-sky-400 rounded-full text-xs border border-sky-500/30 whitespace-nowrap"
+                    >
+                      {{ slot.cards_quantity }} carte{{ slot.cards_quantity > 1 ? "s" : "" }}
+                    </span>
+                    <span
+                      class="px-2 sm:px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-xs border border-yellow-500/30 whitespace-nowrap"
+                    >
+                      ⏳ Non assigné
+                    </span>
+                  </div>
+                </div>
+
+                <form @submit.prevent="assignSlot(slot)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <input
+                    v-model.trim="slot.temp_name"
+                    type="text"
+                    placeholder="Nom complet"
+                    required
+                    class="bg-slate-600 border border-slate-500 rounded-md py-2 px-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
+                  />
+                  <input
+                    v-model.trim="slot.temp_email"
+                    type="email"
+                    placeholder="Email"
+                    required
+                    class="bg-slate-600 border border-slate-500 rounded-md py-2 px-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
+                  />
+                  <button
+                    type="submit"
+                    :disabled="slot.isAssigning"
+                    class="bg-sky-500 hover:bg-sky-600 px-4 py-2 rounded-md text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                  >
+                    <svg v-if="slot.isAssigning" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path
+                        class="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    {{ slot.isAssigning ? "Assignation..." : "✓ Assigner" }}
+                  </button>
+                </form>
+
+                <p v-if="slot.feedback" :class="slot.isError ? 'text-red-400' : 'text-green-400'" class="text-sm mt-2">
+                  {{ slot.feedback }}
+                </p>
+              </div>
+
+              <!-- Slot assigné -->
               <div
-                v-for="slot in currentOrderSlots"
-                :key="slot.slot_number"
-                class="bg-slate-700/30 rounded-lg border border-slate-600 p-3 sm:p-4 transition-all hover:border-slate-500"
+                v-else
+                @click="openEmployeeModal(slot)"
+                class="cursor-pointer hover:bg-slate-700/50 transition-colors rounded-lg p-2 -m-2"
               >
-                <!-- Slot non assigné -->
-                <div v-if="!slot.is_assigned" class="space-y-3">
-                  <div class="flex items-center justify-between mb-3">
-                    <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                <div class="flex items-start sm:items-center justify-between gap-2 sm:gap-0">
+                  <div class="flex-1 min-w-0">
+                    <div class="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
                       <span
                         class="px-2 sm:px-3 py-1 bg-slate-600 text-slate-200 rounded-full text-xs sm:text-sm font-semibold border border-slate-500 whitespace-nowrap"
                       >
                         Personnel {{ slot.display_number }}
                       </span>
-                      <span class="px-2 sm:px-3 py-1 bg-sky-500/20 text-sky-400 rounded-full text-xs border border-sky-500/30 whitespace-nowrap">
+                      <strong class="text-white font-semibold text-base sm:text-lg break-words">{{
+                        slot.employee_name
+                      }}</strong>
+                      <span
+                        class="px-2 sm:px-3 py-1 bg-sky-500/20 text-sky-400 rounded-full text-xs border border-sky-500/30 whitespace-nowrap"
+                      >
                         {{ slot.cards_quantity }} carte{{ slot.cards_quantity > 1 ? "s" : "" }}
                       </span>
                       <span
-                        class="px-2 sm:px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-xs border border-yellow-500/30 whitespace-nowrap"
+                        :class="
+                          slot.is_configured
+                            ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                            : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                        "
+                        class="px-2 sm:px-3 py-1 rounded-full text-xs border whitespace-nowrap"
                       >
-                        ⏳ Non assigné
+                        {{ slot.is_configured ? "✓ Configuré" : "⏳ Non configuré" }}
                       </span>
                     </div>
+                    <p class="text-slate-400 text-xs sm:text-sm break-words">{{ slot.employee_email }}</p>
                   </div>
-
-                  <form @submit.prevent="assignSlot(slot)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    <input
-                      v-model.trim="slot.temp_name"
-                      type="text"
-                      placeholder="Nom complet"
-                      required
-                      class="bg-slate-600 border border-slate-500 rounded-md py-2 px-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
-                    />
-                    <input
-                      v-model.trim="slot.temp_email"
-                      type="email"
-                      placeholder="Email"
-                      required
-                      class="bg-slate-600 border border-slate-500 rounded-md py-2 px-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
-                    />
-                    <button
-                      type="submit"
-                      :disabled="slot.isAssigning"
-                      class="bg-sky-500 hover:bg-sky-600 px-4 py-2 rounded-md text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-                    >
-                      <svg v-if="slot.isAssigning" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                        <circle
-                          class="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          stroke-width="4"
-                        ></circle>
-                        <path
-                          class="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                      </svg>
-                      {{ slot.isAssigning ? "Assignation..." : "✓ Assigner" }}
-                    </button>
-                  </form>
-
-                  <p
-                    v-if="slot.feedback"
-                    :class="slot.isError ? 'text-red-400' : 'text-green-400'"
-                    class="text-sm mt-2"
+                  <svg
+                    class="w-5 h-5 text-slate-400 flex-shrink-0 mt-1 sm:mt-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
                   >
-                    {{ slot.feedback }}
-                  </p>
-                </div>
-
-                <!-- Slot assigné -->
-                <div
-                  v-else
-                  @click="openEmployeeModal(slot)"
-                  class="cursor-pointer hover:bg-slate-700/50 transition-colors rounded-lg p-2 -m-2"
-                >
-                  <div class="flex items-start sm:items-center justify-between gap-2 sm:gap-0">
-                    <div class="flex-1 min-w-0">
-                      <div class="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
-                        <span
-                          class="px-2 sm:px-3 py-1 bg-slate-600 text-slate-200 rounded-full text-xs sm:text-sm font-semibold border border-slate-500 whitespace-nowrap"
-                        >
-                          Personnel {{ slot.display_number }}
-                        </span>
-                        <strong class="text-white font-semibold text-base sm:text-lg break-words">{{ slot.employee_name }}</strong>
-                        <span
-                          class="px-2 sm:px-3 py-1 bg-sky-500/20 text-sky-400 rounded-full text-xs border border-sky-500/30 whitespace-nowrap"
-                        >
-                          {{ slot.cards_quantity }} carte{{ slot.cards_quantity > 1 ? "s" : "" }}
-                        </span>
-                        <span
-                          :class="
-                            slot.is_configured
-                              ? 'bg-green-500/20 text-green-400 border-green-500/30'
-                              : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-                          "
-                          class="px-2 sm:px-3 py-1 rounded-full text-xs border whitespace-nowrap"
-                        >
-                          {{ slot.is_configured ? "✓ Configuré" : "⏳ Non configuré" }}
-                        </span>
-                      </div>
-                      <p class="text-slate-400 text-xs sm:text-sm break-words">{{ slot.employee_email }}</p>
-                    </div>
-                    <svg
-                      class="w-5 h-5 text-slate-400 flex-shrink-0 mt-1 sm:mt-0"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
                 </div>
               </div>
             </div>
-
-            <p v-else class="text-slate-400 italic text-center py-8">Aucun personnel dans cette commande.</p>
           </div>
 
-          <!-- Modal de Gestion d'Employé -->
-          <div
-            v-if="showEmployeeModal"
-            class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-            @click.self="closeEmployeeModal"
-          >
-            <div class="w-full max-w-md bg-slate-800 rounded-xl p-6 shadow-2xl border border-slate-700">
-              <!-- Modal de confirmation de suppression -->
-              <div v-if="showDeleteConfirmation" class="space-y-6">
-                <div class="text-center">
-                  <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-red-500/20 rounded-full">
-                    <svg class="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <p v-else class="text-slate-400 italic text-center py-8">Aucun personnel dans cette commande.</p>
+        </div>
+
+        <!-- Modal de Gestion d'Employé -->
+        <div
+          v-if="showEmployeeModal"
+          class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          @click.self="closeEmployeeModal"
+        >
+          <div class="w-full max-w-md bg-slate-800 rounded-xl p-6 shadow-2xl border border-slate-700">
+            <!-- Modal de confirmation de suppression -->
+            <div v-if="showDeleteConfirmation" class="space-y-6">
+              <div class="text-center">
+                <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-red-500/20 rounded-full">
+                  <svg class="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    />
+                  </svg>
+                </div>
+                <h3 class="text-xl font-bold text-white mb-3">Confirmer la suppression</h3>
+                <p class="text-slate-300 mb-2">Voulez-vous supprimer ce personnel ?</p>
+                <p v-if="selectedEmployee" class="font-semibold text-white text-lg">{{ selectedEmployee.name }}</p>
+              </div>
+
+              <div class="flex gap-3">
+                <button
+                  @click="cancelDelete"
+                  :disabled="isProcessing"
+                  class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  NON
+                </button>
+                <button
+                  @click="confirmDelete"
+                  :disabled="isProcessing"
+                  class="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  <svg v-if="isProcessing" class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path
+                      class="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  <span>{{ isProcessing ? "Suppression..." : "OUI" }}</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Menu principal de gestion -->
+            <div v-else-if="selectedEmployee">
+              <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-white">Gérer le Personnel</h3>
+                <button @click="closeEmployeeModal" class="text-slate-400 hover:text-white transition-colors">
+                  <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div class="space-y-6">
+                <!-- Informations de l'employé -->
+                <div class="bg-slate-700/30 rounded-lg p-4">
+                  <p class="text-white font-semibold text-lg">{{ selectedEmployee.name }}</p>
+                  <p class="text-slate-400 text-sm">{{ selectedEmployee.email }}</p>
+                  <div class="flex items-center gap-3 mt-3">
+                    <span
+                      :class="selectedEmployee.email_verified_at ? 'text-green-400' : 'text-yellow-400'"
+                      class="text-xs"
+                    >
+                      {{ selectedEmployee.email_verified_at ? "✓ Vérifié" : "⏳ En attente de vérification" }}
+                    </span>
+                    <div
+                      v-if="selectedEmployee.total_cards > 0"
+                      class="flex items-center gap-2 px-3 py-1 bg-sky-500/20 text-sky-400 rounded-full border border-sky-500/30"
+                    >
+                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
+                        />
+                      </svg>
+                      <span class="text-sm font-semibold"
+                        >{{ selectedEmployee.total_cards }} carte{{ selectedEmployee.total_cards > 1 ? "s" : "" }}</span
+                      >
+                    </div>
+                    <div v-else class="px-3 py-1 bg-slate-600/30 text-slate-400 rounded-full text-xs">
+                      Aucune carte assignée
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="space-y-3">
+                  <!-- Afficher le profil (seulement si configuré) -->
+                  <a
+                    v-if="selectedEmployee.is_configured && selectedEmployee.username"
+                    :href="getEmployeeProfileUrl(selectedEmployee)"
+                    target="_blank"
+                    class="w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                      />
+                    </svg>
+                    <span>Afficher le Profil</span>
+                  </a>
+
+                  <!-- Retirer une carte (seulement si non configuré) -->
+                  <button
+                    v-if="!selectedEmployee.is_configured"
+                    @click="removeCardFromEmployee"
+                    :disabled="isProcessing"
+                    class="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+                    </svg>
+                    <span>Retirer une Carte</span>
+                  </button>
+
+                  <!-- Message si l'employé a configuré -->
+                  <div
+                    v-if="selectedEmployee.is_configured"
+                    class="w-full bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 font-medium py-3 px-4 rounded-lg flex items-center gap-2"
+                  >
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path
                         stroke-linecap="round"
                         stroke-linejoin="round"
@@ -323,25 +446,18 @@
                         d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
                       />
                     </svg>
+                    <span class="text-sm"
+                      >Impossible de retirer des cartes car l'employé a déjà configuré sa carte.</span
+                    >
                   </div>
-                  <h3 class="text-xl font-bold text-white mb-3">Confirmer la suppression</h3>
-                  <p class="text-slate-300 mb-2">Voulez-vous supprimer ce personnel ?</p>
-                  <p v-if="selectedEmployee" class="font-semibold text-white text-lg">{{ selectedEmployee.name }}</p>
-                </div>
 
-                <div class="flex gap-3">
+                  <!-- Supprimer l'employé -->
                   <button
-                    @click="cancelDelete"
+                    @click="deleteEmployee"
                     :disabled="isProcessing"
-                    class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors disabled:opacity-50"
+                    class="w-full bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
                   >
-                    NON
-                  </button>
-                  <button
-                    @click="confirmDelete"
-                    :disabled="isProcessing"
-                    class="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
+                    <!-- Icône de chargement (spinner) quand isProcessing est true -->
                     <svg v-if="isProcessing" class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
                       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                       <path
@@ -350,180 +466,91 @@
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                       ></path>
                     </svg>
-                    <span>{{ isProcessing ? "Suppression..." : "OUI" }}</span>
-                  </button>
-                </div>
-              </div>
-
-              <!-- Menu principal de gestion -->
-              <div v-else-if="selectedEmployee">
-                <div class="flex justify-between items-center mb-6">
-                  <h3 class="text-xl font-bold text-white">Gérer le Personnel</h3>
-                  <button @click="closeEmployeeModal" class="text-slate-400 hover:text-white transition-colors">
-                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    <!-- Icône de poubelle quand isProcessing est false -->
+                    <svg v-else class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
                     </svg>
+                    <span>{{ isProcessing ? "Suppression..." : "Supprimer l'Employé" }}</span>
                   </button>
                 </div>
 
-                <div class="space-y-6">
-                  <!-- Informations de l'employé -->
-                  <div class="bg-slate-700/30 rounded-lg p-4">
-                    <p class="text-white font-semibold text-lg">{{ selectedEmployee.name }}</p>
-                    <p class="text-slate-400 text-sm">{{ selectedEmployee.email }}</p>
-                    <div class="flex items-center gap-3 mt-3">
-                      <span
-                        :class="selectedEmployee.email_verified_at ? 'text-green-400' : 'text-yellow-400'"
-                        class="text-xs"
-                      >
-                        {{ selectedEmployee.email_verified_at ? "✓ Vérifié" : "⏳ En attente de vérification" }}
-                      </span>
-                      <div
-                        v-if="selectedEmployee.total_cards > 0"
-                        class="flex items-center gap-2 px-3 py-1 bg-sky-500/20 text-sky-400 rounded-full border border-sky-500/30"
-                      >
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
-                          />
-                        </svg>
-                        <span class="text-sm font-semibold"
-                          >{{ selectedEmployee.total_cards }} carte{{
-                            selectedEmployee.total_cards > 1 ? "s" : ""
-                          }}</span
-                        >
-                      </div>
-                      <div v-else class="px-3 py-1 bg-slate-600/30 text-slate-400 rounded-full text-xs">
-                        Aucune carte assignée
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Actions -->
-                  <div class="space-y-3">
-                    <!-- Afficher le profil (seulement si configuré) -->
-                    <a
-                      v-if="selectedEmployee.is_configured && selectedEmployee.username"
-                      :href="getEmployeeProfileUrl(selectedEmployee)"
-                      target="_blank"
-                      class="w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
-                    >
-                      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                        />
-                      </svg>
-                      <span>Afficher le Profil</span>
-                    </a>
-
-                    <!-- Retirer une carte (seulement si non configuré) -->
-                    <button
-                      v-if="!selectedEmployee.is_configured"
-                      @click="removeCardFromEmployee"
-                      :disabled="isProcessing"
-                      class="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
-                    >
-                      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
-                      </svg>
-                      <span>Retirer une Carte</span>
-                    </button>
-
-                    <!-- Message si l'employé a configuré -->
-                    <div
-                      v-if="selectedEmployee.is_configured"
-                      class="w-full bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 font-medium py-3 px-4 rounded-lg flex items-center gap-2"
-                    >
-                      <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                        />
-                      </svg>
-                      <span class="text-sm"
-                        >Impossible de retirer des cartes car l'employé a déjà configuré sa carte.</span
-                      >
-                    </div>
-
-                    <!-- Supprimer l'employé -->
-                    <button
-                      @click="deleteEmployee"
-                      :disabled="isProcessing"
-                      class="w-full bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
-                    >
-                      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                        />
-                      </svg>
-                      <span>Supprimer l'Employé</span>
-                    </button>
-                  </div>
-
-                  <!-- Message de retour -->
-                  <p
-                    v-if="employeeModalFeedback"
-                    :class="employeeModalError ? 'text-red-400' : 'text-green-400'"
-                    class="text-sm text-center"
-                  >
-                    {{ employeeModalFeedback }}
-                  </p>
-                </div>
+                <!-- Message de retour -->
+                <p
+                  v-if="employeeModalFeedback"
+                  :class="employeeModalError ? 'text-red-400' : 'text-green-400'"
+                  class="text-sm text-center"
+                >
+                  {{ employeeModalFeedback }}
+                </p>
               </div>
             </div>
           </div>
         </div>
+      </div>
 
-        <div v-else-if="user?.role === 'employee'">
-          <h1 class="text-4xl font-bold text-center mb-4">Bienvenue, {{ user.name }} !</h1>
+      <div v-else-if="user?.role === 'employee'">
+        <h1 class="text-4xl font-bold text-center mb-4">Bienvenue, {{ user.name }} !</h1>
 
-          <!-- ✅ Masquer le contenu jusqu'à ce que le chargement de la commande employé soit terminé -->
-          <div v-if="isLoadingEmployeeOrder" class="flex flex-col items-center justify-center py-12 mb-12">
-            <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-sky-500"></div>
-            <p class="mt-4 text-slate-400 text-sm">Chargement de vos données...</p>
-          </div>
-          <template v-else>
-          <!-- Badge discret avec le nombre de cartes assignées -->
-          <div v-if="employeeOrder" class="text-center mb-12">
-            <div class="inline-flex items-center gap-2 px-4 py-2 bg-sky-500/20 border border-sky-500/30 rounded-full">
-              <svg class="w-5 h-5 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
-                />
-              </svg>
-              <span class="text-sky-400 font-semibold">
-                {{ getEmployeeCardQuantity() }} carte{{ getEmployeeCardQuantity() > 1 ? "s" : "" }} assignée{{
-                  getEmployeeCardQuantity() > 1 ? "s" : ""
-                }}
-              </span>
-              <span
-                :class="
-                  employeeOrder.employee_is_configured || employeeOrder.is_configured
-                    ? 'bg-green-500/30 text-green-400'
-                    : 'bg-yellow-500/30 text-yellow-400'
-                "
-                class="px-2 py-0.5 rounded-full text-xs font-semibold"
+        <!-- ✅ Masquer le contenu jusqu'à ce que le chargement de la commande employé soit terminé -->
+        <div v-if="isLoadingEmployeeOrder" class="flex flex-col items-center justify-center py-12 mb-12">
+          <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-sky-500"></div>
+          <p class="mt-4 text-slate-400 text-sm">Chargement de vos données...</p>
+        </div>
+        <template v-else>
+          <!-- ✅ NOUVEAU: Badge avec le total de toutes les cartes assignées -->
+          <div v-if="employeeOrders.length > 0" class="text-center mb-12">
+            <div class="inline-flex items-center gap-3 px-5 py-3 bg-slate-800/80 border border-slate-700 rounded-xl">
+              <!-- Total des cartes assignées -->
+              <div class="flex items-center gap-2">
+                <svg class="w-5 h-5 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
+                  />
+                </svg>
+                <span class="text-sky-400 font-semibold">
+                  {{ getEmployeeTotalCards() }} carte{{ getEmployeeTotalCards() > 1 ? "s" : "" }} assignée{{
+                    getEmployeeTotalCards() > 1 ? "s" : ""
+                  }}
+                </span>
+              </div>
+
+              <!-- Séparateur vertical -->
+              <div class="h-6 w-px bg-slate-600"></div>
+
+              <!-- Statut de configuration -->
+              <div
+                v-if="areAllCardsConfigured()"
+                class="flex items-center gap-2 px-3 py-1 bg-green-500/20 border border-green-500/30 rounded-full"
               >
-                {{
-                  employeeOrder.employee_is_configured || employeeOrder.is_configured
-                    ? "✓ Configurée"
-                    : "⏳ À configurer"
-                }}
-              </span>
+                <svg class="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                <span class="text-green-400 font-semibold text-sm">Configurées</span>
+              </div>
+              <div
+                v-else
+                class="flex items-center gap-2 px-3 py-1 bg-yellow-500/20 border border-yellow-500/30 rounded-full"
+              >
+                <svg class="w-4 h-4 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <span class="text-yellow-400 font-semibold text-sm">
+                  {{ getEmployeeCardsToConfig() }} à configurer
+                </span>
+              </div>
             </div>
           </div>
 
@@ -563,36 +590,36 @@
               <p class="text-sm text-slate-400 flex-grow">Voyez votre profil public.</p>
             </button>
           </div>
-          </template>
-        </div>
-
-        <div v-else-if="user?.role">
-          <p class="text-center text-red-400">Erreur : Rôle utilisateur inconnu ({{ user.role }}).</p>
-        </div>
-
-        <div v-if="user?.name" class="mt-12 text-center space-y-4">
-          <button
-            @click="goToHome"
-            class="bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
-          >
-            🏠 Accueil
-          </button>
-          <br />
-          <button
-            @click="goToAccount"
-            class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
-          >
-            👤 Mon Compte
-          </button>
-          <br />
-          <button
-            @click="handleLogout"
-            class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
-          >
-            Se déconnecter
-          </button>
-        </div>
+        </template>
       </div>
+
+      <div v-else-if="user?.role">
+        <p class="text-center text-red-400">Erreur : Rôle utilisateur inconnu ({{ user.role }}).</p>
+      </div>
+
+      <div v-if="user?.name" class="mt-12 text-center space-y-4">
+        <button
+          @click="goToHome"
+          class="bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
+        >
+          🏠 Accueil
+        </button>
+        <br />
+        <button
+          @click="goToAccount"
+          class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
+        >
+          👤 Mon Compte
+        </button>
+        <br />
+        <button
+          @click="handleLogout"
+          class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
+        >
+          Se déconnecter
+        </button>
+      </div>
+    </div>
     <ProfilePictureModal
       v-if="isCropperOpen"
       :imageUrl="selectedImageUrl"
@@ -641,6 +668,7 @@
 
   // --- Variables pour le dashboard employé ---
   const employeeOrder = ref(null);
+  const employeeOrders = ref([]); // ✅ NOUVEAU: Toutes les commandes de l'employé
   const isLoadingEmployeeOrder = ref(false); // ✅ Variable d'état pour le chargement de la commande employé
 
   // --- Variables pour le modal de gestion d'employé ---
@@ -668,28 +696,28 @@
   const getUserAvatarUrl = (avatarUrl) => {
     if (!avatarUrl) return null;
     const backendUrl = import.meta.env.VITE_APP_URL_BACKEND || "http://localhost:8000";
-    
+
     // Si c'est déjà une URL complète (http:// ou https://), l'utiliser directement
     // useAuth.js construit déjà l'URL complète, donc on peut la retourner telle quelle
     if (avatarUrl.startsWith("http://") || avatarUrl.startsWith("https://")) {
       return avatarUrl;
     }
-    
+
     // Si c'est un chemin relatif (commence par /api/storage/ ou /storage/), ajouter le backend URL
     if (avatarUrl.startsWith("/api/storage/") || avatarUrl.startsWith("/storage/")) {
       return backendUrl + avatarUrl;
     }
-    
+
     // Sinon, c'est probablement un chemin relatif, ajouter le backend URL
     return backendUrl + "/" + avatarUrl.replace(/^\//, "");
   };
-  
+
   // ✅ OPTIMISATION: Initialisation synchrone de l'avatar pour affichage immédiat (0ms de délai)
   // Utiliser user.value?.avatar_url directement depuis le composable useAuth
   // Cela garantit que l'avatar s'affiche dès le premier rendu, sans attendre fetchUser()
   const initialAvatarUrl = user.value?.avatar_url || null;
   const userAvatarUrl = ref(initialAvatarUrl ? getUserAvatarUrl(initialAvatarUrl) : null);
-  
+
   // ✅ Computed réactif pour mettre à jour l'avatar quand user.value.avatar_url change
   // Mais on utilise aussi une ref pour l'initialisation synchrone
   const userAvatarUrlComputed = computed(() => {
@@ -703,15 +731,19 @@
     }
     return null;
   });
-  
+
   // ✅ Utiliser la ref pour l'affichage immédiat, le computed pour la réactivité
   // La ref est mise à jour par le computed, mais elle a une valeur initiale synchrone
-  watch(userAvatarUrlComputed, (newUrl) => {
-    if (newUrl) {
-      userAvatarUrl.value = newUrl;
-    }
-  }, { immediate: true });
-  
+  watch(
+    userAvatarUrlComputed,
+    (newUrl) => {
+      if (newUrl) {
+        userAvatarUrl.value = newUrl;
+      }
+    },
+    { immediate: true },
+  );
+
   // ✅ CORRECTION : Watcher pour forcer la mise à jour de l'avatar quand user change
   // Cela garantit que l'avatar s'affiche immédiatement après une connexion
   watch(
@@ -729,7 +761,7 @@
         });
       }
     },
-    { immediate: true }
+    { immediate: true },
   );
 
   // ✅ CORRECTION : Gérer les erreurs de chargement d'avatar
@@ -772,10 +804,23 @@
     }
   };
 
+  // ✅ NOUVEAU: Gérer le changement de commande sélectionnée
+  const onOrderChange = async () => {
+    console.log("Commande sélectionnée changée", {
+      selectedOrderId: selectedOrderId.value,
+    });
+
+    // Forcer le rechargement en réinitialisant le cache
+    slotsLoaded.value = false;
+    currentOrderSlots.value = [];
+
+    // Recharger les slots de la nouvelle commande
+    await loadOrderSlots();
+  };
   // --- Charger les slots d'une commande spécifique ---
   const loadOrderSlots = async () => {
     if (!selectedOrderId.value) return;
-    
+
     // ✅ OPTIMISATION : Éviter de recharger si les slots sont déjà chargés pour cette commande
     if (slotsLoaded.value && currentOrderSlots.value.length > 0) {
       return;
@@ -792,22 +837,6 @@
       // Filtrer les slots pour exclure le business admin s'il s'est inclus ET les slots supprimés
       let slotsToDisplay = order.employee_slots || [];
 
-      // Filtrer :
-      // 1. Les slots du business admin connecté
-      // 2. Les slots explicitement marqués comme is_assigned = false (personnel supprimé)
-      slotsToDisplay = slotsToDisplay.filter((slot) => {
-        // Exclure si c'est le business admin
-        if (slot.employee_id === user.value.id) {
-          return false;
-        }
-        // Exclure UNIQUEMENT si le slot est explicitement marqué comme supprimé (is_assigned === false)
-        // Ne pas exclure si is_assigned est undefined/null (employés actifs)
-        if (slot.is_assigned === false) {
-          return false;
-        }
-        return true;
-      });
-
       // Créer un Map pour accéder rapidement aux données order_employees par employee_id
       const orderEmployeesMap = new Map();
       if (order.order_employees && Array.isArray(order.order_employees)) {
@@ -817,6 +846,54 @@
           }
         });
       }
+
+      // Filtrer et convertir :
+      // 1. Exclure les slots du business admin connecté
+      // 2. Convertir les slots avec employés supprimés ou 0 cartes en slots non assignés
+      slotsToDisplay = slotsToDisplay
+        .filter((slot) => {
+          // Exclure si c'est le business admin
+          if (slot.employee_id === user.value.id) {
+            return false;
+          }
+          // Exclure UNIQUEMENT si le slot est explicitement marqué comme supprimé (is_assigned === false)
+          // Ne pas exclure si is_assigned est undefined/null (employés actifs)
+          if (slot.is_assigned === false) {
+            return false;
+          }
+          return true;
+        })
+        .map((slot) => {
+          // Vérifier le nombre de cartes
+          const orderEmployee = slot.employee_id ? orderEmployeesMap.get(slot.employee_id) : null;
+          const actualCardQuantity = orderEmployee?.card_quantity ?? slot.cards_quantity ?? 0;
+
+          // ✅ NOUVEAU: Si le slot est assigné à un employé qui n'existe plus ou qui a 0 cartes,
+          // convertir le slot en slot non assigné pour permettre l'assignation d'un nouvel employé
+          const isAssigned = slot.employee_id && slot.is_assigned !== false;
+          const isEmployeeDeleted = isAssigned && !orderEmployee;
+          const hasNoCards = isAssigned && actualCardQuantity <= 0;
+
+          if (isEmployeeDeleted || hasNoCards) {
+            // Convertir en slot non assigné
+            // Garder le nombre de cartes original du slot (celui défini lors de la création)
+            // Si le slot n'a pas de cards_quantity défini, utiliser 1 par défaut
+            const originalCardsQuantity = slot.cards_quantity && slot.cards_quantity > 0 ? slot.cards_quantity : 1; // Valeur par défaut si aucune carte n'est définie
+
+            return {
+              ...slot,
+              employee_id: null,
+              employee_name: null,
+              employee_email: null,
+              employee_username: null,
+              is_assigned: false,
+              is_configured: false,
+              cards_quantity: originalCardsQuantity, // Utiliser la valeur originale du slot
+            };
+          }
+
+          return slot;
+        });
 
       // Préparer les slots avec des champs temporaires pour les formulaires
       // et ajuster les numéros pour qu'ils commencent par 1
@@ -874,10 +951,12 @@
       slot.feedback = response.data.message || "Employé assigné avec succès !";
       slot.isError = false;
 
-      // Recharger les slots après l'assignation
-      setTimeout(async () => {
-        await loadOrderSlots();
-      }, 1500);
+      // ✅ CORRECTION: Forcer le rechargement immédiat en réinitialisant le cache
+      slotsLoaded.value = false;
+      await loadOrderSlots();
+
+      // Recharger aussi les commandes pour mettre à jour les compteurs
+      await checkBusinessOrders();
     } catch (error) {
       console.error("Error assigning slot:", error);
       slot.feedback = error.response?.data?.message || "Erreur lors de l'assignation.";
@@ -888,7 +967,6 @@
     }
   };
 
-  // --- Charger la commande de l'employé ---
   const loadEmployeeOrder = async () => {
     if (user.value?.role !== "employee") {
       isLoadingEmployeeOrder.value = false;
@@ -896,27 +974,64 @@
     }
 
     try {
-      isLoadingEmployeeOrder.value = true; // ✅ Marquer le début du chargement
-      // Récupérer la commande de l'employé via OrderEmployee
+      isLoadingEmployeeOrder.value = true;
+      // Récupérer toutes les commandes de l'employé
       const response = await apiClient.get("/api/orders");
       const orders = response.data;
 
-      // Trouver la première commande où l'employé est assigné
       if (orders && orders.length > 0) {
-        // Pour un employé, il devrait y avoir une seule commande assignée
+        // ✅ NOUVEAU: Stocker toutes les commandes
+        employeeOrders.value = orders;
+        // Garder la première pour compatibilité
         employeeOrder.value = orders[0];
       } else {
+        employeeOrders.value = [];
         employeeOrder.value = null;
       }
     } catch (error) {
       console.error("Error loading employee order:", error);
+      employeeOrders.value = [];
       employeeOrder.value = null;
     } finally {
-      isLoadingEmployeeOrder.value = false; // ✅ Marquer la fin du chargement
+      isLoadingEmployeeOrder.value = false;
     }
   };
 
-  // --- Obtenir le nombre de cartes de l'employé ---
+  // ✅ NOUVEAU: Calculer le total de toutes les cartes assignées à l'employé
+  const getEmployeeTotalCards = () => {
+    if (employeeOrders.value.length === 0) return 0;
+
+    return employeeOrders.value.reduce((total, order) => {
+      const cardQty =
+        order.employee_card_quantity !== undefined ? order.employee_card_quantity : order.card_quantity || 0;
+      return total + cardQty;
+    }, 0);
+  };
+
+  // ✅ NOUVEAU: Calculer le nombre de cartes à configurer
+  const getEmployeeCardsToConfig = () => {
+    if (employeeOrders.value.length === 0) return 0;
+
+    return employeeOrders.value.reduce((total, order) => {
+      // Ne compter que les commandes non configurées
+      const isConfigured = order.employee_is_configured || order.is_configured;
+      if (!isConfigured) {
+        const cardQty =
+          order.employee_card_quantity !== undefined ? order.employee_card_quantity : order.card_quantity || 0;
+        return total + cardQty;
+      }
+      return total;
+    }, 0);
+  };
+
+  // ✅ NOUVEAU: Vérifier si toutes les cartes sont configurées
+  const areAllCardsConfigured = () => {
+    if (employeeOrders.value.length === 0) return false;
+
+    return employeeOrders.value.every((order) => order.employee_is_configured || order.is_configured);
+  };
+
+  // --- Obtenir le nombre de cartes de l'employé (pour compatibilité) ---
   const getEmployeeCardQuantity = () => {
     if (!employeeOrder.value) return 0;
     // Utiliser employee_card_quantity si disponible, sinon card_quantity
@@ -966,7 +1081,7 @@
     },
     { immediate: true },
   );
-  
+
   // ✅ OPTIMISATION: Le Router Guard a déjà appelé fetchUser() avant d'arriver ici
   // L'avatar est initialisé de manière synchrone avec user.value?.avatar_url
   // Plus besoin d'appeler fetchUser() au montage, l'avatar s'affiche immédiatement
@@ -977,7 +1092,7 @@
       avatarUrl: user.value?.avatar_url,
       userAvatarUrl: userAvatarUrl.value,
     });
-    
+
     // ✅ Charger les commandes business si l'utilisateur est un business_admin
     if (user.value?.role === "business_admin") {
       await checkBusinessOrders();
@@ -1041,9 +1156,23 @@
       isEmployeeError.value = false;
       try {
         setCsrfHeader();
-        await apiClient.delete(`/api/employees/${employeeId}`);
+        const response = await apiClient.delete(`/api/employees/${employeeId}`);
+
+        // ✅ NOUVEAU: Retirer l'employé de la liste des employés
         employees.value = employees.value.filter((emp) => emp.id !== employeeId);
-        employeeFeedback.value = "Employé supprimé.";
+
+        // ✅ NOUVEAU: Forcer le rechargement des slots en réinitialisant l'état
+        slotsLoaded.value = false;
+
+        // ✅ NOUVEAU: Recharger les slots pour que le slot libéré apparaisse comme disponible
+        await loadOrderSlots();
+
+        // ✅ NOUVEAU: Recharger les commandes business pour mettre à jour l'affichage
+        await checkBusinessOrders();
+
+        employeeFeedback.value =
+          response.data?.message ||
+          "Employé supprimé. Le slot est maintenant disponible pour assigner un nouvel employé.";
       } catch (error) {
         console.error("Error removing employee:", error.response?.data || error);
         employeeFeedback.value = error.response?.data?.message || "Erreur suppression.";
@@ -1060,18 +1189,16 @@
   const openEmployeeModal = async (slot) => {
     // ✅ Charger les données complètes de la commande pour obtenir order_employees.card_quantity
     let actualCardQuantity = slot.cards_quantity || 0;
-    
+
     try {
       if (selectedOrderId.value && slot.employee_id) {
         const timestamp = new Date().getTime();
         const response = await apiClient.get(`/api/orders/${selectedOrderId.value}?_t=${timestamp}`);
         const order = response.data;
-        
+
         // Chercher l'entrée order_employee correspondante pour obtenir le vrai nombre de cartes
         if (order.order_employees && Array.isArray(order.order_employees)) {
-          const orderEmployee = order.order_employees.find(
-            (oe) => oe.employee_id === slot.employee_id
-          );
+          const orderEmployee = order.order_employees.find((oe) => oe.employee_id === slot.employee_id);
           if (orderEmployee && orderEmployee.card_quantity !== undefined) {
             actualCardQuantity = orderEmployee.card_quantity;
           }
@@ -1118,7 +1245,8 @@
       const response = await apiClient.post(`/api/employees/${selectedEmployee.value.id}/add-card`);
 
       // Mettre à jour l'affichage dans la modal
-      selectedEmployee.value.total_cards = response.data.card_quantity || response.data.order_employee?.card_quantity || 0;
+      selectedEmployee.value.total_cards =
+        response.data.card_quantity || response.data.order_employee?.card_quantity || 0;
 
       employeeModalFeedback.value = response.data.message || "Carte ajoutée avec succès !";
       employeeModalError.value = false;
@@ -1131,13 +1259,15 @@
 
       // Émettre un événement pour notifier les autres composants (OrdersView, AdminOrderList, etc.)
       if (response.data.order) {
-        window.dispatchEvent(new CustomEvent('order-updated', {
-          detail: {
-            orderId: response.data.order.id,
-            order: response.data.order,
-            orderEmployee: response.data.order_employee,
-          }
-        }));
+        window.dispatchEvent(
+          new CustomEvent("order-updated", {
+            detail: {
+              orderId: response.data.order.id,
+              order: response.data.order,
+              orderEmployee: response.data.order_employee,
+            },
+          }),
+        );
       }
 
       // Fermer le modal après 2 secondes
@@ -1215,11 +1345,20 @@
 
     try {
       setCsrfHeader();
-      const response = await apiClient.delete(`/api/employees/${selectedEmployee.value.id}`);
+      const deletedEmployeeId = selectedEmployee.value.id;
+      const response = await apiClient.delete(`/api/employees/${deletedEmployeeId}`);
+
+      // ✅ NOUVEAU: Retirer l'employé de la liste des employés
+      employees.value = employees.value.filter((emp) => emp.id !== deletedEmployeeId);
 
       // Afficher le message du backend (qui peut indiquer si une commande a été supprimée)
-      employeeModalFeedback.value = response.data.message || "Personnel supprimé avec succès !";
+      employeeModalFeedback.value =
+        response.data.message ||
+        "Personnel supprimé avec succès ! Le slot est maintenant disponible pour assigner un nouvel employé.";
       employeeModalError.value = false;
+
+      // ✅ NOUVEAU: Forcer le rechargement des slots en réinitialisant l'état
+      slotsLoaded.value = false;
 
       // Recharger immédiatement les slots et les commandes
       await loadOrderSlots();
@@ -1276,9 +1415,9 @@
     const formData = new FormData();
     formData.append("avatar", croppedImageBlob, "avatar.jpg");
     isUploadingAvatar.value = true;
-    
+
     let uploadSuccess = false;
-    
+
     try {
       if (!apiClient) {
         console.error("apiClient n'est pas initialisé !");
@@ -1292,7 +1431,7 @@
         // ✅ CORRECTION : Construire l'URL complète avec le backend URL
         const backendUrl = import.meta.env.VITE_APP_URL_BACKEND || "http://localhost:8000";
         let fullAvatarUrl;
-        
+
         // Gérer les deux formats (/api/storage/ et /storage/)
         if (response.data.avatar_url.startsWith("/api/storage/") || response.data.avatar_url.startsWith("/storage/")) {
           fullAvatarUrl = backendUrl + response.data.avatar_url;
@@ -1301,7 +1440,7 @@
         } else {
           fullAvatarUrl = backendUrl + "/" + response.data.avatar_url.replace(/^\//, "");
         }
-        
+
         // ✅ OPTIMISATION CACHE: Ne pas ajouter de timestamp - le navigateur utilisera ETag/Last-Modified
         // pour détecter automatiquement si l'image a changé
         updateUserAvatar(fullAvatarUrl);
@@ -1315,7 +1454,7 @@
     } finally {
       isUploadingAvatar.value = false;
       delete apiClient.defaults.headers.common["X-XSRF-TOKEN"];
-      
+
       // ✅ CORRECTION : Fermer le modal seulement après que l'upload soit terminé
       // Attendre un court délai pour que l'utilisateur voie que l'upload est terminé
       if (uploadSuccess) {
@@ -1343,7 +1482,7 @@
     // Attendre que le DOM soit mis à jour pour afficher la bulle
     await nextTick();
     // Petite pause pour s'assurer que la bulle est visible avant la navigation
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 50));
     // Naviguer vers Settings
     router.push({ name: "Settings" });
   };
@@ -1358,28 +1497,28 @@
   // Fonction utilitaire pour obtenir le token d'accès d'une commande
   const getOrderAccessToken = (order) => {
     if (!order) return null;
-    
+
     // Chercher le token dans différentes propriétés possibles
     if (order.access_token) return order.access_token;
     if (order.profile_token) return order.profile_token;
     if (order.public_token) return order.public_token;
     if (order.token) return order.token;
-    
+
     return null;
   };
 
   // Obtenir l'URL du profil d'un employé avec le token sécurisé
   const getEmployeeProfileUrl = (employee) => {
-    if (!employee?.username) return '';
-    
+    if (!employee?.username) return "";
+
     const backendUrl = import.meta.env.VITE_APP_URL_BACKEND || "http://localhost:8000";
-    
+
     // Trouver la commande correspondante pour obtenir le token
-    const order = businessOrders.value.find(o => o.id === selectedOrderId.value);
-    
+    const order = businessOrders.value.find((o) => o.id === selectedOrderId.value);
+
     // Essayer d'obtenir le token d'accès (sécurisé)
     const accessToken = order ? getOrderAccessToken(order) : null;
-    
+
     if (accessToken) {
       // Utiliser le token sécurisé
       return `${backendUrl}/profil/${employee.username}?token=${accessToken}`;
@@ -1388,7 +1527,7 @@
       // Les anciennes commandes utilisent ?order= jusqu'à ce que le backend génère un token
       return `${backendUrl}/profil/${employee.username}?order=${selectedOrderId.value}`;
     }
-    
+
     // Si pas de token ni d'orderId, retourner juste le profil sans paramètre
     return `${backendUrl}/profil/${employee.username}`;
   };
@@ -1421,7 +1560,7 @@
         isLoadingEmployeeOrder.value = false;
         employeeOrder.value = null;
       }
-      
+
       if (newUser) {
         if (newUser.role === "business_admin") {
           checkBusinessOrders();

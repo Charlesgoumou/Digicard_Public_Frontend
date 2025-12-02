@@ -39,6 +39,15 @@ onMounted(async () => {
   const orderId = route.query.order_id;
   const additionalPaymentId = route.query.additional_payment_id;
 
+  console.log('[PaymentClose] Page chargée', {
+    orderId,
+    additionalPaymentId,
+    isDev: import.meta.env.DEV,
+    mode: import.meta.env.MODE,
+    fullQuery: route.query,
+    fullUrl: window.location.href,
+  });
+
   // ✅ NOUVEAU: En mode développement, simuler le webhook avant de fermer l'onglet
   if (import.meta.env.DEV && orderId) {
     try {
@@ -47,7 +56,14 @@ onMounted(async () => {
       // ✅ Appeler la route spécifique pour simuler le webhook
       // Si c'est un paiement supplémentaire, passer l'ID dans le body
       const payload = additionalPaymentId ? { additional_payment_id: additionalPaymentId } : {};
+      console.log('[PaymentClose] Appel de l\'API...', {
+        url: `/api/payment/simulate-webhook/${orderId}`,
+        payload,
+      });
+      
       const response = await apiClient.post(`/api/payment/simulate-webhook/${orderId}`, payload);
+      
+      console.log('[PaymentClose] Réponse reçue:', response.data);
       
       if (response.data.success) {
         console.log('[PaymentClose] ✅ Simulation Webhook envoyée avec succès:', response.data);
@@ -60,22 +76,38 @@ onMounted(async () => {
         console.warn('[PaymentClose] Simulation webhook retournée mais success=false:', response.data);
       }
     } catch (error) {
-      console.error('[PaymentClose] ❌ Erreur lors de la simulation du webhook:', error);
+      console.error('[PaymentClose] ❌ Erreur lors de la simulation du webhook:', {
+        error,
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        url: error.config?.url,
+        method: error.config?.method,
+      });
       // Ne pas bloquer la fermeture de l'onglet même en cas d'erreur
     }
-  } else if (import.meta.env.DEV && !orderId) {
-    console.warn('[PaymentClose] Mode développement détecté mais order_id manquant dans l\'URL');
+  } else {
+    if (!import.meta.env.DEV) {
+      console.log('[PaymentClose] Mode production détecté, pas de simulation de webhook');
+    }
+    if (!orderId) {
+      console.warn('[PaymentClose] Mode développement détecté mais order_id manquant dans l\'URL', {
+        query: route.query,
+        fullUrl: window.location.href,
+      });
+    }
   }
 
-  // Essayer de fermer l'onglet automatiquement après 3 secondes
+  // Essayer de fermer l'onglet automatiquement après 5 secondes (augmenté pour laisser le temps au webhook)
   setTimeout(() => {
     try {
+      console.log('[PaymentClose] Tentative de fermeture de l\'onglet...');
       window.close();
     } catch (error) {
       // Si window.close() échoue (certains navigateurs le bloquent), on ne fait rien
-      console.log("[PaymentClose] Impossible de fermer l'onglet automatiquement");
+      console.log("[PaymentClose] Impossible de fermer l'onglet automatiquement", error);
     }
-  }, 3000);
+  }, 5000);
 });
 </script>
 
