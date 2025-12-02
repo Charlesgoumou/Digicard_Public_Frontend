@@ -133,20 +133,84 @@
         >
           <h2 class="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">Gérer le Personnel</h2>
 
-          <!-- Sélecteur de commande si plusieurs commandes business -->
+          <!-- ✅ NOUVEAU: Sélecteur de commande avec design attrayant -->
           <div v-if="businessOrders.length > 1" class="mb-6">
-            <label class="block text-sm font-medium text-slate-300 mb-2">Sélectionner une commande :</label>
-            <select
-              v-model="selectedOrderId"
-              @change="onOrderChange"
-              class="w-full bg-slate-700 border border-slate-600 rounded-md py-2.5 px-4 text-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
-            >
-              <option v-for="order in businessOrders" :key="order.id" :value="order.id">
-                Commande #{{ order.order_number }} - {{ order.total_employees }} personne(s) -
-                {{ order.card_quantity }}
-                carte(s)
-              </option>
-            </select>
+            <label class="block text-sm font-medium text-slate-300 mb-3">Sélectionner une commande :</label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <button
+                v-for="order in businessOrders"
+                :key="order.id"
+                @click="selectBusinessOrder(order.id)"
+                :class="[
+                  'p-4 rounded-xl border-2 transition-all duration-300 text-left',
+                  selectedOrderId === order.id
+                    ? 'bg-sky-500/20 border-sky-500 shadow-lg shadow-sky-500/30'
+                    : 'bg-slate-700/50 border-slate-600 hover:border-sky-400 hover:bg-slate-700',
+                ]"
+              >
+                <div class="flex items-start gap-3">
+                  <!-- Icône de commande -->
+                  <div
+                    :class="[
+                      'flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center',
+                      selectedOrderId === order.id ? 'bg-sky-500' : 'bg-slate-600',
+                    ]"
+                  >
+                    <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                  </div>
+                  <!-- Informations de la commande -->
+                  <div class="flex-1 min-w-0">
+                    <p
+                      :class="[
+                        'font-semibold text-sm truncate',
+                        selectedOrderId === order.id ? 'text-sky-400' : 'text-white',
+                      ]"
+                    >
+                      Commande #{{ order.order_number }}
+                    </p>
+                    <div class="flex items-center gap-2 mt-1 text-xs text-slate-400">
+                      <span class="flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+                          />
+                        </svg>
+                        {{ order.total_employees }} pers.
+                      </span>
+                      <span class="flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
+                          />
+                        </svg>
+                        {{ order.card_quantity }} carte{{ order.card_quantity > 1 ? "s" : "" }}
+                      </span>
+                    </div>
+                  </div>
+                  <!-- Icône de sélection -->
+                  <div v-if="selectedOrderId === order.id" class="flex-shrink-0">
+                    <svg class="w-5 h-5 text-sky-400" fill="currentColor" viewBox="0 0 24 24">
+                      <path
+                        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
+                      />
+                    </svg>
+                  </div>
+                </div>
+              </button>
+            </div>
           </div>
 
           <!-- Skeleton Loader pour les slots -->
@@ -817,6 +881,12 @@
     // Recharger les slots de la nouvelle commande
     await loadOrderSlots();
   };
+
+  // ✅ NOUVEAU: Fonction pour sélectionner une commande business (avec les boutons)
+  const selectBusinessOrder = async (orderId) => {
+    selectedOrderId.value = orderId;
+    await onOrderChange();
+  };
   // --- Charger les slots d'une commande spécifique ---
   const loadOrderSlots = async () => {
     if (!selectedOrderId.value) return;
@@ -849,16 +919,23 @@
 
       // Filtrer et convertir :
       // 1. Exclure les slots du business admin connecté
-      // 2. Convertir les slots avec employés supprimés ou 0 cartes en slots non assignés
+      // 2. ✅ NOUVEAU: Garder les slots libérés (is_assigned=false mais cards_quantity > 0) pour permettre la réassignation
+      // 3. Convertir les slots avec employés supprimés en slots non assignés
       slotsToDisplay = slotsToDisplay
         .filter((slot) => {
           // Exclure si c'est le business admin
           if (slot.employee_id === user.value.id) {
             return false;
           }
-          // Exclure UNIQUEMENT si le slot est explicitement marqué comme supprimé (is_assigned === false)
-          // Ne pas exclure si is_assigned est undefined/null (employés actifs)
-          if (slot.is_assigned === false) {
+          // ✅ NOUVEAU: Garder les slots libérés qui ont encore des cartes (pour réassignation)
+          // Un slot libéré a is_assigned=false mais cards_quantity > 0
+          const hasCards = (slot.cards_quantity ?? 0) > 0;
+          if (slot.is_assigned === false && hasCards) {
+            // Garder ce slot - il est disponible pour réassignation
+            return true;
+          }
+          // Exclure si le slot est marqué comme supprimé ET n'a pas de cartes
+          if (slot.is_assigned === false && !hasCards) {
             return false;
           }
           return true;
@@ -868,17 +945,30 @@
           const orderEmployee = slot.employee_id ? orderEmployeesMap.get(slot.employee_id) : null;
           const actualCardQuantity = orderEmployee?.card_quantity ?? slot.cards_quantity ?? 0;
 
-          // ✅ NOUVEAU: Si le slot est assigné à un employé qui n'existe plus ou qui a 0 cartes,
+          // ✅ NOUVEAU: Si le slot n'est pas assigné (libéré après suppression d'un employé),
+          // le présenter comme un slot disponible pour assignation
+          if (!slot.employee_id || slot.is_assigned === false) {
+            const originalCardsQuantity = slot.cards_quantity && slot.cards_quantity > 0 ? slot.cards_quantity : 1;
+            return {
+              ...slot,
+              employee_id: null,
+              employee_name: null,
+              employee_email: null,
+              employee_username: null,
+              is_assigned: false,
+              is_configured: false,
+              cards_quantity: originalCardsQuantity,
+            };
+          }
+
+          // Si le slot est assigné à un employé qui n'existe plus ou qui a 0 cartes,
           // convertir le slot en slot non assigné pour permettre l'assignation d'un nouvel employé
           const isAssigned = slot.employee_id && slot.is_assigned !== false;
           const isEmployeeDeleted = isAssigned && !orderEmployee;
           const hasNoCards = isAssigned && actualCardQuantity <= 0;
 
           if (isEmployeeDeleted || hasNoCards) {
-            // Convertir en slot non assigné
-            // Garder le nombre de cartes original du slot (celui défini lors de la création)
-            // Si le slot n'a pas de cards_quantity défini, utiliser 1 par défaut
-            const originalCardsQuantity = slot.cards_quantity && slot.cards_quantity > 0 ? slot.cards_quantity : 1; // Valeur par défaut si aucune carte n'est définie
+            const originalCardsQuantity = slot.cards_quantity && slot.cards_quantity > 0 ? slot.cards_quantity : 1;
 
             return {
               ...slot,
@@ -888,7 +978,7 @@
               employee_username: null,
               is_assigned: false,
               is_configured: false,
-              cards_quantity: originalCardsQuantity, // Utiliser la valeur originale du slot
+              cards_quantity: originalCardsQuantity,
             };
           }
 
@@ -1346,18 +1436,27 @@
     try {
       setCsrfHeader();
       const deletedEmployeeId = selectedEmployee.value.id;
-      const response = await apiClient.delete(`/api/employees/${deletedEmployeeId}`);
 
-      // ✅ NOUVEAU: Retirer l'employé de la liste des employés
-      employees.value = employees.value.filter((emp) => emp.id !== deletedEmployeeId);
+      // ✅ NOUVEAU: Envoyer l'order_id pour retirer l'employé seulement de cette commande
+      const response = await apiClient.delete(`/api/employees/${deletedEmployeeId}`, {
+        data: { order_id: selectedOrderId.value },
+      });
 
-      // Afficher le message du backend (qui peut indiquer si une commande a été supprimée)
+      // ✅ Vérifier si le compte a été supprimé ou juste retiré de la commande
+      const accountDeleted = response.data.account_deleted;
+
+      if (accountDeleted) {
+        // Retirer l'employé de la liste car son compte est supprimé
+        employees.value = employees.value.filter((emp) => emp.id !== deletedEmployeeId);
+      }
+
+      // Afficher le message du backend
       employeeModalFeedback.value =
         response.data.message ||
-        "Personnel supprimé avec succès ! Le slot est maintenant disponible pour assigner un nouvel employé.";
+        "Personnel retiré avec succès ! Le slot est maintenant disponible pour assigner un nouvel employé.";
       employeeModalError.value = false;
 
-      // ✅ NOUVEAU: Forcer le rechargement des slots en réinitialisant l'état
+      // ✅ Forcer le rechargement des slots en réinitialisant l'état
       slotsLoaded.value = false;
 
       // Recharger immédiatement les slots et les commandes

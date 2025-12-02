@@ -199,10 +199,10 @@
   const orders = ref([]);
   const isLoading = ref(true);
   const loadingError = ref("");
-  
+
   // ✅ CORRECTION : Gérer les erreurs de chargement d'avatar
   const avatarLoadError = ref({});
-  
+
   const handleAvatarError = (event) => {
     const orderId = event.target.dataset.orderId;
     if (orderId) {
@@ -211,7 +211,7 @@
     }
     event.target.style.display = "none";
   };
-  
+
   const handleAvatarLoad = (event) => {
     const orderId = event.target.dataset.orderId;
     if (orderId) {
@@ -228,14 +228,15 @@
       }
       // Pour les business admin
       if (user.value?.role === "business_admin") {
-        // Si c'est une entrée d'employé, toujours l'afficher (déjà filtrée)
+        // ✅ NOUVEAU: Exclure les commandes d'employés (ne montrer que le profil du business admin)
+        // Les profils des employés sont déjà visibles dans le Tableau de bord
         if (order.is_employee_order) {
-          return true;
+          return false; // ✅ Ne pas afficher les profils d'employés
         }
         // ✅ CORRECTION : Pour les business admin inclus dans une commande business,
         // vérifier employee_is_configured (retourné par le backend quand l'admin est inclus)
         // Le backend retourne employee_card_quantity et employee_is_configured pour les commandes où l'admin est inclus
-        const isAdminIncluded = 'employee_card_quantity' in order || 'employee_is_configured' in order;
+        const isAdminIncluded = "employee_card_quantity" in order || "employee_is_configured" in order;
         if (isAdminIncluded) {
           // Si l'admin est inclus dans la commande, vérifier employee_is_configured
           return order.employee_is_configured === true || order.is_configured === true;
@@ -268,12 +269,12 @@
     if (avatarUrl.startsWith("http://") || avatarUrl.startsWith("https://")) {
       return avatarUrl;
     }
-    
+
     // Si c'est un chemin relatif (commence par /api/storage/ ou /storage/), ajouter le backend URL
     if (avatarUrl.startsWith("/api/storage/") || avatarUrl.startsWith("/storage/")) {
       return backendUrl + avatarUrl;
     }
-    
+
     // Sinon, c'est probablement un chemin relatif, ajouter le backend URL
     return backendUrl + "/" + avatarUrl.replace(/^\//, "");
   };
@@ -298,13 +299,13 @@
   // Fonction utilitaire pour obtenir le token d'accès d'une commande
   const getOrderAccessToken = (order) => {
     if (!order) return null;
-    
+
     // Chercher le token dans différentes propriétés possibles
     if (order.access_token) return order.access_token;
     if (order.profile_token) return order.profile_token;
     if (order.public_token) return order.public_token;
     if (order.token) return order.token;
-    
+
     return null;
   };
 
@@ -315,18 +316,16 @@
     // 2. profile_username si disponible (retourné par le backend pour les business admin inclus)
     // 3. employee_profile.username si disponible
     // 4. user.value.username en dernier recours
-    const username = order.employee_username || 
-                     order.profile_username || 
-                     order.employee_profile?.username || 
-                     user.value?.username;
-    
+    const username =
+      order.employee_username || order.profile_username || order.employee_profile?.username || user.value?.username;
+
     if (username) {
       const backendUrl = import.meta.env.VITE_APP_URL_BACKEND || "http://localhost:8000";
-      
+
       // Essayer d'obtenir le token d'accès (sécurisé)
       const accessToken = getOrderAccessToken(order);
       const orderId = order.original_order_id || order.id;
-      
+
       let profileUrl;
       if (accessToken) {
         // Utiliser le token sécurisé
@@ -339,7 +338,7 @@
         // Si pas de token ni d'orderId, retourner juste le profil sans paramètre
         profileUrl = `${backendUrl}/profil/${username}`;
       }
-      
+
       window.open(profileUrl, "_blank");
     } else {
       console.error("ProfileSelectionView: Username non trouvé pour la commande", order);
@@ -365,7 +364,7 @@
       // Charger les commandes de l'utilisateur
       const response = await apiClient.get("/api/orders");
       let allOrders = Array.isArray(response.data) ? response.data : [];
-      
+
       // ✅ DEBUG : Logger les commandes pour vérifier les données
       console.log("ProfileSelectionView - Commandes chargées:", allOrders);
       console.log("ProfileSelectionView - User:", user.value);
@@ -468,12 +467,13 @@
       console.log("📊 Commandes chargées:", allOrders);
       console.log("👤 Utilisateur:", user.value);
       console.log("✅ Commandes configurées (computed):", configuredOrders.value);
-      
+
       // 🔍 DEBUG : Pour les business admin, vérifier les commandes business
       if (user.value?.role === "business_admin") {
-        const businessOrdersWithAdmin = allOrders.filter(order => 
-          order.order_type === "business" && 
-          (order.employee_card_quantity !== undefined || order.employee_is_configured !== undefined)
+        const businessOrdersWithAdmin = allOrders.filter(
+          (order) =>
+            order.order_type === "business" &&
+            (order.employee_card_quantity !== undefined || order.employee_is_configured !== undefined),
         );
         console.log("💼 Commandes business avec admin inclus:", businessOrdersWithAdmin);
       }
