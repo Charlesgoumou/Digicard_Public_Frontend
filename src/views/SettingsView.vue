@@ -778,9 +778,15 @@
       selectedDesignNumber.value
     );
     
+    // ✅ NOUVEAU: Rediriger l'employé vers son Dashboard après "Enregistrer et quitter"
+    if (user.value && user.value.role === 'employee') {
+      setTimeout(() => {
+        router.push({ name: "Dashboard" });
+      }, 1500);
+    }
     // Après la sauvegarde de "Ma Carte", basculer vers l'onglet "Nos Services" pour les business_admin
     // pour qu'ils puissent paramétrer la section "Nos Services"
-    if (user.value && user.value.role === 'business_admin') {
+    else if (user.value && user.value.role === 'business_admin') {
       // Attendre un peu pour que le message de succès s'affiche
       setTimeout(() => {
         activeTab.value = 'services';
