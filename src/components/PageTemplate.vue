@@ -193,7 +193,7 @@
           </p>
         </div>
 
-        <!-- Réseaux sociaux -->
+        <!-- Réseaux sociaux avec icône rendez-vous toujours au centre -->
         <div
           v-if="
             pageData.whatsapp_url ||
@@ -202,80 +202,52 @@
             pageData.twitter_url ||
             pageData.youtube_url ||
             pageData.deezer_url ||
-            pageData.spotify_url
+            pageData.spotify_url ||
+            isAppointmentEnabled
           "
-          class="flex justify-center gap-4 mb-6"
+          class="flex justify-center items-center mb-6"
         >
-          <a
-            v-if="pageData.whatsapp_url"
-            :href="pageData.whatsapp_url"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-gray-300 hover:text-green-400 transition-colors text-2xl"
-            title="WhatsApp"
+          <!-- Groupe gauche des icônes (équilibré) -->
+          <div class="flex items-center justify-end gap-4" :style="{ minWidth: isAppointmentEnabled ? '80px' : '0' }">
+            <a
+              v-for="icon in leftSocialIcons"
+              :key="icon.name"
+              :href="icon.url"
+              target="_blank"
+              rel="noopener noreferrer"
+              :class="['text-gray-300 transition-colors text-2xl', icon.hoverClass]"
+              :title="icon.title"
+            >
+              <i :class="icon.iconClass"></i>
+            </a>
+          </div>
+
+          <!-- Bouton Prendre Rendez-vous - TOUJOURS AU CENTRE -->
+          <button
+            v-if="isAppointmentEnabled"
+            @click="openBookingModal"
+            class="text-gray-300 hover:text-sky-400 transition-colors text-2xl cursor-pointer relative group flex-shrink-0 mx-5"
+            title="Prendre rendez-vous"
           >
-            <i class="fab fa-whatsapp"></i>
-          </a>
-          <a
-            v-if="pageData.linkedin_url"
-            :href="pageData.linkedin_url"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-gray-300 hover:text-blue-500 transition-colors text-2xl"
-            title="LinkedIn"
-          >
-            <i class="fab fa-linkedin"></i>
-          </a>
-          <a
-            v-if="pageData.facebook_url"
-            :href="pageData.facebook_url"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-gray-300 hover:text-blue-600 transition-colors text-2xl"
-            title="Facebook"
-          >
-            <i class="fab fa-facebook"></i>
-          </a>
-          <a
-            v-if="pageData.twitter_url"
-            :href="pageData.twitter_url"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-gray-300 hover:text-blue-400 transition-colors text-2xl"
-            title="Twitter"
-          >
-            <i class="fab fa-twitter"></i>
-          </a>
-          <a
-            v-if="pageData.youtube_url"
-            :href="pageData.youtube_url"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-gray-300 hover:text-red-500 transition-colors text-2xl"
-            title="YouTube"
-          >
-            <i class="fab fa-youtube"></i>
-          </a>
-          <a
-            v-if="pageData.deezer_url"
-            :href="pageData.deezer_url"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-gray-300 hover:text-purple-500 transition-colors text-2xl"
-            title="Deezer"
-          >
-            <i class="fab fa-deezer"></i>
-          </a>
-          <a
-            v-if="pageData.spotify_url"
-            :href="pageData.spotify_url"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-gray-300 hover:text-green-500 transition-colors text-2xl"
-            title="Spotify"
-          >
-            <i class="fab fa-spotify"></i>
-          </a>
+            <i class="fas fa-calendar-check"></i>
+            <!-- Badge indicateur -->
+            <span class="absolute -top-1 -right-1 w-3 h-3 bg-sky-500 rounded-full animate-pulse"></span>
+          </button>
+
+          <!-- Groupe droite des icônes (équilibré) -->
+          <div class="flex items-center justify-start gap-4" :style="{ minWidth: isAppointmentEnabled ? '80px' : '0' }">
+            <a
+              v-for="icon in rightSocialIcons"
+              :key="icon.name"
+              :href="icon.url"
+              target="_blank"
+              rel="noopener noreferrer"
+              :class="['text-gray-300 transition-colors text-2xl', icon.hoverClass]"
+              :title="icon.title"
+            >
+              <i :class="icon.iconClass"></i>
+            </a>
+          </div>
         </div>
 
         <p class="text-gray-500">
@@ -339,12 +311,22 @@
         ></div>
       </div>
     </div>
+
+    <!-- Modal de Réservation de Rendez-vous -->
+    <BookingModal
+      :isOpen="isBookingModalOpen"
+      :userId="appointmentUserId"
+      :orderId="appointmentOrderId"
+      :ownerName="ownerName"
+      @close="closeBookingModal"
+    />
   </body>
 </template>
 
 <script setup>
-  import { ref, onMounted, watch, nextTick } from "vue";
+  import { ref, onMounted, watch, nextTick, computed } from "vue";
   import Chart from "chart.js/auto";
+  import BookingModal from "./BookingModal.vue";
 
   const props = defineProps({
     pageData: {
@@ -352,6 +334,122 @@
       required: true,
     },
   });
+
+  // --- Rendez-vous ---
+  const isBookingModalOpen = ref(false);
+
+  // Vérifier si les rendez-vous sont activés
+  const isAppointmentEnabled = computed(() => {
+    return props.pageData?.appointment_setting?.is_enabled === true;
+  });
+
+  // ID de l'utilisateur pour les rendez-vous
+  const appointmentUserId = computed(() => {
+    return props.pageData?.user_id || props.pageData?.id;
+  });
+
+  // ID de la commande pour les rendez-vous (pour la configuration spécifique)
+  const appointmentOrderId = computed(() => {
+    return props.pageData?.order_id || null;
+  });
+
+  // Nom du propriétaire
+  const ownerName = computed(() => {
+    return props.pageData?.company_name || props.pageData?.name || 'ce contact';
+  });
+
+  // Liste de toutes les icônes sociales disponibles
+  const allSocialIcons = computed(() => {
+    const icons = [];
+    
+    if (props.pageData?.whatsapp_url) {
+      icons.push({
+        name: 'whatsapp',
+        url: props.pageData.whatsapp_url,
+        iconClass: 'fab fa-whatsapp',
+        hoverClass: 'hover:text-green-400',
+        title: 'WhatsApp'
+      });
+    }
+    if (props.pageData?.linkedin_url) {
+      icons.push({
+        name: 'linkedin',
+        url: props.pageData.linkedin_url,
+        iconClass: 'fab fa-linkedin',
+        hoverClass: 'hover:text-blue-500',
+        title: 'LinkedIn'
+      });
+    }
+    if (props.pageData?.facebook_url) {
+      icons.push({
+        name: 'facebook',
+        url: props.pageData.facebook_url,
+        iconClass: 'fab fa-facebook',
+        hoverClass: 'hover:text-blue-600',
+        title: 'Facebook'
+      });
+    }
+    if (props.pageData?.twitter_url) {
+      icons.push({
+        name: 'twitter',
+        url: props.pageData.twitter_url,
+        iconClass: 'fab fa-twitter',
+        hoverClass: 'hover:text-blue-400',
+        title: 'Twitter'
+      });
+    }
+    if (props.pageData?.youtube_url) {
+      icons.push({
+        name: 'youtube',
+        url: props.pageData.youtube_url,
+        iconClass: 'fab fa-youtube',
+        hoverClass: 'hover:text-red-500',
+        title: 'YouTube'
+      });
+    }
+    if (props.pageData?.deezer_url) {
+      icons.push({
+        name: 'deezer',
+        url: props.pageData.deezer_url,
+        iconClass: 'fab fa-deezer',
+        hoverClass: 'hover:text-purple-500',
+        title: 'Deezer'
+      });
+    }
+    if (props.pageData?.spotify_url) {
+      icons.push({
+        name: 'spotify',
+        url: props.pageData.spotify_url,
+        iconClass: 'fab fa-spotify',
+        hoverClass: 'hover:text-green-500',
+        title: 'Spotify'
+      });
+    }
+    
+    return icons;
+  });
+
+  // Icônes à gauche de l'icône rendez-vous (première moitié)
+  const leftSocialIcons = computed(() => {
+    const all = allSocialIcons.value;
+    const midPoint = Math.ceil(all.length / 2);
+    return all.slice(0, midPoint);
+  });
+
+  // Icônes à droite de l'icône rendez-vous (seconde moitié)
+  const rightSocialIcons = computed(() => {
+    const all = allSocialIcons.value;
+    const midPoint = Math.ceil(all.length / 2);
+    return all.slice(midPoint);
+  });
+
+  const openBookingModal = () => {
+    isBookingModalOpen.value = true;
+  };
+
+  const closeBookingModal = () => {
+    isBookingModalOpen.value = false;
+  };
 
   const isMenuModalOpen = ref(false);
   const isDetailsModalOpen = ref(false);

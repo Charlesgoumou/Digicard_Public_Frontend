@@ -54,80 +54,136 @@
     <div class="container mx-auto px-4 py-12">
       <div v-if="user?.role === 'individual'">
         <h1 class="text-4xl font-bold text-center mb-12">Bienvenue, {{ user?.name || "Chargement..." }} !</h1>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 max-w-4xl mx-auto">
+        <!-- Spinner pendant le chargement initial -->
+        <LoadingSpinner v-if="isLoadingDashboard" :is-loading="isLoadingDashboard" />
+        <div 
+          v-else
+          class="grid gap-4 md:gap-6 max-w-4xl mx-auto"
+          :class="hasAppointmentsEnabled ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 max-w-7xl' : 'grid-cols-2 md:grid-cols-4'"
+        >
           <button
             @click="goToSettings"
-            class="bg-slate-800 rounded-xl p-6 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300"
+            class="bg-slate-800 rounded-xl p-4 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300"
           >
-            <span class="text-5xl mb-4 block group-hover:scale-110 transition-transform duration-300">⚙️</span>
-            <h2 class="text-lg font-semibold text-white mb-1">Paramétrer ma Carte</h2>
-            <p class="text-sm text-slate-400 flex-grow">Configurez votre profil public.</p>
+            <span class="text-4xl mb-2 block group-hover:scale-110 transition-transform duration-300">⚙️</span>
+            <h2 class="text-base font-semibold text-white mb-1">Paramétrer ma Carte</h2>
+            <p class="text-xs text-slate-400 flex-grow">Configurez votre profil public.</p>
           </button>
           <button
             @click="viewPublicProfile"
-            class="bg-slate-800 rounded-xl p-6 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300"
+            class="bg-slate-800 rounded-xl p-4 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300"
           >
-            <span class="text-5xl mb-4 block group-hover:scale-110 transition-transform duration-300">👀</span>
-            <h2 class="text-lg font-semibold text-white mb-1">Afficher mon Profil</h2>
-            <p class="text-sm text-slate-400 flex-grow">Voyez votre profil public.</p>
+            <span class="text-4xl mb-2 block group-hover:scale-110 transition-transform duration-300">👀</span>
+            <h2 class="text-base font-semibold text-white mb-1">Afficher mon Profil</h2>
+            <p class="text-xs text-slate-400 flex-grow">Voyez votre profil public.</p>
           </button>
           <button
             @click="goToOrders"
-            class="bg-slate-800 rounded-xl p-6 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300"
+            class="bg-slate-800 rounded-xl p-4 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300"
           >
-            <span class="text-5xl mb-4 block group-hover:scale-110 transition-transform duration-300">🛒</span>
-            <h2 class="text-lg font-semibold text-white mb-1">Mes Commandes</h2>
-            <p class="text-sm text-slate-400 flex-grow">Consultez votre historique.</p>
+            <span class="text-4xl mb-2 block group-hover:scale-110 transition-transform duration-300">🛒</span>
+            <h2 class="text-base font-semibold text-white mb-1">Mes Commandes</h2>
+            <p class="text-xs text-slate-400 flex-grow">Consultez votre historique.</p>
           </button>
-        </div>
-      </div>
+          <!-- Carte "Mes Rendez-vous" -->
+          <button
+            v-if="hasAppointmentsEnabled"
+            @click="showAppointmentsModal = true"
+            class="bg-slate-800 rounded-xl p-4 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300"
+          >
+            <span class="text-4xl mb-2 block group-hover:scale-110 transition-transform duration-300">📅</span>
+            <h2 class="text-base font-semibold text-white mb-1">Mes Rendez-vous</h2>
+            <p class="text-xs text-slate-400 flex-grow">Gérez vos rendez-vous.</p>
+            <span v-if="appointmentsCount > 0" class="mt-2 px-2 py-1 bg-sky-500/20 text-sky-400 rounded-full text-xs border border-sky-500/30">
+              {{ appointmentsCount }} rendez-vous
+            </span>
+          </button>
+          <!-- Carte "Mes Contacts" -->
+          <button
+            @click="showContactsModal = true"
+            class="bg-slate-800 rounded-xl p-4 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300"
+          >
+            <span class="text-4xl mb-2 block group-hover:scale-110 transition-transform duration-300">📇</span>
+            <h2 class="text-base font-semibold text-white mb-1">Mes Contacts</h2>
+            <p class="text-xs text-slate-400 flex-grow">Contacts reçus.</p>
+            <span v-if="newContactsCount > 0" class="mt-2 px-2 py-1 bg-sky-500/20 text-sky-400 rounded-full text-xs border border-sky-500/30">
+              {{ newContactsCount }} nouveau{{ newContactsCount > 1 ? 'x' : '' }}
+            </span>
+          </button>
+        </div> <!-- Fin de la grille individual -->
+      </div> <!-- Fin du v-if individual -->
 
       <div v-else-if="user?.role === 'business_admin'">
         <h1 class="text-4xl font-bold text-center mb-12">Espace Entreprise</h1>
         <!-- ✅ Masquer le contenu jusqu'à ce que le chargement des commandes business soit terminé -->
-        <LoadingSpinner v-if="isLoadingBusinessOrders" :is-loading="isLoadingBusinessOrders" />
+        <LoadingSpinner v-if="!isDashboardReady" :is-loading="!isDashboardReady" />
         <div
           v-else
-          class="grid gap-6 md:gap-8 max-w-6xl mx-auto mb-16 justify-items-center"
-          :class="hasBusinessOrder ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 md:grid-cols-3'"
+          class="grid gap-4 md:gap-6 max-w-7xl mx-auto mb-16 justify-items-center grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
         >
           <button
             v-if="hasBusinessOrder"
             @click="scrollToEmployeeSection"
-            class="bg-slate-800 rounded-xl p-6 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 w-full"
+            class="bg-slate-800 rounded-xl p-4 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 w-full"
           >
-            <span class="text-5xl mb-4 block group-hover:scale-110 transition-transform duration-300">📊</span>
-            <h2 class="text-lg font-semibold text-white mb-1">Tableau de bord</h2>
-            <p class="text-sm text-slate-400 flex-grow">Gérez votre personnel.</p>
+            <span class="text-4xl mb-2 block group-hover:scale-110 transition-transform duration-300">📊</span>
+            <h2 class="text-base font-semibold text-white mb-1">Tableau de bord</h2>
+            <p class="text-xs text-slate-400 flex-grow">Gérez votre personnel.</p>
           </button>
           <button
             @click="goToSettings"
-            class="bg-slate-800 rounded-xl p-6 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 w-full"
+            class="bg-slate-800 rounded-xl p-4 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 w-full"
           >
-            <span class="text-5xl mb-4 block group-hover:scale-110 transition-transform duration-300">⚙️</span>
-            <h2 class="text-lg font-semibold text-white mb-1">Paramétrer ma Carte</h2>
-            <p class="text-sm text-slate-400 flex-grow">Configurez votre profil public.</p>
+            <span class="text-4xl mb-2 block group-hover:scale-110 transition-transform duration-300">⚙️</span>
+            <h2 class="text-base font-semibold text-white mb-1">Paramétrer ma Carte</h2>
+            <p class="text-xs text-slate-400 flex-grow">Configurez votre profil public.</p>
           </button>
           <button
             @click="viewPublicProfile"
-            class="bg-slate-800 rounded-xl p-6 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 w-full"
+            class="bg-slate-800 rounded-xl p-4 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 w-full"
           >
-            <span class="text-5xl mb-4 block group-hover:scale-110 transition-transform duration-300">👀</span>
-            <h2 class="text-lg font-semibold text-white mb-1">Afficher mon Profil</h2>
-            <p class="text-sm text-slate-400 flex-grow">Voyez votre profil public.</p>
+            <span class="text-4xl mb-2 block group-hover:scale-110 transition-transform duration-300">👀</span>
+            <h2 class="text-base font-semibold text-white mb-1">Afficher mon Profil</h2>
+            <p class="text-xs text-slate-400 flex-grow">Voyez votre profil public.</p>
           </button>
           <button
             @click="goToOrders"
-            class="bg-slate-800 rounded-xl p-6 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 w-full"
+            class="bg-slate-800 rounded-xl p-4 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 w-full"
           >
-            <span class="text-5xl mb-4 block group-hover:scale-110 transition-transform duration-300">🛒</span>
-            <h2 class="text-lg font-semibold text-white mb-1">Mes Commandes</h2>
-            <p class="text-sm text-slate-400 flex-grow">Consultez votre historique.</p>
+            <span class="text-4xl mb-2 block group-hover:scale-110 transition-transform duration-300">🛒</span>
+            <h2 class="text-base font-semibold text-white mb-1">Mes Commandes</h2>
+            <p class="text-xs text-slate-400 flex-grow">Consultez votre historique.</p>
+          </button>
+          <!-- Carte "Mes Rendez-vous" pour les business_admin -->
+          <button
+            v-if="hasAppointmentsEnabled"
+            @click="showAppointmentsModal = true"
+            class="bg-slate-800 rounded-xl p-4 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 w-full"
+          >
+            <span class="text-4xl mb-2 block group-hover:scale-110 transition-transform duration-300">📅</span>
+            <h2 class="text-base font-semibold text-white mb-1">Mes Rendez-vous</h2>
+            <p class="text-xs text-slate-400 flex-grow">Gérez vos rendez-vous.</p>
+            <span v-if="appointmentsCount > 0" class="mt-2 px-2 py-1 bg-sky-500/20 text-sky-400 rounded-full text-xs border border-sky-500/30">
+              {{ appointmentsCount }} rendez-vous
+            </span>
+          </button>
+          <!-- Carte "Mes Contacts" pour les business_admin -->
+          <button
+            @click="showContactsModal = true"
+            class="bg-slate-800 rounded-xl p-4 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 w-full"
+          >
+            <span class="text-4xl mb-2 block group-hover:scale-110 transition-transform duration-300">📇</span>
+            <h2 class="text-base font-semibold text-white mb-1">Mes Contacts</h2>
+            <p class="text-xs text-slate-400 flex-grow">Contacts reçus.</p>
+            <span v-if="newContactsCount > 0" class="mt-2 px-2 py-1 bg-sky-500/20 text-sky-400 rounded-full text-xs border border-sky-500/30">
+              {{ newContactsCount }} nouveau{{ newContactsCount > 1 ? 'x' : '' }}
+            </span>
           </button>
         </div>
+
         <!-- ✅ Masquer la section "Tableau de bord" jusqu'à ce que le chargement soit terminé -->
         <div
-          v-if="!isLoadingBusinessOrders && hasBusinessOrder"
+          v-if="isDashboardReady && hasBusinessOrder"
           id="employee-section"
           class="max-w-6xl mx-auto p-4 sm:p-6 bg-slate-800/50 rounded-lg border border-slate-700 scroll-mt-24"
         >
@@ -636,7 +692,7 @@
           </div>
 
           <!-- Boutons d'action -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 max-w-xl mx-auto">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 max-w-3xl mx-auto">
             <button
               @click="goToSettings"
               class="bg-slate-800 rounded-xl p-6 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300"
@@ -652,6 +708,18 @@
               <span class="text-5xl mb-4 block group-hover:scale-110 transition-transform duration-300">👀</span>
               <h2 class="text-lg font-semibold text-white mb-1">Afficher mon Profil</h2>
               <p class="text-sm text-slate-400 flex-grow">Voyez votre profil public.</p>
+            </button>
+            <!-- Carte "Mes Contacts" pour les employés -->
+            <button
+              @click="showContactsModal = true"
+              class="bg-slate-800 rounded-xl p-6 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300"
+            >
+              <span class="text-5xl mb-4 block group-hover:scale-110 transition-transform duration-300">📇</span>
+              <h2 class="text-lg font-semibold text-white mb-1">Mes Contacts</h2>
+              <p class="text-sm text-slate-400 flex-grow">Contacts reçus.</p>
+              <span v-if="newContactsCount > 0" class="mt-2 px-2 py-1 bg-sky-500/20 text-sky-400 rounded-full text-xs border border-sky-500/30">
+                {{ newContactsCount }} nouveau{{ newContactsCount > 1 ? 'x' : '' }}
+              </span>
             </button>
           </div>
         </template>
@@ -691,6 +759,72 @@
       @close="isCropperOpen = false"
       @save="handleImageSave"
     />
+
+    <!-- Modale "Mes Rendez-vous" -->
+    <div
+      v-if="showAppointmentsModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      @click.self="showAppointmentsModal = false"
+    >
+      <div class="w-full max-w-4xl bg-slate-800 rounded-xl shadow-2xl border border-slate-700 max-h-[90vh] overflow-hidden flex flex-col">
+        <!-- Header -->
+        <div class="flex items-center justify-between p-6 border-b border-slate-700">
+          <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+            <span class="text-3xl">📅</span>
+            Mes Rendez-vous
+          </h2>
+          <button
+            @click="showAppointmentsModal = false"
+            class="text-slate-400 hover:text-white transition-colors"
+          >
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Content -->
+        <div class="flex-1 overflow-y-auto p-6">
+            <MyAppointments 
+              :orderId="appointmentsOrderId" 
+              :showHeader="false"
+            />
+        </div>
+      </div>
+    </div>
+
+    <!-- Modale "Mes Contacts" -->
+    <div
+      v-if="showContactsModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      @click.self="showContactsModal = false"
+    >
+      <div class="w-full max-w-4xl bg-slate-800 rounded-xl shadow-2xl border border-slate-700 max-h-[90vh] overflow-hidden flex flex-col">
+        <!-- Header -->
+        <div class="flex items-center justify-between p-6 border-b border-slate-700">
+          <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+            <span class="text-3xl">📇</span>
+            Mes Contacts
+          </h2>
+          <button
+            @click="showContactsModal = false"
+            class="text-slate-400 hover:text-white transition-colors"
+          >
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Content -->
+        <div class="flex-1 overflow-y-auto p-6">
+            <MyContacts 
+              :showHeader="false"
+              @update:newCount="newContactsCount = $event"
+            />
+        </div>
+      </div>
+    </div>
   </div>
   <LoadingSpinner :is-loading="isNavigatingToSettings" />
 </template>
@@ -702,6 +836,8 @@
   import apiClient from "@/api";
   import ProfilePictureModal from "@/components/ProfilePictureModal.vue";
   import LoadingSpinner from "@/components/layout/LoadingSpinner.vue";
+  import MyAppointments from "@/components/dashboard/MyAppointments.vue";
+  import MyContacts from "@/components/dashboard/MyContacts.vue";
   import Cookies from "js-cookie";
 
   const router = useRouter();
@@ -743,6 +879,30 @@
   const employeeModalError = ref(false);
   const showDeleteConfirmation = ref(false);
   const isNavigatingToSettings = ref(false);
+
+  // --- Variables pour les rendez-vous ---
+  const hasAppointmentsEnabled = ref(false);
+  const hasAppointments = ref(false);
+  const appointmentsCount = ref(0);
+  const isCheckingAppointments = ref(false); // Pour éviter les appels multiples simultanés
+
+  // --- Variables pour les contacts ---
+  const showContactsModal = ref(false);
+  const newContactsCount = ref(0);
+
+  // Charger le compteur de contacts
+  const loadContactsCount = async () => {
+    try {
+      const response = await apiClient.get('/api/shared-contacts');
+      newContactsCount.value = response.data?.new_count || 0;
+    } catch (error) {
+      console.error('Erreur lors du chargement du compteur de contacts:', error);
+    }
+  };
+  const showAppointmentsModal = ref(false); // Pour afficher la modale des rendez-vous
+  const appointmentsOrderId = ref(null); // OrderId utilisé pour charger les rendez-vous (peut différer de selectedOrderId)
+  const isLoadingDashboard = ref(true); // État de chargement global du dashboard
+  const isDashboardReady = ref(false); // Dashboard prêt à afficher (TOUT est chargé)
 
   // --- Helper to set CSRF header ---
   const setCsrfHeader = () => {
@@ -787,12 +947,19 @@
   const userAvatarUrlComputed = computed(() => {
     if (user.value?.avatar_url) {
       const url = getUserAvatarUrl(user.value.avatar_url);
+      console.log("[Dashboard] userAvatarUrlComputed - URL construite:", {
+        original: user.value.avatar_url,
+        constructed: url,
+        current: userAvatarUrl.value
+      });
       // Mettre à jour la ref pour que l'image se recharge si l'URL change
       if (url !== userAvatarUrl.value) {
+        console.log("[Dashboard] Mise à jour userAvatarUrl:", url);
         userAvatarUrl.value = url;
       }
       return url;
     }
+    console.log("[Dashboard] userAvatarUrlComputed - Pas d'avatar URL");
     return null;
   });
 
@@ -819,10 +986,19 @@
           new: newAvatarUrl,
           constructed: getUserAvatarUrl(newAvatarUrl),
         });
+        // Mettre à jour directement la ref pour forcer le re-render
+        const newUrl = getUserAvatarUrl(newAvatarUrl);
+        if (newUrl) {
+          userAvatarUrl.value = newUrl;
+          console.log("[Dashboard] userAvatarUrl ref mise à jour:", newUrl);
+        }
         // Le computed se mettra à jour automatiquement, mais on force un re-render
         nextTick(() => {
           console.log("[Dashboard] Avatar should be updated in DOM");
         });
+      } else if (!newAvatarUrl) {
+        // Si l'avatar est supprimé, réinitialiser la ref
+        userAvatarUrl.value = null;
       }
     },
     { immediate: true },
@@ -836,13 +1012,19 @@
   };
 
   // --- Function to check if user has business orders and load them ---
-  const checkBusinessOrders = async () => {
+  const checkBusinessOrders = async (manageSpinner = true) => {
     if (user.value?.role !== "business_admin") {
-      isLoadingBusinessOrders.value = false;
+      if (manageSpinner) {
+        isLoadingBusinessOrders.value = false;
+      }
       return;
     }
     try {
-      isLoadingBusinessOrders.value = true; // ✅ Marquer le début du chargement
+      // Ne gérer le spinner que si demandé (évite les doubles spinners)
+      if (manageSpinner) {
+        isLoadingBusinessOrders.value = true;
+      }
+      
       // ✅ OPTIMISATION : Ne pas ajouter de timestamp pour permettre le cache du navigateur
       // Le backend retourne déjà les données optimisées pour les business_admin
       const response = await apiClient.get(`/api/orders`);
@@ -864,7 +1046,10 @@
       console.error("Erreur lors du chargement des commandes business:", error);
       hasBusinessOrder.value = false; // En cas d'erreur, considérer qu'il n'y a pas de commande business
     } finally {
-      isLoadingBusinessOrders.value = false; // ✅ Marquer la fin du chargement
+      // Ne désactiver le spinner que si on l'a activé
+      if (manageSpinner) {
+        isLoadingBusinessOrders.value = false;
+      }
     }
   };
 
@@ -880,6 +1065,9 @@
 
     // Recharger les slots de la nouvelle commande
     await loadOrderSlots();
+
+    // Recharger les rendez-vous pour la nouvelle commande
+    checkAppointmentsEnabled();
   };
 
   // ✅ NOUVEAU: Fonction pour sélectionner une commande business (avec les boutons)
@@ -1172,6 +1360,169 @@
     { immediate: true },
   );
 
+  // --- Fonction pour vérifier rapidement si la prise de rendez-vous est activée ---
+  // Cette fonction est rapide et permet d'afficher la carte immédiatement
+  const checkAppointmentsEnabled = async () => {
+    if (!user.value) {
+      return;
+    }
+
+    // Ne pas gérer isCheckingAppointments ici si appelé depuis onMounted (business_admin)
+    // car onMounted le gère manuellement pour éviter les conflits de spinner
+    const manageCheckingFlag = !isCheckingAppointments.value;
+    
+    if (manageCheckingFlag) {
+      isCheckingAppointments.value = true;
+      
+      // Activer le bon spinner selon le rôle
+      if (user.value.role === 'business_admin') {
+        isLoadingBusinessOrders.value = true;
+      } else {
+        isLoadingDashboard.value = true;
+      }
+    }
+
+    try {
+      let hasEnabledSettings = false;
+      let orderIdToCheck = null;
+
+      console.log('[Dashboard] 🔍 Début checkAppointmentsEnabled (rapide)', {
+        userRole: user.value.role,
+        selectedOrderId: selectedOrderId.value,
+      });
+
+      // Pour tous les utilisateurs, vérifier toutes les commandes
+      try {
+        const ordersResponse = await apiClient.get('/api/orders');
+        const orders = ordersResponse.data || [];
+        console.log('[Dashboard] 📦 Toutes les commandes:', orders.length);
+        
+        // Pour tous les utilisateurs, vérifier toutes les commandes
+        const ordersToCheck = orders;
+        
+        // Vérifier si au moins une commande a la prise de rendez-vous activée
+        for (const order of ordersToCheck) {
+          try {
+            const settingsResponse = await apiClient.get(`/api/appointment-settings?order_id=${order.id}`);
+            const settings = settingsResponse.data?.settings;
+            
+            if (settings?.is_enabled === true) {
+              hasEnabledSettings = true;
+              console.log(`[Dashboard] ✅ Prise de rendez-vous activée pour commande ${order.id} (${order.order_number})`);
+              
+              // Pour business_admin, utiliser la commande sélectionnée si elle a des settings
+              // Sinon, utiliser la première commande avec settings activés
+              if (user.value.role === 'business_admin') {
+                if (selectedOrderId.value === order.id) {
+                  orderIdToCheck = order.id;
+                  break; // Priorité à la commande sélectionnée
+                } else if (!orderIdToCheck) {
+                  orderIdToCheck = order.id; // Première commande avec settings activés
+                }
+              }
+              
+              // Pour individual, on a trouvé au moins une commande activée, c'est suffisant
+              if (user.value.role === 'individual') {
+                break;
+              }
+            }
+          } catch (error) {
+            console.error(`[Dashboard] ❌ Erreur pour commande ${order.id}:`, error.response?.status);
+            continue;
+          }
+        }
+        
+        // Pour business_admin, si une commande est sélectionnée, l'utiliser pour filtrer les rendez-vous
+        if (user.value.role === 'business_admin' && selectedOrderId.value && !orderIdToCheck) {
+          orderIdToCheck = selectedOrderId.value;
+        }
+      } catch (error) {
+        console.error('❌ Erreur lors de la récupération des commandes:', error);
+        hasEnabledSettings = false;
+      }
+
+      // Stocker l'orderId utilisé pour charger les rendez-vous
+      // Pour les utilisateurs individuels, ne pas filtrer par order_id (afficher TOUS les rendez-vous)
+      // Pour les business_admin, filtrer par la commande sélectionnée
+      if (user.value.role === 'individual') {
+        appointmentsOrderId.value = null; // Pas de filtre pour individual
+      } else {
+        appointmentsOrderId.value = orderIdToCheck; // Filtrer par commande pour business_admin
+      }
+
+      // La carte s'affiche si la prise de rendez-vous est activée
+      // (même s'il n'y a pas encore de rendez-vous pris)
+      hasAppointmentsEnabled.value = hasEnabledSettings;
+
+      console.log('[Dashboard] ✅ checkAppointmentsEnabled result:', {
+        hasEnabledSettings,
+        hasAppointmentsEnabled: hasAppointmentsEnabled.value,
+        orderIdToCheck,
+        appointmentsOrderId: appointmentsOrderId.value,
+        userRole: user.value.role,
+      });
+      
+      // Log supplémentaire pour débogage
+      if (hasEnabledSettings) {
+        console.log('[Dashboard] ✅✅✅ CARTE MES RENDEZ-VOUS DEVRAIT S\'AFFICHER !');
+      } else {
+        console.log('[Dashboard] ❌❌❌ CARTE MES RENDEZ-VOUS NE S\'AFFICHERA PAS - hasEnabledSettings est false');
+      }
+
+      // Charger les rendez-vous en arrière-plan (ne bloque pas l'affichage)
+      loadAppointmentsCount();
+    } catch (error) {
+      console.error('❌ Erreur lors de la vérification des rendez-vous:', error);
+      hasAppointmentsEnabled.value = false;
+    } finally {
+      // Ne désactiver le flag et le spinner que si on les a activés nous-mêmes
+      if (manageCheckingFlag) {
+        isCheckingAppointments.value = false;
+        
+        // Désactiver le bon spinner selon le rôle
+        if (user.value?.role === 'business_admin') {
+          isLoadingBusinessOrders.value = false;
+        } else {
+          isLoadingDashboard.value = false;
+        }
+      }
+    }
+  };
+
+  // --- Fonction pour charger le nombre de rendez-vous (en arrière-plan) ---
+  const loadAppointmentsCount = async () => {
+    try {
+      const params = {};
+      if (appointmentsOrderId.value) {
+        params.order_id = appointmentsOrderId.value;
+      }
+
+      console.log('[Dashboard] 📅 Chargement du nombre de rendez-vous avec params:', params);
+      const appointmentsResponse = await apiClient.get('/api/appointments', { params });
+      const appointments = appointmentsResponse.data?.appointments || [];
+      appointmentsCount.value = appointments.length;
+      
+      console.log('[Dashboard] 📅 Nombre de rendez-vous chargés:', {
+        count: appointments.length,
+        appointments: appointments.map(a => ({
+          id: a.id,
+          order_id: a.order_id,
+          visitor_name: a.visitor_name,
+          start_time: a.start_time,
+        })),
+      });
+    } catch (error) {
+      console.error('❌ Erreur lors du chargement du nombre de rendez-vous:', error);
+      appointmentsCount.value = 0;
+    }
+  };
+
+  // --- Fonction pour charger et vérifier les rendez-vous (ancienne fonction, gardée pour compatibilité) ---
+  const checkAppointments = async () => {
+    // Utiliser la nouvelle fonction optimisée
+    await checkAppointmentsEnabled();
+  };
+
   // ✅ OPTIMISATION: Le Router Guard a déjà appelé fetchUser() avant d'arriver ici
   // L'avatar est initialisé de manière synchrone avec user.value?.avatar_url
   // Plus besoin d'appeler fetchUser() au montage, l'avatar s'affiche immédiatement
@@ -1183,10 +1534,40 @@
       userAvatarUrl: userAvatarUrl.value,
     });
 
-    // ✅ Charger les commandes business si l'utilisateur est un business_admin
+    // Charger les commandes business si l'utilisateur est un business_admin
     if (user.value?.role === "business_admin") {
-      await checkBusinessOrders();
+      // ✅ Activer le spinner une seule fois pour toute la séquence
+      isLoadingBusinessOrders.value = true;
+      
+      try {
+        // Vérifier les settings EN PREMIER (sans gérer le spinner, on le fait manuellement)
+        isCheckingAppointments.value = true;
+        await checkAppointmentsEnabled();
+        
+        // Puis charger les commandes business (sans gérer le spinner, on le fait ici)
+        await checkBusinessOrders(false); // false = ne pas gérer le spinner
+      } finally {
+        // Désactiver le spinner à la fin de toute la séquence
+        isLoadingBusinessOrders.value = false;
+        isCheckingAppointments.value = false;
+        
+        // ✅ IMPORTANT: Marquer le dashboard comme prêt APRÈS tout le chargement
+        isDashboardReady.value = true;
+        
+        console.log('[Dashboard] ✅ Chargement terminé pour business_admin:', {
+          isLoadingBusinessOrders: isLoadingBusinessOrders.value,
+          hasAppointmentsEnabled: hasAppointmentsEnabled.value,
+          hasBusinessOrder: hasBusinessOrder.value,
+          isDashboardReady: isDashboardReady.value,
+        });
+      }
+    } else {
+      // Pour les autres rôles, vérifier directement les settings
+      await checkAppointmentsEnabled();
     }
+
+    // Charger le compteur de contacts en arrière-plan (pour tous les rôles)
+    loadContactsCount();
 
     // Créer un observer pour détecter quand la section "Gérer le Personnel" devient visible
     sectionObserver = new IntersectionObserver(
@@ -1540,8 +1921,12 @@
           fullAvatarUrl = backendUrl + "/" + response.data.avatar_url.replace(/^\//, "");
         }
 
-        // ✅ OPTIMISATION CACHE: Ne pas ajouter de timestamp - le navigateur utilisera ETag/Last-Modified
-        // pour détecter automatiquement si l'image a changé
+        // ✅ CORRECTION: Ajouter un timestamp pour forcer le rechargement de l'image après upload
+        // Cela évite que le navigateur affiche l'ancienne image en cache
+        const separator = fullAvatarUrl.includes('?') ? '&' : '?';
+        fullAvatarUrl = fullAvatarUrl + separator + 't=' + Date.now();
+        
+        console.log("[Dashboard] Avatar URL complète après upload:", fullAvatarUrl);
         updateUserAvatar(fullAvatarUrl);
       }
       console.log("Avatar mis à jour:", response.data.avatar_url);
@@ -1647,12 +2032,18 @@
   const inputFieldClass =
     "block w-full bg-slate-700 border border-slate-600 rounded-md py-2.5 px-4 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition";
 
-  // --- Watch pour charger les données selon le rôle ---
+  // --- Watch pour charger les données selon le rôle (quand l'utilisateur change APRÈS le montage) ---
+  // NOTE: Le chargement initial est géré par onMounted, ce watcher ne gère que les changements ultérieurs
   watch(
     user,
     (newUser, oldUser) => {
+      // Ne rien faire si c'est le premier chargement (géré par onMounted)
+      if (!oldUser) {
+        return;
+      }
+      
       // ✅ Réinitialiser la variable de chargement si le rôle change
-      if (oldUser && newUser && oldUser.role !== newUser.role) {
+      if (oldUser.role !== newUser?.role) {
         isLoadingBusinessOrders.value = false;
         hasBusinessOrder.value = false;
         businessOrders.value = [];
@@ -1662,18 +2053,36 @@
 
       if (newUser) {
         if (newUser.role === "business_admin") {
-          checkBusinessOrders();
+          checkBusinessOrders().then(() => {
+            // Vérifier rapidement les settings (affiche la carte immédiatement)
+            // Le chargement des rendez-vous se fait en arrière-plan
+            if (!isCheckingAppointments.value) {
+              checkAppointmentsEnabled();
+            }
+          });
         } else if (newUser.role === "employee") {
           loadEmployeeOrder();
         } else {
           // Si ce n'est pas un business_admin ou employé, s'assurer que les variables sont à false
           isLoadingBusinessOrders.value = false;
           isLoadingEmployeeOrder.value = false;
+          // Vérifier rapidement les settings (affiche la carte immédiatement)
+          // Le chargement des rendez-vous se fait en arrière-plan
+          if (!isCheckingAppointments.value) {
+            checkAppointmentsEnabled();
+          }
         }
       }
     },
-    { immediate: true },
   );
+
+  // Watcher pour re-vérifier les rendez-vous quand la commande sélectionnée change (pour business_admin)
+  watch(selectedOrderId, async (newOrderId, oldOrderId) => {
+    if (user.value?.role === 'business_admin' && newOrderId !== oldOrderId && !isCheckingAppointments.value) {
+      console.log('[Dashboard] selectedOrderId changed, re-checking appointments.');
+      checkAppointmentsEnabled();
+    }
+  });
 
   // --- Watch pour masquer la bulle quand on arrive sur Settings ---
   watch(

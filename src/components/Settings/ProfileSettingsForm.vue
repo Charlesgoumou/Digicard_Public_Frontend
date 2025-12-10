@@ -474,6 +474,8 @@
       
       const backendUrl = import.meta.env.VITE_APP_URL_BACKEND || "http://localhost:8000";
       const avatarUrl = response.data.avatar_url;
+      console.log("ProfileSettingsForm: Avatar URL reçue du backend:", avatarUrl);
+      
       let fullAvatarUrl;
       // ✅ CORRECTION : Gérer les deux formats (/storage/ et /api/storage/)
       if (avatarUrl.startsWith("/api/storage/") || avatarUrl.startsWith("/storage/")) {
@@ -484,8 +486,16 @@
         fullAvatarUrl = backendUrl + "/" + avatarUrl.replace(/^\//, "");
       }
       
-      // ✅ OPTIMISATION CACHE: Ne pas ajouter de timestamp - le navigateur utilisera ETag/Last-Modified
-      // pour détecter automatiquement si l'image a changé
+      // ✅ CORRECTION: Ajouter un timestamp pour forcer le rechargement de l'image après upload
+      // Cela évite que le navigateur affiche l'ancienne image en cache
+      const separator = fullAvatarUrl.includes('?') ? '&' : '?';
+      fullAvatarUrl = fullAvatarUrl + separator + 't=' + Date.now();
+      
+      console.log("ProfileSettingsForm: Avatar URL complète construite:", fullAvatarUrl);
+      
+      // ✅ CORRECTION: Réinitialiser l'erreur de chargement pour permettre l'affichage de la nouvelle image
+      avatarLoadError.value = false;
+      
       emit("update:avatar", fullAvatarUrl);
       
       // ✅ CORRECTION : Pour les business admin, recharger les données de la commande

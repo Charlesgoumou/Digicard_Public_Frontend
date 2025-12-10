@@ -345,7 +345,15 @@
             />
           </fieldset>
 
-          <!-- ========== SECTION 2 : RÉSEAUX SOCIAUX & LIENS ========== -->
+          <!-- ========== SECTION 2 : PRISE DE RENDEZ-VOUS ========== -->
+          <fieldset class="border border-slate-700 rounded-lg px-3 sm:px-6 pt-8 pb-6 space-y-4 relative">
+            <legend class="text-lg font-semibold text-sky-400 px-2 absolute -top-3 left-4 bg-slate-900">
+              📅 Prise de Rendez-vous
+            </legend>
+            <AppointmentSettings ref="appointmentSettingsRef" :order-id="selectedOrderId" />
+          </fieldset>
+
+          <!-- ========== SECTION 3 : RÉSEAUX SOCIAUX & LIENS ========== -->
           <fieldset class="border border-slate-700 rounded-lg px-3 sm:px-6 pt-8 pb-6 space-y-4 relative">
             <legend class="text-lg font-semibold text-sky-400 px-2 absolute -top-3 left-4 bg-slate-900">
               Réseaux Sociaux & Liens
@@ -353,7 +361,7 @@
             <SocialLinksForm :form="form" />
           </fieldset>
 
-          <!-- ========== SECTION 3 : Choix du design de la carte ========== -->
+          <!-- ========== SECTION 4 : Choix du design de la carte ========== -->
           <fieldset class="border border-slate-700 rounded-lg px-3 sm:px-6 pt-8 pb-6 space-y-4 relative">
             <legend class="text-lg font-semibold text-sky-400 px-2 absolute -top-3 left-4 bg-slate-900">
               Choix du design de la carte
@@ -398,7 +406,7 @@
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                 ></path>
               </svg>
-              {{ isSaving ? "Sauvegarde..." : (user && user.role === 'individual' ? "Enregistrer" : "Enregistrer et quitter") }}
+              {{ isSaving ? "Sauvegarde..." : "Enregistrer" }}
             </button>
             <p v-if="saveError" class="text-sm text-red-400 text-center mt-3 h-5">{{ saveError }}</p>
             <p v-if="saveSuccess" class="text-sm text-green-400 text-center mt-3 h-5">{{ saveSuccess }}</p>
@@ -423,6 +431,7 @@
   import SocialLinksForm from "@/components/Settings/SocialLinksForm.vue";
   import CardDesignSelector from "@/components/Settings/CardDesignSelector.vue";
   import LoadingSpinner from "@/components/layout/LoadingSpinner.vue";
+  import AppointmentSettings from "@/components/dashboard/AppointmentSettings.vue";
 
   // ========== GESTION DES ONGLETS ==========
   const activeTab = ref("card");
@@ -450,6 +459,9 @@
   // ✅ CORRECTION: Initialiser l'avatar avec l'avatar de la commande en priorité
   // pour éviter l'effet visuel où l'avatar utilisateur s'affiche avant d'être remplacé
   const orderAvatarPreview = ref(null);
+  
+  // ========== REF POUR APPOINTMENT SETTINGS ==========
+  const appointmentSettingsRef = ref(null);
   
   // ✅ Récupération intelligente de l'avatar initial depuis les commandes déjà chargées
   const getInitialAvatarUrl = () => {
@@ -771,6 +783,16 @@
 
   // Wrapper pour handleSaveSettings
   const handleSaveSettings = async () => {
+    // ✅ NOUVEAU: Sauvegarder d'abord les paramètres de rendez-vous si le composant est disponible
+    if (appointmentSettingsRef.value && typeof appointmentSettingsRef.value.saveSettings === 'function') {
+      try {
+        await appointmentSettingsRef.value.saveSettings();
+      } catch (error) {
+        console.error('Erreur lors de la sauvegarde des paramètres de rendez-vous:', error);
+        // Continuer quand même avec la sauvegarde des autres paramètres
+      }
+    }
+    
     // Passer selectedDesignType et selectedDesignNumber pour s'assurer que les valeurs sont à jour
     await handleSaveSettingsWrapper(
       () => noDesignYet.value,
@@ -782,24 +804,51 @@
     if (user.value && user.value.role === 'employee') {
       setTimeout(() => {
         router.push({ name: "Dashboard" });
-      }, 1500);
+      }, 500);
     }
-    // Après la sauvegarde de "Ma Carte", basculer vers l'onglet "Nos Services" pour les business_admin
-    // pour qu'ils puissent paramétrer la section "Nos Services"
+    // Après la sauvegarde de "Ma Carte", vérifier si les sections sont déjà configurées
     else if (user.value && user.value.role === 'business_admin') {
-      // Attendre un peu pour que le message de succès s'affiche
-      setTimeout(() => {
-        activeTab.value = 'services';
-        // Faire défiler vers le haut de la page pour voir les onglets
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }, 1500);
+      // Vérifier si "Nos Services" est déjà configuré
+      // Le bouton "Découvrir nos Services" apparaît si company_name et services sont configurés
+      const selectedOrder = loadedOrderData.value || getSelectedOrder();
+      const hasServicesConfigured = selectedOrder && (
+        (selectedOrder.company_name && selectedOrder.company_services && selectedOrder.company_services.length > 0) ||
+        (selectedOrder.company_name && selectedOrder.services && Array.isArray(selectedOrder.services) && selectedOrder.services.length > 0)
+      );
+      
+      if (hasServicesConfigured) {
+        // Si les services sont déjà configurés, rediriger vers le dashboard
+        setTimeout(() => {
+          router.push({ name: "Dashboard" });
+        }, 500);
+      } else {
+        // Sinon, basculer vers l'onglet "Nos Services" pour qu'ils puissent paramétrer
+        setTimeout(() => {
+          activeTab.value = 'services';
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 500);
+      }
     } else if (user.value && user.value.role === 'individual') {
-      // Pour les particuliers, après la sauvegarde de "Ma Carte", basculer vers l'onglet "Mon Profil"
-      setTimeout(() => {
-        activeTab.value = 'profile';
-        // Faire défiler vers le haut de la page pour voir les onglets
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }, 1500);
+      // Vérifier si "Mon Profil" est déjà configuré
+      // Le profil est considéré comme configuré si profile_name et profile_title existent
+      const selectedOrder = loadedOrderData.value || getSelectedOrder();
+      const hasProfileConfigured = selectedOrder && (
+        (selectedOrder.profile_name && selectedOrder.profile_title) ||
+        (selectedOrder.user_portfolio && Object.keys(selectedOrder.user_portfolio).length > 0)
+      );
+      
+      if (hasProfileConfigured) {
+        // Si le profil est déjà configuré, rediriger vers le dashboard
+        setTimeout(() => {
+          router.push({ name: "Dashboard" });
+        }, 500);
+      } else {
+        // Sinon, basculer vers l'onglet "Mon Profil" pour qu'ils puissent paramétrer
+        setTimeout(() => {
+          activeTab.value = 'profile';
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 500);
+      }
     }
   };
 
