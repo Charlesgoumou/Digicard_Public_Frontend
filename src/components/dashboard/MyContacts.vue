@@ -226,6 +226,15 @@
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue';
 import apiClient from '@/api';
+import Cookies from 'js-cookie';
+
+// Helper pour le CSRF
+const setCsrfHeader = () => {
+  const xsrfToken = Cookies.get('XSRF-TOKEN');
+  if (xsrfToken) {
+    apiClient.defaults.headers.common['X-XSRF-TOKEN'] = decodeURIComponent(xsrfToken);
+  }
+};
 
 const props = defineProps({
   orderId: {
@@ -359,14 +368,20 @@ const deleteContact = async () => {
   
   deletingContactId.value = contactToDelete.value.id;
   try {
+    // IMPORTANT: Ajouter le token CSRF pour éviter les erreurs 419 et la déconnexion
+    setCsrfHeader();
+    
     await apiClient.delete(`/api/shared-contacts/${contactToDelete.value.id}`);
     contacts.value = contacts.value.filter(c => c.id !== contactToDelete.value.id);
     showDeleteModal.value = false;
     contactToDelete.value = null;
   } catch (error) {
     console.error('Erreur lors de la suppression:', error);
+    // Ne pas propager l'erreur pour éviter une déconnexion non voulue
   } finally {
     deletingContactId.value = null;
+    // Nettoyer le header CSRF
+    delete apiClient.defaults.headers.common['X-XSRF-TOKEN'];
   }
 };
 
