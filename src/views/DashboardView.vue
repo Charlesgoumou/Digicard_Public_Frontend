@@ -55,58 +55,58 @@
       <div v-if="user?.role === 'individual'">
         <h1 class="text-4xl font-bold text-center mb-12">Bienvenue, {{ user?.name || "Chargement..." }} !</h1>
         <!-- Spinner pendant le chargement initial -->
-        <LoadingSpinner v-if="isLoadingDashboard" :is-loading="isLoadingDashboard" />
+        <LoadingSpinner v-if="!isDashboardReady" :is-loading="!isDashboardReady" />
         <div 
           v-else
-          class="grid gap-4 md:gap-6 max-w-4xl mx-auto"
+          class="grid gap-4 md:gap-5 max-w-4xl mx-auto"
           :class="hasAppointmentsEnabled ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 max-w-7xl' : 'grid-cols-2 md:grid-cols-4'"
         >
           <button
             @click="goToSettings"
-            class="bg-slate-800 rounded-xl p-4 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300"
+            class="bg-slate-800 rounded-lg px-4 py-3 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center justify-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 min-h-[120px]"
           >
-            <span class="text-4xl mb-2 block group-hover:scale-110 transition-transform duration-300">⚙️</span>
-            <h2 class="text-base font-semibold text-white mb-1">Paramétrer ma Carte</h2>
-            <p class="text-xs text-slate-400 flex-grow">Configurez votre profil public.</p>
+            <span class="text-3xl mb-1.5 block group-hover:scale-110 transition-transform duration-300">⚙️</span>
+            <h2 class="text-sm font-semibold text-white mb-0.5">Paramétrer ma Carte</h2>
+            <p class="text-xs text-slate-400">Configurez votre profil.</p>
           </button>
           <button
             @click="viewPublicProfile"
-            class="bg-slate-800 rounded-xl p-4 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300"
+            class="bg-slate-800 rounded-lg px-4 py-3 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center justify-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 min-h-[120px]"
           >
-            <span class="text-4xl mb-2 block group-hover:scale-110 transition-transform duration-300">👀</span>
-            <h2 class="text-base font-semibold text-white mb-1">Afficher mon Profil</h2>
-            <p class="text-xs text-slate-400 flex-grow">Voyez votre profil public.</p>
+            <span class="text-3xl mb-1.5 block group-hover:scale-110 transition-transform duration-300">👀</span>
+            <h2 class="text-sm font-semibold text-white mb-0.5">Afficher mon Profil</h2>
+            <p class="text-xs text-slate-400">Voyez votre profil.</p>
           </button>
           <button
             @click="goToOrders"
-            class="bg-slate-800 rounded-xl p-4 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300"
+            class="bg-slate-800 rounded-lg px-4 py-3 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center justify-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 min-h-[120px]"
           >
-            <span class="text-4xl mb-2 block group-hover:scale-110 transition-transform duration-300">🛒</span>
-            <h2 class="text-base font-semibold text-white mb-1">Mes Commandes</h2>
-            <p class="text-xs text-slate-400 flex-grow">Consultez votre historique.</p>
+            <span class="text-3xl mb-1.5 block group-hover:scale-110 transition-transform duration-300">🛒</span>
+            <h2 class="text-sm font-semibold text-white mb-0.5">Mes Commandes</h2>
+            <p class="text-xs text-slate-400">Consultez historique.</p>
           </button>
           <!-- Carte "Mes Rendez-vous" -->
           <button
             v-if="hasAppointmentsEnabled"
             @click="showAppointmentsModal = true"
-            class="bg-slate-800 rounded-xl p-4 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300"
+            class="bg-slate-800 rounded-lg px-4 py-3 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center justify-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 min-h-[120px]"
           >
-            <span class="text-4xl mb-2 block group-hover:scale-110 transition-transform duration-300">📅</span>
-            <h2 class="text-base font-semibold text-white mb-1">Mes Rendez-vous</h2>
-            <p class="text-xs text-slate-400 flex-grow">Gérez vos rendez-vous.</p>
-            <span v-if="appointmentsCount > 0" class="mt-2 px-2 py-1 bg-sky-500/20 text-sky-400 rounded-full text-xs border border-sky-500/30">
+            <span class="text-3xl mb-1.5 block group-hover:scale-110 transition-transform duration-300">📅</span>
+            <h2 class="text-sm font-semibold text-white mb-0.5">Mes Rendez-vous</h2>
+            <p class="text-xs text-slate-400 mb-1">Gérez vos rendez-vous.</p>
+            <span v-if="appointmentsCount > 0" class="px-2 py-0.5 bg-sky-500/20 text-sky-400 rounded-full text-xs border border-sky-500/30">
               {{ appointmentsCount }} rendez-vous
             </span>
           </button>
           <!-- Carte "Mes Contacts" -->
           <button
             @click="showContactsModal = true"
-            class="bg-slate-800 rounded-xl p-4 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300"
+            class="bg-slate-800 rounded-lg px-4 py-3 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center justify-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 min-h-[120px]"
           >
-            <span class="text-4xl mb-2 block group-hover:scale-110 transition-transform duration-300">📇</span>
-            <h2 class="text-base font-semibold text-white mb-1">Mes Contacts</h2>
-            <p class="text-xs text-slate-400 flex-grow">Contacts reçus.</p>
-            <span v-if="newContactsCount > 0" class="mt-2 px-2 py-1 bg-sky-500/20 text-sky-400 rounded-full text-xs border border-sky-500/30">
+            <span class="text-3xl mb-1.5 block group-hover:scale-110 transition-transform duration-300">📇</span>
+            <h2 class="text-sm font-semibold text-white mb-0.5">Mes Contacts</h2>
+            <p class="text-xs text-slate-400 mb-1">Contacts reçus.</p>
+            <span v-if="newContactsCount > 0" class="px-2 py-0.5 bg-sky-500/20 text-sky-400 rounded-full text-xs border border-sky-500/30">
               {{ newContactsCount }} nouveau{{ newContactsCount > 1 ? 'x' : '' }}
             </span>
           </button>
@@ -119,63 +119,66 @@
         <LoadingSpinner v-if="!isDashboardReady" :is-loading="!isDashboardReady" />
         <div
           v-else
-          class="grid gap-4 md:gap-6 max-w-7xl mx-auto mb-16 justify-items-center grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+          class="grid gap-4 md:gap-5 mb-16"
+          :class="hasBusinessOrder 
+            ? (hasAppointmentsEnabled ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 max-w-7xl mx-auto' : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 max-w-6xl mx-auto')
+            : (hasAppointmentsEnabled ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 max-w-7xl mx-auto' : 'grid-cols-2 md:grid-cols-4 max-w-4xl mx-auto')"
         >
           <button
             v-if="hasBusinessOrder"
             @click="scrollToEmployeeSection"
-            class="bg-slate-800 rounded-xl p-4 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 w-full"
+            class="bg-slate-800 rounded-lg px-4 py-3 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center justify-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 min-h-[120px]"
           >
-            <span class="text-4xl mb-2 block group-hover:scale-110 transition-transform duration-300">📊</span>
-            <h2 class="text-base font-semibold text-white mb-1">Tableau de bord</h2>
-            <p class="text-xs text-slate-400 flex-grow">Gérez votre personnel.</p>
+            <span class="text-3xl mb-1.5 block group-hover:scale-110 transition-transform duration-300">📊</span>
+            <h2 class="text-sm font-semibold text-white mb-0.5">Tableau de bord</h2>
+            <p class="text-xs text-slate-400">Gérez votre personnel.</p>
           </button>
           <button
             @click="goToSettings"
-            class="bg-slate-800 rounded-xl p-4 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 w-full"
+            class="bg-slate-800 rounded-lg px-4 py-3 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center justify-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 min-h-[120px]"
           >
-            <span class="text-4xl mb-2 block group-hover:scale-110 transition-transform duration-300">⚙️</span>
-            <h2 class="text-base font-semibold text-white mb-1">Paramétrer ma Carte</h2>
-            <p class="text-xs text-slate-400 flex-grow">Configurez votre profil public.</p>
+            <span class="text-3xl mb-1.5 block group-hover:scale-110 transition-transform duration-300">⚙️</span>
+            <h2 class="text-sm font-semibold text-white mb-0.5">Paramétrer ma Carte</h2>
+            <p class="text-xs text-slate-400">Configurez votre profil.</p>
           </button>
           <button
             @click="viewPublicProfile"
-            class="bg-slate-800 rounded-xl p-4 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 w-full"
+            class="bg-slate-800 rounded-lg px-4 py-3 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center justify-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 min-h-[120px]"
           >
-            <span class="text-4xl mb-2 block group-hover:scale-110 transition-transform duration-300">👀</span>
-            <h2 class="text-base font-semibold text-white mb-1">Afficher mon Profil</h2>
-            <p class="text-xs text-slate-400 flex-grow">Voyez votre profil public.</p>
+            <span class="text-3xl mb-1.5 block group-hover:scale-110 transition-transform duration-300">👀</span>
+            <h2 class="text-sm font-semibold text-white mb-0.5">Afficher mon Profil</h2>
+            <p class="text-xs text-slate-400">Voyez votre profil.</p>
           </button>
           <button
             @click="goToOrders"
-            class="bg-slate-800 rounded-xl p-4 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 w-full"
+            class="bg-slate-800 rounded-lg px-4 py-3 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center justify-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 min-h-[120px]"
           >
-            <span class="text-4xl mb-2 block group-hover:scale-110 transition-transform duration-300">🛒</span>
-            <h2 class="text-base font-semibold text-white mb-1">Mes Commandes</h2>
-            <p class="text-xs text-slate-400 flex-grow">Consultez votre historique.</p>
+            <span class="text-3xl mb-1.5 block group-hover:scale-110 transition-transform duration-300">🛒</span>
+            <h2 class="text-sm font-semibold text-white mb-0.5">Mes Commandes</h2>
+            <p class="text-xs text-slate-400">Consultez historique.</p>
           </button>
           <!-- Carte "Mes Rendez-vous" pour les business_admin -->
           <button
             v-if="hasAppointmentsEnabled"
             @click="showAppointmentsModal = true"
-            class="bg-slate-800 rounded-xl p-4 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 w-full"
+            class="bg-slate-800 rounded-lg px-4 py-3 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center justify-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 min-h-[120px]"
           >
-            <span class="text-4xl mb-2 block group-hover:scale-110 transition-transform duration-300">📅</span>
-            <h2 class="text-base font-semibold text-white mb-1">Mes Rendez-vous</h2>
-            <p class="text-xs text-slate-400 flex-grow">Gérez vos rendez-vous.</p>
-            <span v-if="appointmentsCount > 0" class="mt-2 px-2 py-1 bg-sky-500/20 text-sky-400 rounded-full text-xs border border-sky-500/30">
-              {{ appointmentsCount }} rendez-vous
+            <span class="text-3xl mb-1.5 block group-hover:scale-110 transition-transform duration-300">📅</span>
+            <h2 class="text-sm font-semibold text-white mb-0.5">Mes Rendez-vous</h2>
+            <p class="text-xs text-slate-400 mb-1">Gérez vos rendez-vous.</p>
+            <span v-if="appointmentsCount > 0" class="px-2 py-0.5 bg-sky-500/20 text-sky-400 rounded-full text-xs border border-sky-500/30">
+              {{ appointmentsCount }} RDV
             </span>
           </button>
           <!-- Carte "Mes Contacts" pour les business_admin -->
           <button
             @click="showContactsModal = true"
-            class="bg-slate-800 rounded-xl p-4 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 w-full"
+            class="bg-slate-800 rounded-lg px-4 py-3 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center justify-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 min-h-[120px]"
           >
-            <span class="text-4xl mb-2 block group-hover:scale-110 transition-transform duration-300">📇</span>
-            <h2 class="text-base font-semibold text-white mb-1">Mes Contacts</h2>
-            <p class="text-xs text-slate-400 flex-grow">Contacts reçus.</p>
-            <span v-if="newContactsCount > 0" class="mt-2 px-2 py-1 bg-sky-500/20 text-sky-400 rounded-full text-xs border border-sky-500/30">
+            <span class="text-3xl mb-1.5 block group-hover:scale-110 transition-transform duration-300">📇</span>
+            <h2 class="text-sm font-semibold text-white mb-0.5">Mes Contacts</h2>
+            <p class="text-xs text-slate-400 mb-1">Contacts reçus.</p>
+            <span v-if="newContactsCount > 0" class="px-2 py-0.5 bg-sky-500/20 text-sky-400 rounded-full text-xs border border-sky-500/30">
               {{ newContactsCount }} nouveau{{ newContactsCount > 1 ? 'x' : '' }}
             </span>
           </button>
@@ -616,11 +619,8 @@
       <div v-else-if="user?.role === 'employee'">
         <h1 class="text-4xl font-bold text-center mb-4">Bienvenue, {{ user.name }} !</h1>
 
-        <!-- ✅ Masquer le contenu jusqu'à ce que le chargement de la commande employé soit terminé -->
-        <div v-if="isLoadingEmployeeOrder" class="flex flex-col items-center justify-center py-12 mb-12">
-          <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-sky-500"></div>
-          <p class="mt-4 text-slate-400 text-sm">Chargement de vos données...</p>
-        </div>
+        <!-- ✅ Masquer le contenu jusqu'à ce que le chargement soit terminé -->
+        <LoadingSpinner v-if="!isDashboardReady" :is-loading="!isDashboardReady" />
         <template v-else>
           <!-- ✅ NOUVEAU: Badge avec le total de toutes les cartes assignées -->
           <div v-if="employeeOrders.length > 0" class="text-center mb-12">
@@ -692,32 +692,48 @@
           </div>
 
           <!-- Boutons d'action -->
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 max-w-3xl mx-auto">
+          <div 
+            class="grid gap-4 md:gap-5 max-w-3xl mx-auto"
+            :class="hasAppointmentsEnabled ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-4' : 'grid-cols-1 md:grid-cols-3'"
+          >
             <button
               @click="goToSettings"
-              class="bg-slate-800 rounded-xl p-6 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300"
+              class="bg-slate-800 rounded-lg px-4 py-3 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center justify-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 min-h-[120px]"
             >
-              <span class="text-5xl mb-4 block group-hover:scale-110 transition-transform duration-300">⚙️</span>
-              <h2 class="text-lg font-semibold text-white mb-1">Paramétrer ma Carte</h2>
-              <p class="text-sm text-slate-400 flex-grow">Configurez votre profil public.</p>
+              <span class="text-3xl mb-1.5 block group-hover:scale-110 transition-transform duration-300">⚙️</span>
+              <h2 class="text-sm font-semibold text-white mb-0.5">Paramétrer ma Carte</h2>
+              <p class="text-xs text-slate-400">Configurez votre profil.</p>
             </button>
             <button
               @click="viewPublicProfile"
-              class="bg-slate-800 rounded-xl p-6 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300"
+              class="bg-slate-800 rounded-lg px-4 py-3 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center justify-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 min-h-[120px]"
             >
-              <span class="text-5xl mb-4 block group-hover:scale-110 transition-transform duration-300">👀</span>
-              <h2 class="text-lg font-semibold text-white mb-1">Afficher mon Profil</h2>
-              <p class="text-sm text-slate-400 flex-grow">Voyez votre profil public.</p>
+              <span class="text-3xl mb-1.5 block group-hover:scale-110 transition-transform duration-300">👀</span>
+              <h2 class="text-sm font-semibold text-white mb-0.5">Afficher mon Profil</h2>
+              <p class="text-xs text-slate-400">Voyez votre profil.</p>
+            </button>
+            <!-- Carte "Mes Rendez-vous" pour les employés -->
+            <button
+              v-if="hasAppointmentsEnabled"
+              @click="showAppointmentsModal = true"
+              class="bg-slate-800 rounded-lg px-4 py-3 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center justify-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 min-h-[120px]"
+            >
+              <span class="text-3xl mb-1.5 block group-hover:scale-110 transition-transform duration-300">📅</span>
+              <h2 class="text-sm font-semibold text-white mb-0.5">Mes Rendez-vous</h2>
+              <p class="text-xs text-slate-400 mb-1">Gérez vos rendez-vous.</p>
+              <span v-if="appointmentsCount > 0" class="px-2 py-0.5 bg-sky-500/20 text-sky-400 rounded-full text-xs border border-sky-500/30">
+                {{ appointmentsCount }} RDV
+              </span>
             </button>
             <!-- Carte "Mes Contacts" pour les employés -->
             <button
               @click="showContactsModal = true"
-              class="bg-slate-800 rounded-xl p-6 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300"
+              class="bg-slate-800 rounded-lg px-4 py-3 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center justify-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 min-h-[120px]"
             >
-              <span class="text-5xl mb-4 block group-hover:scale-110 transition-transform duration-300">📇</span>
-              <h2 class="text-lg font-semibold text-white mb-1">Mes Contacts</h2>
-              <p class="text-sm text-slate-400 flex-grow">Contacts reçus.</p>
-              <span v-if="newContactsCount > 0" class="mt-2 px-2 py-1 bg-sky-500/20 text-sky-400 rounded-full text-xs border border-sky-500/30">
+              <span class="text-3xl mb-1.5 block group-hover:scale-110 transition-transform duration-300">📇</span>
+              <h2 class="text-sm font-semibold text-white mb-0.5">Mes Contacts</h2>
+              <p class="text-xs text-slate-400 mb-1">Contacts reçus.</p>
+              <span v-if="newContactsCount > 0" class="px-2 py-0.5 bg-sky-500/20 text-sky-400 rounded-full text-xs border border-sky-500/30">
                 {{ newContactsCount }} nouveau{{ newContactsCount > 1 ? 'x' : '' }}
               </span>
             </button>
@@ -943,8 +959,28 @@
   const userAvatarUrl = ref(initialAvatarUrl ? getUserAvatarUrl(initialAvatarUrl) : null);
 
   // ✅ Computed réactif pour mettre à jour l'avatar quand user.value.avatar_url change
-  // Mais on utilise aussi une ref pour l'initialisation synchrone
+  // Pour les employés, utiliser employee_avatar_url de leur commande
   const userAvatarUrlComputed = computed(() => {
+    // Pour les employés, prioriser l'avatar de la commande
+    if (user.value?.role === 'employee' && employeeOrders.value.length > 0) {
+      const employeeOrder = employeeOrders.value[0];
+      if (employeeOrder?.employee_avatar_url) {
+        const url = getUserAvatarUrl(employeeOrder.employee_avatar_url);
+        console.log("[Dashboard] userAvatarUrlComputed (employee) - URL construite:", {
+          original: employeeOrder.employee_avatar_url,
+          constructed: url,
+          current: userAvatarUrl.value
+        });
+        // Mettre à jour la ref pour que l'image se recharge si l'URL change
+        if (url !== userAvatarUrl.value) {
+          console.log("[Dashboard] Mise à jour userAvatarUrl (employee):", url);
+          userAvatarUrl.value = url;
+        }
+        return url;
+      }
+    }
+    
+    // Pour les autres rôles, utiliser l'avatar utilisateur
     if (user.value?.avatar_url) {
       const url = getUserAvatarUrl(user.value.avatar_url);
       console.log("[Dashboard] userAvatarUrlComputed - URL construite:", {
@@ -980,6 +1016,11 @@
   watch(
     () => user.value?.avatar_url,
     (newAvatarUrl, oldAvatarUrl) => {
+      // Ne pas mettre à jour si c'est un employé (l'avatar vient de la commande)
+      if (user.value?.role === 'employee') {
+        return;
+      }
+      
       if (newAvatarUrl && newAvatarUrl !== oldAvatarUrl) {
         console.log("[Dashboard] Avatar URL changed:", {
           old: oldAvatarUrl,
@@ -1002,6 +1043,38 @@
       }
     },
     { immediate: true },
+  );
+  
+  // ✅ NOUVEAU : Watcher pour l'avatar des employés
+  watch(
+    () => employeeOrders.value[0]?.employee_avatar_url,
+    (newAvatarUrl, oldAvatarUrl) => {
+      if (user.value?.role !== 'employee') {
+        return;
+      }
+      
+      if (newAvatarUrl && newAvatarUrl !== oldAvatarUrl) {
+        console.log("[Dashboard] Employee Avatar URL changed:", {
+          old: oldAvatarUrl,
+          new: newAvatarUrl,
+          constructed: getUserAvatarUrl(newAvatarUrl),
+        });
+        // Mettre à jour directement la ref pour forcer le re-render
+        const newUrl = getUserAvatarUrl(newAvatarUrl);
+        if (newUrl) {
+          userAvatarUrl.value = newUrl;
+          console.log("[Dashboard] Employee userAvatarUrl ref mise à jour:", newUrl);
+        }
+        // Le computed se mettra à jour automatiquement, mais on force un re-render
+        nextTick(() => {
+          console.log("[Dashboard] Employee Avatar should be updated in DOM");
+        });
+      } else if (!newAvatarUrl) {
+        // Si l'avatar est supprimé, réinitialiser la ref
+        userAvatarUrl.value = null;
+      }
+    },
+    { immediate: true, deep: true },
   );
 
   // ✅ CORRECTION : Gérer les erreurs de chargement d'avatar
@@ -1425,6 +1498,11 @@
               if (user.value.role === 'individual') {
                 break;
               }
+              
+              // Pour employee, utiliser la première commande avec settings activés
+              if (user.value.role === 'employee' && !orderIdToCheck) {
+                orderIdToCheck = order.id;
+              }
             }
           } catch (error) {
             console.error(`[Dashboard] ❌ Erreur pour commande ${order.id}:`, error.response?.status);
@@ -1443,11 +1521,11 @@
 
       // Stocker l'orderId utilisé pour charger les rendez-vous
       // Pour les utilisateurs individuels, ne pas filtrer par order_id (afficher TOUS les rendez-vous)
-      // Pour les business_admin, filtrer par la commande sélectionnée
+      // Pour les business_admin et employee, filtrer par la commande
       if (user.value.role === 'individual') {
         appointmentsOrderId.value = null; // Pas de filtre pour individual
       } else {
-        appointmentsOrderId.value = orderIdToCheck; // Filtrer par commande pour business_admin
+        appointmentsOrderId.value = orderIdToCheck; // Filtrer par commande pour business_admin et employee
       }
 
       // La carte s'affiche si la prise de rendez-vous est activée
@@ -1469,8 +1547,7 @@
         console.log('[Dashboard] ❌❌❌ CARTE MES RENDEZ-VOUS NE S\'AFFICHERA PAS - hasEnabledSettings est false');
       }
 
-      // Charger les rendez-vous en arrière-plan (ne bloque pas l'affichage)
-      loadAppointmentsCount();
+      // Le chargement des compteurs est maintenant géré dans onMounted pour tous les rôles
     } catch (error) {
       console.error('❌ Erreur lors de la vérification des rendez-vous:', error);
       hasAppointmentsEnabled.value = false;
@@ -1500,11 +1577,15 @@
       console.log('[Dashboard] 📅 Chargement du nombre de rendez-vous avec params:', params);
       const appointmentsResponse = await apiClient.get('/api/appointments', { params });
       const appointments = appointmentsResponse.data?.appointments || [];
-      appointmentsCount.value = appointments.length;
+      
+      // Ne compter que les rendez-vous confirmés (pas les annulés)
+      const confirmedAppointments = appointments.filter(apt => apt.status === 'confirmed');
+      appointmentsCount.value = confirmedAppointments.length;
       
       console.log('[Dashboard] 📅 Nombre de rendez-vous chargés:', {
-        count: appointments.length,
-        appointments: appointments.map(a => ({
+        total: appointments.length,
+        confirmed: confirmedAppointments.length,
+        appointments: confirmedAppointments.map(a => ({
           id: a.id,
           order_id: a.order_id,
           visitor_name: a.visitor_name,
@@ -1526,6 +1607,14 @@
   // ✅ OPTIMISATION: Le Router Guard a déjà appelé fetchUser() avant d'arriver ici
   // L'avatar est initialisé de manière synchrone avec user.value?.avatar_url
   // Plus besoin d'appeler fetchUser() au montage, l'avatar s'affiche immédiatement
+  // ✅ NOUVEAU : Handler pour l'événement de mise à jour de l'avatar employé
+  const handleEmployeeAvatarUpdate = async () => {
+    if (user.value?.role === 'employee') {
+      console.log("[Dashboard] Employee avatar updated, reloading employee order...");
+      await loadEmployeeOrder();
+    }
+  };
+  
   onMounted(async () => {
     console.log("[Dashboard] onMounted - user.value:", {
       hasUser: !!user.value,
@@ -1533,6 +1622,9 @@
       avatarUrl: user.value?.avatar_url,
       userAvatarUrl: userAvatarUrl.value,
     });
+    
+    // Écouter l'événement de mise à jour de l'avatar employé
+    window.addEventListener('employee-avatar-updated', handleEmployeeAvatarUpdate);
 
     // Charger les commandes business si l'utilisateur est un business_admin
     if (user.value?.role === "business_admin") {
@@ -1546,6 +1638,17 @@
         
         // Puis charger les commandes business (sans gérer le spinner, on le fait ici)
         await checkBusinessOrders(false); // false = ne pas gérer le spinner
+        
+        // ✅ NOUVEAU: Charger les compteurs AVANT d'afficher le dashboard
+        console.log('[Dashboard] 📊 Chargement des compteurs pour business_admin...');
+        await Promise.all([
+          loadContactsCount(),
+          loadAppointmentsCount()
+        ]);
+        console.log('[Dashboard] ✅ Compteurs chargés:', {
+          contactsCount: newContactsCount.value,
+          appointmentsCount: appointmentsCount.value,
+        });
       } finally {
         // Désactiver le spinner à la fin de toute la séquence
         isLoadingBusinessOrders.value = false;
@@ -1559,15 +1662,68 @@
           hasAppointmentsEnabled: hasAppointmentsEnabled.value,
           hasBusinessOrder: hasBusinessOrder.value,
           isDashboardReady: isDashboardReady.value,
+          newContactsCount: newContactsCount.value,
+          appointmentsCount: appointmentsCount.value,
+        });
+      }
+    } else if (user.value?.role === "employee") {
+      // Pour les employés, charger les commandes et vérifier les settings
+      isLoadingEmployeeOrder.value = true;
+      isCheckingAppointments.value = true;
+      
+      try {
+        await loadEmployeeOrder();
+        await checkAppointmentsEnabled();
+        
+        // Charger les compteurs pour les employés
+        console.log('[Dashboard] 📊 Chargement des compteurs pour employee...');
+        await Promise.all([
+          loadContactsCount(),
+          loadAppointmentsCount()
+        ]);
+        console.log('[Dashboard] ✅ Compteurs chargés pour employee:', {
+          contactsCount: newContactsCount.value,
+          appointmentsCount: appointmentsCount.value,
+        });
+      } finally {
+        isLoadingEmployeeOrder.value = false;
+        isCheckingAppointments.value = false;
+        isDashboardReady.value = true;
+        
+        console.log('[Dashboard] ✅ Chargement terminé pour employee:', {
+          hasAppointmentsEnabled: hasAppointmentsEnabled.value,
+          isDashboardReady: isDashboardReady.value,
         });
       }
     } else {
-      // Pour les autres rôles, vérifier directement les settings
-      await checkAppointmentsEnabled();
+      // Pour les autres rôles (individual), vérifier directement les settings
+      isLoadingDashboard.value = true;
+      isCheckingAppointments.value = true;
+      
+      try {
+        await checkAppointmentsEnabled();
+        
+        // Charger les compteurs pour les utilisateurs individuels
+        console.log('[Dashboard] 📊 Chargement des compteurs pour individual...');
+        await Promise.all([
+          loadContactsCount(),
+          loadAppointmentsCount()
+        ]);
+        console.log('[Dashboard] ✅ Compteurs chargés pour individual:', {
+          contactsCount: newContactsCount.value,
+          appointmentsCount: appointmentsCount.value,
+        });
+      } finally {
+        isLoadingDashboard.value = false;
+        isCheckingAppointments.value = false;
+        isDashboardReady.value = true;
+        
+        console.log('[Dashboard] ✅ Chargement terminé pour individual:', {
+          hasAppointmentsEnabled: hasAppointmentsEnabled.value,
+          isDashboardReady: isDashboardReady.value,
+        });
+      }
     }
-
-    // Charger le compteur de contacts en arrière-plan (pour tous les rôles)
-    loadContactsCount();
 
     // Créer un observer pour détecter quand la section "Gérer le Personnel" devient visible
     sectionObserver = new IntersectionObserver(
@@ -1593,6 +1749,14 @@
         sectionObserver.observe(section);
       }
     }, 200);
+  });
+
+  // Recharger le compteur de rendez-vous quand le modal se ferme (après une annulation possible)
+  watch(showAppointmentsModal, (isOpen) => {
+    if (!isOpen) {
+      // Le modal vient de se fermer, recharger le compteur
+      loadAppointmentsCount();
+    }
   });
 
   // --- Business Admin Functions ---
@@ -2108,6 +2272,9 @@
     if (sectionObserver) {
       sectionObserver.disconnect();
     }
+    
+    // Nettoyer l'événement de mise à jour de l'avatar employé
+    window.removeEventListener('employee-avatar-updated', handleEmployeeAvatarUpdate);
   });
 </script>
 

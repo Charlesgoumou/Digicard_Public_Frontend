@@ -566,6 +566,7 @@ export function useCardSettings(
    * @param {Number} selectedDesignNumber - Numéro du design template sélectionné
    */
   const handleSaveSettings = async (onNoDesignYet = null, selectedDesignType = null, selectedDesignNumber = null) => {
+    console.log('[useCardSettings] Début de la sauvegarde - VERSION IMMÉDIATE');
     saveSuccess.value = "";
     saveError.value = "";
     savingMessage.value = "Enregistrement en cours...";
@@ -718,17 +719,13 @@ export function useCardSettings(
         }
       }
 
-      // Message de succès adapté selon le type d'utilisateur
-      if (user.value && user.value.role === 'business_admin') {
-        saveSuccess.value = "Vos modifications ont été enregistrées ! Vous pouvez maintenant paramétrer 'Nos Services'.";
-        savingMessage.value = "✓ Enregistré avec succès !";
-      } else {
-        saveSuccess.value = "Vos modifications ont été enregistrées !";
-        savingMessage.value = "✓ Enregistré avec succès !";
-      }
+      // ✅ MODIFIÉ : Pas de message de succès affiché
+      // saveSuccess.value = "..."; // Supprimé
       
-      // Afficher l'icône de succès et le message
-      showSuccessIcon.value = true;
+      console.log('[useCardSettings] Sauvegarde terminée avec succès - Fermeture immédiate du modal');
+      
+      // ✅ MODIFIÉ : Désactiver le spinner immédiatement (pas de délai)
+      isSaving.value = false;
 
       // ✅ IMPORTANT: Ne PAS appeler fetchUser() ici - l'avatar du Dashboard doit rester celui de l'utilisateur
       // et ne pas être affecté par les modifications dans les paramètres de la commande
@@ -738,10 +735,6 @@ export function useCardSettings(
 
       // Ne pas rediriger vers le Dashboard - l'utilisateur peut maintenant paramétrer "Nos Services"
       // L'interface basculera automatiquement vers l'onglet "Nos Services" dans SettingsView
-      setTimeout(() => {
-        isSaving.value = false;
-        // Ne pas rediriger, rester sur la page de paramétrage
-      }, 1500);
     } catch (error) {
       console.error("Erreur lors de la sauvegarde:", error.response?.data || error);
       if (error.response?.status === 422 && error.response.data?.errors) {

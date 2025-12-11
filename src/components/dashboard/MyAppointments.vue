@@ -11,6 +11,24 @@
       </div>
     </div>
 
+    <!-- Bouton Importer tous les rendez-vous (visible seulement s'il y en a à télécharger) -->
+    <div v-if="notDownloadedCount > 0 && !isLoading && appointments.length > 0" class="mb-4">
+      <button
+        @click="downloadAllAppointments"
+        :disabled="isDownloadingAll"
+        class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 disabled:from-slate-600 disabled:to-slate-600 text-white py-3 px-4 rounded-xl font-medium transition-all shadow-lg shadow-emerald-500/25 disabled:shadow-none"
+      >
+        <svg v-if="isDownloadingAll" class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <svg v-else class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+        <span>Importer {{ notDownloadedCount }} rendez-vous dans mon agenda</span>
+      </button>
+    </div>
+
     <!-- Loading State -->
     <div v-if="isLoading" class="text-center py-8">
       <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-sky-500"></div>
@@ -63,7 +81,9 @@
             :key="appointment.id"
             :appointment="appointment"
             :is-cancelling="isCancelling"
-            @cancel="cancelAppointment"
+            :is-downloading="downloadingId"
+            @cancel="openCancelModal"
+            @download="downloadAppointment"
           />
         </div>
       </div>
@@ -99,7 +119,9 @@
             :key="appointment.id"
             :appointment="appointment"
             :is-cancelling="isCancelling"
-            @cancel="cancelAppointment"
+            :is-downloading="downloadingId"
+            @cancel="openCancelModal"
+            @download="downloadAppointment"
           />
         </div>
       </div>
@@ -135,7 +157,9 @@
             :key="appointment.id"
             :appointment="appointment"
             :is-cancelling="isCancelling"
-            @cancel="cancelAppointment"
+            :is-downloading="downloadingId"
+            @cancel="openCancelModal"
+            @download="downloadAppointment"
           />
         </div>
       </div>
@@ -211,8 +235,10 @@
                 :key="appointment.id"
                 :appointment="appointment"
                 :is-cancelling="isCancelling"
+                :is-downloading="downloadingId"
                 :show-date="false"
-                @cancel="cancelAppointment"
+                @cancel="openCancelModal"
+                @download="downloadAppointment"
               />
             </div>
           </div>
@@ -251,6 +277,153 @@
     >
       {{ toast.message }}
     </div>
+
+    <!-- Modal de confirmation d'annulation -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition ease-out duration-200"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition ease-in duration-150"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <div
+          v-if="showCancelModal"
+          class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
+          @click.self="showCancelModal = false"
+        >
+          <div class="bg-slate-800 rounded-xl shadow-2xl max-w-md w-full border border-slate-700 overflow-hidden">
+            <!-- Header -->
+            <div class="p-6 border-b border-slate-700/50 bg-gradient-to-r from-red-500/10 to-orange-500/10">
+              <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center shadow-lg">
+                  <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h3 class="text-xl font-bold text-white">Annuler le rendez-vous ?</h3>
+                  <p class="text-sm text-slate-400 mt-1">Cette action est irréversible</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Content -->
+            <div class="p-6">
+              <div v-if="appointmentToCancel" class="space-y-4">
+                <div class="bg-slate-900/50 rounded-lg p-4 border border-slate-700/50">
+                  <div class="flex items-center gap-3 mb-3">
+                    <div class="w-10 h-10 rounded-full bg-sky-500/20 flex items-center justify-center flex-shrink-0">
+                      <svg class="w-5 h-5 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                        />
+                      </svg>
+                    </div>
+                    <div>
+                      <p class="text-white font-semibold">{{ appointmentToCancel.visitor_name }}</p>
+                      <p class="text-slate-400 text-sm">{{ appointmentToCancel.visitor_email }}</p>
+                    </div>
+                  </div>
+                  <div class="space-y-2 text-sm">
+                    <div class="flex items-center gap-2 text-slate-300">
+                      <svg class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        />
+                      </svg>
+                      <span>{{ formatDate(appointmentToCancel.start_time) }}</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-slate-300">
+                      <svg class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      <span>{{ formatTime(appointmentToCancel.start_time) }} - {{ formatTime(appointmentToCancel.end_time) }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
+                  <p class="text-yellow-400 text-sm flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    Le créneau sera automatiquement libéré et disponible pour d'autres visiteurs.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Actions -->
+              <div class="flex gap-3 mt-6">
+                <button
+                  @click="showCancelModal = false"
+                  :disabled="isCancelling !== null"
+                  class="flex-1 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-600 text-white py-3 px-4 rounded-lg font-medium transition-colors"
+                >
+                  Non, garder le rendez-vous
+                </button>
+                <button
+                  @click="cancelAppointment"
+                  :disabled="isCancelling !== null"
+                  class="flex-1 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 disabled:from-slate-600 disabled:to-slate-600 text-white py-3 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-500/25 disabled:shadow-none"
+                >
+                  <svg
+                    v-if="isCancelling === appointmentToCancel?.id"
+                    class="animate-spin h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path
+                      class="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  <svg
+                    v-else
+                    class="w-5 h-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                  {{ isCancelling === appointmentToCancel?.id ? 'Annulation...' : 'Oui, annuler' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -276,6 +449,13 @@
   const appointments = ref([]);
   const isLoading = ref(true);
   const isCancelling = ref(null);
+  const showCancelModal = ref(false);
+  const appointmentToCancel = ref(null);
+  
+  // État pour le téléchargement
+  const isDownloadingAll = ref(false);
+  const downloadingId = ref(null);
+  const notDownloadedCount = ref(0);
 
   // État des sections dépliables
   const expandedSections = reactive({
@@ -506,6 +686,10 @@
       const appointmentsArray = Array.isArray(response.data?.appointments) ? response.data.appointments : [];
 
       appointments.value = appointmentsArray;
+      
+      // Mettre à jour le compteur de rendez-vous non téléchargés
+      updateNotDownloadedCount();
+      
       console.log("[MyAppointments] Rendez-vous chargés:", {
         count: appointments.value.length,
         appointments: appointments.value,
@@ -524,14 +708,107 @@
       isLoading.value = false;
     }
   };
-
-  // Annuler un rendez-vous
-  const cancelAppointment = async (appointment) => {
-    if (!confirm(`Êtes-vous sûr de vouloir annuler le rendez-vous avec ${appointment.visitor_name} ?`)) {
-      return;
+  
+  // Mettre à jour le compteur de rendez-vous non téléchargés
+  const updateNotDownloadedCount = () => {
+    const confirmed = appointments.value.filter(apt => apt.status === 'confirmed' && !apt.is_downloaded);
+    notDownloadedCount.value = confirmed.length;
+  };
+  
+  // Télécharger un seul rendez-vous au format ICS
+  const downloadAppointment = async (appointment) => {
+    if (appointment.is_downloaded) return;
+    
+    downloadingId.value = appointment.id;
+    try {
+      const response = await apiClient.get(`/api/appointments/${appointment.id}/download`, {
+        responseType: 'blob'
+      });
+      
+      // Créer un lien de téléchargement
+      const blob = new Blob([response.data], { type: 'text/calendar' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `rdv-${appointment.visitor_name}-${new Date(appointment.start_time).toISOString().split('T')[0]}.ics`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      // Marquer localement comme téléchargé
+      appointment.is_downloaded = true;
+      updateNotDownloadedCount();
+      
+      showToast("Rendez-vous importé avec succès !", "success");
+    } catch (error) {
+      console.error("Erreur lors du téléchargement:", error);
+      showToast("Erreur lors du téléchargement du rendez-vous.", "error");
+    } finally {
+      downloadingId.value = null;
     }
+  };
+  
+  // Télécharger tous les rendez-vous non téléchargés
+  const downloadAllAppointments = async () => {
+    isDownloadingAll.value = true;
+    try {
+      const params = {};
+      if (props.orderId) {
+        params.order_id = props.orderId;
+      }
+      
+      const response = await apiClient.get('/api/appointments/download-all', {
+        params,
+        responseType: 'blob'
+      });
+      
+      // Créer un lien de téléchargement
+      const blob = new Blob([response.data], { type: 'text/calendar' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `mes-rendez-vous-digicard-${new Date().toISOString().split('T')[0]}.ics`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      // Marquer localement tous comme téléchargés
+      appointments.value.forEach(apt => {
+        if (apt.status === 'confirmed' && !apt.is_downloaded) {
+          apt.is_downloaded = true;
+        }
+      });
+      updateNotDownloadedCount();
+      
+      showToast("Tous les rendez-vous ont été importés avec succès !", "success");
+    } catch (error) {
+      console.error("Erreur lors du téléchargement:", error);
+      if (error.response?.status === 404) {
+        showToast("Aucun nouveau rendez-vous à télécharger.", "warning");
+      } else {
+        showToast("Erreur lors du téléchargement des rendez-vous.", "error");
+      }
+    } finally {
+      isDownloadingAll.value = false;
+    }
+  };
 
+  // Ouvrir le modal de confirmation d'annulation
+  const openCancelModal = (appointment) => {
+    appointmentToCancel.value = appointment;
+    showCancelModal.value = true;
+  };
+
+  // Annuler un rendez-vous (appelé après confirmation)
+  const cancelAppointment = async () => {
+    if (!appointmentToCancel.value) return;
+
+    const appointment = appointmentToCancel.value;
     isCancelling.value = appointment.id;
+    showCancelModal.value = false;
+
     try {
       setCsrfHeader();
 
@@ -542,15 +819,14 @@
 
       showToast("Rendez-vous annulé avec succès. Le créneau est maintenant disponible.", "success");
 
-      // Recharger la liste après un court délai
-      setTimeout(() => {
-        loadAppointments();
-      }, 1000);
+      // Recharger immédiatement pour mettre à jour le compteur
+      await loadAppointments();
     } catch (error) {
       console.error("Erreur lors de l'annulation:", error);
       showToast(error.response?.data?.message || "Erreur lors de l'annulation du rendez-vous.", "error");
     } finally {
       isCancelling.value = null;
+      appointmentToCancel.value = null;
       delete apiClient.defaults.headers.common["X-XSRF-TOKEN"];
     }
   };

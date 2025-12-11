@@ -50,6 +50,7 @@
       <div
         v-for="day in daysOfWeek"
         :key="day.id"
+        :data-day-id="day.id"
         class="bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden transition-all duration-300"
         :class="{ 'border-sky-500/50': expandedDays[day.id] }"
       >
@@ -742,6 +743,9 @@ const toggleEnabled = () => {
 const toggleDay = (dayId) => {
   const isCurrentlyOpen = expandedDays[dayId];
   
+  // Sauvegarder la position de scroll actuelle
+  const scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+  
   // Fermer tous les autres jours
   Object.keys(expandedDays).forEach(id => {
     if (id !== dayId) {
@@ -751,6 +755,28 @@ const toggleDay = (dayId) => {
   
   // Toggle le jour cliqué
   expandedDays[dayId] = !isCurrentlyOpen;
+  
+  // Si on vient d'ouvrir le jour, maintenir la position de scroll
+  // et scroller légèrement pour garder le jour visible
+  if (!isCurrentlyOpen) {
+    // Attendre que l'animation de transition commence
+    setTimeout(() => {
+      const dayElement = document.querySelector(`[data-day-id="${dayId}"]`);
+      if (dayElement) {
+        const rect = dayElement.getBoundingClientRect();
+        const elementTop = rect.top + window.pageYOffset;
+        
+        // Scroller seulement si le jour n'est pas complètement visible
+        // On garde le header du jour visible en haut avec un petit offset
+        if (rect.top < 80 || rect.bottom > window.innerHeight) {
+          window.scrollTo({
+            top: elementTop - 80, // 80px d'offset pour le header et la navigation
+            behavior: 'smooth'
+          });
+        }
+      }
+    }, 50);
+  }
 };
 
 // Ajouter une nouvelle règle pour un jour
@@ -1098,7 +1124,8 @@ const saveSettings = async () => {
     const response = await apiClient.put('/api/appointment-settings', payload);
     console.log('[AppointmentSettings] Réponse du serveur:', response.data);
 
-    showToast('Configuration enregistrée avec succès !', 'success');
+    // ✅ MODIFIÉ : Message de succès supprimé à la demande de l'utilisateur
+    // showToast('Configuration enregistrée avec succès !', 'success');
 
     // Recharger pour synchroniser l'état local avec le serveur
     await loadSettings();

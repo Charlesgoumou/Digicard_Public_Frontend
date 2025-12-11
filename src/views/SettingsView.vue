@@ -269,6 +269,21 @@
           </div>
         </div>
 
+        <!-- Onglets pour employés -->
+        <div v-if="user && user.role === 'employee'" class="max-w-md mx-auto mb-8">
+          <div class="flex gap-2 bg-slate-800 p-2 rounded-lg border border-slate-700">
+            <button
+              @click="activeTab = 'card'"
+              :class="[
+                'flex-1 py-2 px-4 rounded-lg font-semibold transition-colors',
+                activeTab === 'card' ? 'bg-sky-500 text-white' : 'text-slate-400 hover:text-white',
+              ]"
+            >
+              ⚙️ Ma Carte
+            </button>
+          </div>
+        </div>
+
         <!-- Contenu de l'onglet "Nos Services" pour business admin -->
         <div v-if="user && user.role === 'business_admin' && activeTab === 'services'" class="max-w-4xl mx-auto">
           <CompanyServicesForm :order-id="selectedOrderId" />
@@ -297,19 +312,8 @@
             v-if="isSaving"
             class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex flex-col items-center justify-center z-50"
           >
-            <!-- Spinner de chargement ou icône de succès -->
-            <div
-              v-if="!showSuccessIcon"
-              class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-sky-500"
-            ></div>
-            <svg v-else class="w-16 h-16 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
+            <!-- Spinner de chargement uniquement -->
+            <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-sky-500"></div>
             <p class="mt-4 text-white font-medium">{{ savingMessage }}</p>
           </div>
 
@@ -409,7 +413,7 @@
               {{ isSaving ? "Sauvegarde..." : "Enregistrer" }}
             </button>
             <p v-if="saveError" class="text-sm text-red-400 text-center mt-3 h-5">{{ saveError }}</p>
-            <p v-if="saveSuccess" class="text-sm text-green-400 text-center mt-3 h-5">{{ saveSuccess }}</p>
+            <!-- Message de succès supprimé à la demande de l'utilisateur -->
           </div>
         </form>
         </div>
@@ -604,7 +608,17 @@
       await loadOrderData(selectedOrderId.value);
       console.log("SettingsView: Order data reloaded successfully after avatar upload");
       
-      // ✅ IMPORTANT: Ne PAS appeler fetchUser() ici - l'avatar du Dashboard doit rester celui de l'utilisateur
+      // ✅ NOUVEAU : Pour les employés, émettre un événement global pour que le dashboard se mette à jour
+      if (user.value?.role === 'employee') {
+        console.log("SettingsView: Emitting employee-avatar-updated event");
+        // Utiliser un événement personnalisé pour notifier le dashboard
+        window.dispatchEvent(new CustomEvent('employee-avatar-updated', {
+          detail: { orderId: selectedOrderId.value }
+        }));
+      }
+      
+      // ✅ IMPORTANT: Ne PAS appeler fetchUser() pour les autres rôles
+      // l'avatar du Dashboard doit rester celui de l'utilisateur
       // et ne pas être affecté par l'upload d'une nouvelle photo dans les paramètres de la commande
     } catch (error) {
       console.error("SettingsView: Error reloading order data after avatar upload", error);
@@ -800,11 +814,10 @@
       selectedDesignNumber.value
     );
     
-    // ✅ NOUVEAU: Rediriger l'employé vers son Dashboard après "Enregistrer et quitter"
+    // ✅ MODIFIÉ: Actions immédiates après l'enregistrement
     if (user.value && user.value.role === 'employee') {
-      setTimeout(() => {
-        router.push({ name: "Dashboard" });
-      }, 500);
+      // Redirection immédiate pour les employés
+      router.push({ name: "Dashboard" });
     }
     // Après la sauvegarde de "Ma Carte", vérifier si les sections sont déjà configurées
     else if (user.value && user.value.role === 'business_admin') {
@@ -818,15 +831,11 @@
       
       if (hasServicesConfigured) {
         // Si les services sont déjà configurés, rediriger vers le dashboard
-        setTimeout(() => {
-          router.push({ name: "Dashboard" });
-        }, 500);
+        router.push({ name: "Dashboard" });
       } else {
-        // Sinon, basculer vers l'onglet "Nos Services" pour qu'ils puissent paramétrer
-        setTimeout(() => {
-          activeTab.value = 'services';
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }, 500);
+        // Sinon, basculer vers l'onglet "Nos Services" immédiatement
+        activeTab.value = 'services';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } else if (user.value && user.value.role === 'individual') {
       // Vérifier si "Mon Profil" est déjà configuré
@@ -839,15 +848,11 @@
       
       if (hasProfileConfigured) {
         // Si le profil est déjà configuré, rediriger vers le dashboard
-        setTimeout(() => {
-          router.push({ name: "Dashboard" });
-        }, 500);
+        router.push({ name: "Dashboard" });
       } else {
-        // Sinon, basculer vers l'onglet "Mon Profil" pour qu'ils puissent paramétrer
-        setTimeout(() => {
-          activeTab.value = 'profile';
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }, 500);
+        // Sinon, basculer vers l'onglet "Mon Profil" immédiatement
+        activeTab.value = 'profile';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     }
   };
