@@ -15,6 +15,22 @@
         Un code à 6 chiffres a été envoyé à <br /><strong>{{ emailForDisplay }}</strong>
       </p>
 
+      <!-- Input caché pour capturer le collage sur mobile -->
+      <!-- Positionné de manière invisible mais accessible pour le collage -->
+      <input
+        ref="hiddenPasteInput"
+        type="text"
+        inputmode="numeric"
+        pattern="[0-9]*"
+        class="absolute opacity-0 pointer-events-auto"
+        style="left: 50%; top: 50%; transform: translate(-50%, -50%); width: 1px; height: 1px; z-index: 1;"
+        @paste="handlePaste"
+        @input="handleHiddenInput"
+        tabindex="0"
+        aria-hidden="true"
+        autocomplete="off"
+      />
+
       <div class="flex justify-center space-x-2 mb-6" @paste="handlePaste">
         <input
           v-for="(n, index) in 6"
@@ -29,6 +45,8 @@
           @keydown="handleKeydown(index, $event)"
           @paste="handlePaste"
           @focus="handleFocus(index)"
+          @touchstart="handleTouchStart(index)"
+          @click="handleInputClick(index)"
           type="text"
           inputmode="numeric"
           pattern="[0-9]*"
@@ -79,6 +97,7 @@
   const accountType = ref(route.query.account_type || ""); // Récupère le type de compte depuis l'URL
   const code = ref(Array(6).fill("")); // Tableau pour stocker les 6 chiffres
   const codeInput = ref([]); // Références aux éléments input
+  const hiddenPasteInput = ref(null); // Référence à l'input caché pour le collage mobile
   const feedbackMessage = ref(""); // Message pour l'utilisateur
   const isError = ref(false); // Pour la couleur du message
   const isSubmitting = ref(false); // État lors de la vérification
@@ -90,6 +109,9 @@
   const cooldownTimer = ref(0);
   let cooldownInterval = null;
 
+  // Détection mobile
+  const isMobile = ref(false);
+
   // Propriété calculée pour afficher l'email (ou un texte par défaut)
   const emailForDisplay = computed(() => email.value || "votre adresse email");
 
@@ -100,8 +122,93 @@
     return "Renvoyer le code";
   });
 
+  // Gère le touchstart sur mobile pour activer l'input caché
+  const handleTouchStart = (index) => {
+    // Sur mobile, préparer l'input caché pour capturer le collage
+    // L'input caché sera prêt à recevoir le collage si l'utilisateur colle
+    if (hiddenPasteInput.value) {
+      // S'assurer que l'input caché est prêt
+      hiddenPasteInput.value.value = "";
+    }
+  };
+
+  // Gère le clic sur un input (pour mobile)
+  const handleInputClick = (index) => {
+    // Sur mobile, quand on clique sur un input, préparer l'input caché
+    // pour qu'il puisse capturer le collage
+    if (isMobile.value && hiddenPasteInput.value) {
+      // Positionner l'input caché au même endroit que l'input cliqué
+      const clickedInput = codeInput.value[index];
+      if (clickedInput) {
+        const rect = clickedInput.getBoundingClientRect();
+        hiddenPasteInput.value.style.left = `${rect.left + rect.width / 2}px`;
+        hiddenPasteInput.value.style.top = `${rect.top + rect.height / 2}px`;
+        hiddenPasteInput.value.value = "";
+      }
+    }
+  };
+
+  // Gère l'input dans le champ caché (pour mobile)
+  const handleHiddenInput = (event) => {
+    const value = event.target.value;
+    // Nettoyer et extraire uniquement les chiffres
+    const cleaned = value.replace(/[^\d]/g, "").slice(0, 6);
+    
+    if (cleaned.length === 6) {
+      // Distribuer les chiffres dans les 6 inputs
+      cleaned.split("").forEach((char, index) => {
+        code.value[index] = char;
+      });
+      
+      // Forcer la mise à jour de tous les inputs visibles
+      nextTick(() => {
+        codeInput.value.forEach((input, idx) => {
+          if (input) {
+            input.value = code.value[idx] || "";
+          }
+        });
+        
+        // Vider l'input caché
+        event.target.value = "";
+        
+        // Focus sur le dernier input
+        codeInput.value[5]?.focus();
+        
+        // Soumettre automatiquement
+        setTimeout(() => {
+          handleSubmit();
+        }, 150);
+      });
+    } else if (cleaned.length > 0) {
+      // Code partiel - remplir les cases disponibles
+      cleaned.split("").forEach((char, index) => {
+        if (index < 6) code.value[index] = char;
+      });
+      
+      // Forcer la mise à jour des inputs visibles
+      nextTick(() => {
+        codeInput.value.forEach((input, idx) => {
+          if (input) {
+            input.value = code.value[idx] || "";
+          }
+        });
+        
+        // Vider l'input caché
+        event.target.value = "";
+        
+        // Focus sur la prochaine case à remplir
+        const focusIndex = Math.min(cleaned.length, 5);
+        codeInput.value[focusIndex]?.focus();
+      });
+    }
+  };
+
   // Met le focus sur le premier input au chargement et initialise le cookie CSRF
   onMounted(async () => {
+    // Détecter si on est sur mobile
+    isMobile.value = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                     (window.matchMedia && window.matchMedia("(max-width: 768px)").matches);
+    
     // Initialiser le cookie CSRF pour les requêtes suivantes
     try {
       await apiClient.get("/sanctum/csrf-cookie");
@@ -111,6 +218,18 @@
     
     // Écouter les événements de collage au niveau du document pour capturer le collage même sans focus
     document.addEventListener("paste", handleDocumentPaste);
+    
+    // Sur mobile, activer l'input caché pour capturer le collage
+    if (hiddenPasteInput.value) {
+      // Positionner l'input caché de manière invisible mais accessible
+      hiddenPasteInput.value.style.position = "fixed";
+      hiddenPasteInput.value.style.left = "50%";
+      hiddenPasteInput.value.style.top = "50%";
+      hiddenPasteInput.value.style.transform = "translate(-50%, -50%)";
+      hiddenPasteInput.value.style.width = "1px";
+      hiddenPasteInput.value.style.height = "1px";
+      hiddenPasteInput.value.style.zIndex = "9999";
+    }
     
     // Focus sur le premier input
     codeInput.value[0]?.focus();
@@ -144,19 +263,85 @@
         codeInput.value[index]?.select();
       });
     }
+    
+    // Sur mobile, positionner l'input caché au même endroit que l'input focus
+    // pour qu'il puisse capturer le collage
+    if (isMobile.value && hiddenPasteInput.value) {
+      const focusedInput = codeInput.value[index];
+      if (focusedInput) {
+        const rect = focusedInput.getBoundingClientRect();
+        hiddenPasteInput.value.style.left = `${rect.left + rect.width / 2}px`;
+        hiddenPasteInput.value.style.top = `${rect.top + rect.height / 2}px`;
+        hiddenPasteInput.value.value = "";
+      }
+    }
   };
 
   // Gère la saisie dans un input : passe au suivant
   const handleInput = (index, event) => {
     const value = event.target.value;
+    
+    // ✅ DÉTECTION DE COLLAGE MOBILE : Si la valeur a plus d'un caractère, c'est un collage
+    // Sur mobile, certains navigateurs permettent le collage même avec maxlength="1"
+    if (value.length > 1) {
+      event.preventDefault();
+      event.stopPropagation();
+      
+      // Nettoyer et extraire uniquement les chiffres
+      const cleaned = value.replace(/[^\d]/g, "").slice(0, 6);
+      
+      if (cleaned.length >= 1) {
+        // Distribuer les chiffres à partir de l'index actuel
+        cleaned.split("").forEach((char, idx) => {
+          const targetIndex = index + idx;
+          if (targetIndex < 6) {
+            code.value[targetIndex] = char;
+          }
+        });
+        
+        // Forcer la mise à jour de tous les inputs
+        nextTick(() => {
+          // Mettre à jour manuellement chaque input pour s'assurer qu'ils sont synchronisés
+          codeInput.value.forEach((input, idx) => {
+            if (input && code.value[idx]) {
+              input.value = code.value[idx];
+            }
+          });
+          
+          // Focus sur le dernier input rempli ou le dernier input
+          const lastFilledIndex = Math.min(index + cleaned.length - 1, 5);
+          codeInput.value[lastFilledIndex]?.focus();
+          
+          // Si tous les champs sont remplis, soumettre
+          if (code.value.every((c) => c !== "")) {
+            setTimeout(() => {
+              handleSubmit();
+            }, 150);
+          }
+        });
+        return;
+      } else {
+        // Si le collage ne contient pas de chiffres valides, vider l'input
+        code.value[index] = "";
+        event.target.value = "";
+        return;
+      }
+    }
+    
     // N'autorise que les chiffres (vide la case si autre chose)
     if (!/^\d*$/.test(value)) {
       code.value[index] = "";
+      event.target.value = "";
       return;
     }
-    code.value[index] = value; // Met à jour le modèle
+    
+    // Limiter à un seul caractère (sécurité)
+    const singleChar = value.slice(-1); // Prendre seulement le dernier caractère
+    code.value[index] = singleChar;
+    event.target.value = singleChar;
+    
     // Passe au champ suivant si un chiffre est entré et si ce n'est pas le dernier champ
-    if (value && index < 5) {
+    if (singleChar && index < 5) {
       nextTick(() => {
         // Attend que le DOM soit mis à jour
         codeInput.value[index + 1]?.focus();

@@ -673,6 +673,9 @@
         credentials.account_type = accountType;
       }
       await login(credentials);
+      // ✅ Si la connexion réussit, le chargement continuera jusqu'à la redirection
+      // Le chargement sera désactivé par le watcher de route ou après un délai
+      loadingMessage.value = "Redirection vers la vérification...";
     } catch (error) {
       // ✅ Gérer le cas de comptes multiples
       if (error.response?.data?.multiple_accounts) {
@@ -693,10 +696,12 @@
       } else {
         errorMessage.value = error.response?.data?.message || "Erreur de connexion.";
       }
-    } finally {
+      // Désactiver le chargement seulement en cas d'erreur
       isSubmitting.value = false;
       loadingMessage.value = "";
     }
+    // ✅ Ne pas désactiver isSubmitting dans finally si la redirection est en cours
+    // Le watcher de route s'en chargera
   };
 
   // Sélectionner le type de compte et se connecter
@@ -751,6 +756,9 @@
     try {
       loadingMessage.value = "Envoi du code de vérification...";
       await register(payload);
+      // ✅ Si l'inscription réussit, le chargement continuera jusqu'à la redirection
+      // Le chargement sera désactivé par le watcher de route ou après un délai
+      loadingMessage.value = "Redirection vers la vérification...";
     } catch (error) {
       // Vérifier si c'est une erreur CORS
       if (
@@ -768,10 +776,12 @@
         errorMessage.value = error.response?.data?.message || "Erreur lors de l'inscription.";
       }
       console.error("Erreur lors de l'inscription:", error);
-    } finally {
+      // Désactiver le chargement seulement en cas d'erreur
       isSubmitting.value = false;
       loadingMessage.value = "";
     }
+    // ✅ Ne pas désactiver isSubmitting dans finally si la redirection est en cours
+    // Le watcher de route s'en chargera
   };
 
   // Forgot password handler
@@ -1010,6 +1020,52 @@
       canResendResetLink.value = false;
       successMessage.value = "";
       errorMessage.value = "";
+    }
+  });
+
+  // ✅ NOUVEAU: Variable pour stocker le timeout de sécurité
+  let loadingTimeout = null;
+
+  // ✅ NOUVEAU: Watcher pour détecter quand on arrive sur la page de vérification
+  // et désactiver le chargement
+  watch(
+    () => router.currentRoute.value.name,
+    (routeName) => {
+      // Si on arrive sur la page de vérification, désactiver le chargement
+      if (routeName === "Verification" && isSubmitting.value) {
+        // Nettoyer le timeout de sécurité si présent
+        if (loadingTimeout) {
+          clearTimeout(loadingTimeout);
+          loadingTimeout = null;
+        }
+        // Délai court pour s'assurer que la page est bien chargée
+        setTimeout(() => {
+          isSubmitting.value = false;
+          loadingMessage.value = "";
+        }, 300);
+      }
+    },
+    { immediate: true }
+  );
+
+  // ✅ NOUVEAU: Watcher pour désactiver le chargement après un délai maximum (sécurité)
+  // Au cas où la navigation ne serait pas détectée
+  watch(isSubmitting, (isLoading) => {
+    // Nettoyer le timeout précédent si présent
+    if (loadingTimeout) {
+      clearTimeout(loadingTimeout);
+      loadingTimeout = null;
+    }
+    
+    if (isLoading) {
+      // Désactiver le chargement après 5 secondes maximum si on n'est pas sur la page de vérification
+      loadingTimeout = setTimeout(() => {
+        if (isSubmitting.value && router.currentRoute.value.name !== "Verification") {
+          isSubmitting.value = false;
+          loadingMessage.value = "";
+        }
+        loadingTimeout = null;
+      }, 5000);
     }
   });
 </script>

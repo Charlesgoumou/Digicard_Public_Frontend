@@ -155,8 +155,13 @@ export function useAuth() {
     try {
       setCsrfHeader();
       const response = await apiClient.post("/api/register", credentials);
-      closeAuthModal();
+      // ✅ MODIFICATION: Ne pas fermer le modal immédiatement, laisser le chargement visible
+      // Le modal sera fermé automatiquement lors de la navigation vers la page de vérification
       router.push({ name: "Verification", query: { email: credentials.email } });
+      // Fermer le modal après un court délai pour laisser le temps à la navigation
+      setTimeout(() => {
+        closeAuthModal();
+      }, 100);
       return response.data;
     } catch (error) {
       console.error("Erreur lors de l'inscription:", error.response?.data || error.message);
@@ -186,7 +191,8 @@ export function useAuth() {
       // ✅ NOUVEAU : Gérer le 2FA obligatoire à chaque connexion
       if (response.data.two_factor_required || response.data.verification_required) {
         // L'utilisateur doit entrer le code 2FA qui a été envoyé par email
-        closeAuthModal();
+        // ✅ MODIFICATION: Ne pas fermer le modal immédiatement, laisser le chargement visible
+        // Le modal sera fermé automatiquement lors de la navigation vers la page de vérification
         router.push({
           name: "Verification",
           query: {
@@ -194,6 +200,10 @@ export function useAuth() {
             account_type: credentials.account_type || response.data.account_type,
           },
         });
+        // Fermer le modal après un court délai pour laisser le temps à la navigation
+        setTimeout(() => {
+          closeAuthModal();
+        }, 100);
       } else if (response.data.password_reset_required) {
         // Cas 2: L'employé doit changer son mot de passe (après validation 2FA)
         await _fetchUser(); // S'assure que user.value est défini
