@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen bg-slate-900 pt-20 sm:pt-32 text-white flex items-center justify-center px-4">
-    <div class="relative max-w-md w-full p-8 bg-slate-800 rounded-xl border border-slate-700 text-center">
+    <div class="relative max-w-md w-full p-8 bg-slate-800 rounded-xl border border-slate-700 text-center" @paste="handlePaste">
       <!-- Indicateur de chargement circulaire (overlay) -->
       <div
         v-if="isSubmitting || isResending"
@@ -15,7 +15,7 @@
         Un code à 6 chiffres a été envoyé à <br /><strong>{{ emailForDisplay }}</strong>
       </p>
 
-      <div class="flex justify-center space-x-2 mb-6">
+      <div class="flex justify-center space-x-2 mb-6" @paste="handlePaste">
         <input
           v-for="(n, index) in 6"
           :key="index"
@@ -28,6 +28,7 @@
           @input="handleInput(index, $event)"
           @keydown="handleKeydown(index, $event)"
           @paste="handlePaste"
+          @focus="handleFocus(index)"
           type="text"
           inputmode="numeric"
           pattern="[0-9]*"
@@ -107,15 +108,43 @@
     } catch (error) {
       console.error("Erreur lors de l'initialisation du cookie CSRF:", error);
     }
+    
+    // Écouter les événements de collage au niveau du document pour capturer le collage même sans focus
+    document.addEventListener("paste", handleDocumentPaste);
+    
+    // Focus sur le premier input
     codeInput.value[0]?.focus();
   });
 
-  // Nettoie l'intervalle du timer quand le composant est détruit
+  // Gère le collage au niveau du document (pour capturer même sans focus sur un input)
+  const handleDocumentPaste = (event) => {
+    // Vérifier si le collage est dans notre composant
+    const target = event.target;
+    const isInComponent = target.closest(".bg-slate-800");
+    
+    // Si le collage est dans notre composant et qu'aucun input n'a le focus, traiter le collage
+    if (isInComponent && !codeInput.value.some(input => input === document.activeElement)) {
+      handlePaste(event);
+    }
+  };
+
+  // Nettoie l'intervalle du timer et les event listeners quand le composant est détruit
   onUnmounted(() => {
     if (cooldownInterval) {
       clearInterval(cooldownInterval);
     }
+    document.removeEventListener("paste", handleDocumentPaste);
   });
+
+  // Gère le focus sur un input - utile pour le collage
+  const handleFocus = (index) => {
+    // Si l'input est vide, sélectionne tout le contenu pour faciliter le remplacement
+    if (!code.value[index]) {
+      nextTick(() => {
+        codeInput.value[index]?.select();
+      });
+    }
+  };
 
   // Gère la saisie dans un input : passe au suivant
   const handleInput = (index, event) => {
@@ -159,30 +188,62 @@
     }
   };
 
-  // Gère le collage d'un code
+  // Gère le collage d'un code - Amélioré pour mieux gérer les codes copiés depuis l'email
   const handlePaste = (event) => {
     event.preventDefault(); // Empêche le collage par défaut
-    const pasteData = event.clipboardData?.getData("text").trim().replace(/\s+/g, "").slice(0, 6); // Nettoie et limite à 6 chiffres
+    
+    // Récupère les données collées
+    const rawPasteData = event.clipboardData?.getData("text") || "";
+    
+    // Nettoie le code collé : supprime espaces, tirets, points, et autres caractères non numériques
+    // Gère les formats courants : "123456", "123 456", "123-456", "123.456", etc.
+    const cleanedPasteData = rawPasteData
+      .trim()
+      .replace(/[\s\-\._]/g, "") // Supprime espaces, tirets, points, underscores
+      .replace(/[^\d]/g, "") // Supprime tout ce qui n'est pas un chiffre
+      .slice(0, 6); // Limite à 6 chiffres maximum
+    
     // Vérifie si les données collées sont bien 6 chiffres
-    if (pasteData && /^\d{6}$/.test(pasteData)) {
-      pasteData.split("").forEach((char, index) => {
-        code.value[index] = char; // Remplit les cases
+    if (cleanedPasteData && /^\d{6}$/.test(cleanedPasteData)) {
+      // Remplit tous les champs avec le code collé
+      cleanedPasteData.split("").forEach((char, index) => {
+        code.value[index] = char;
       });
+      
       // Met le focus sur la dernière case après le collage
-      codeInput.value[5]?.focus();
-      handleSubmit(); // Tente de soumettre directement après le collage
-    } else {
-      // Gère le collage partiel ou invalide (optionnel)
-      if (pasteData && /^\d+$/.test(pasteData)) {
-        pasteData.split("").forEach((char, idx) => {
-          if (idx < 6) code.value[idx] = char;
-        });
-        const focusIndex = Math.min(pasteData.length, 5);
-        codeInput.value[focusIndex]?.focus();
-      } else {
-        feedbackMessage.value = "Code collé invalide.";
-        isError.value = true;
+      nextTick(() => {
+        codeInput.value[5]?.focus();
+        // Soumet automatiquement après un court délai pour laisser le temps au DOM de se mettre à jour
+        setTimeout(() => {
+          handleSubmit();
+        }, 100);
+      });
+    } else if (cleanedPasteData && /^\d+$/.test(cleanedPasteData)) {
+      // Gère le collage partiel (moins de 6 chiffres) - remplit les cases disponibles
+      const digits = cleanedPasteData.split("");
+      digits.forEach((char, idx) => {
+        if (idx < 6) code.value[idx] = char;
+      });
+      // Nettoie les cases restantes
+      for (let i = digits.length; i < 6; i++) {
+        code.value[i] = "";
       }
+      // Met le focus sur la prochaine case à remplir ou la dernière case remplie
+      const focusIndex = Math.min(digits.length, 5);
+      nextTick(() => {
+        codeInput.value[focusIndex]?.focus();
+      });
+      feedbackMessage.value = `Code partiel collé (${digits.length}/6 chiffres).`;
+      isError.value = false;
+    } else {
+      // Code invalide
+      feedbackMessage.value = "Code collé invalide. Veuillez coller un code à 6 chiffres.";
+      isError.value = true;
+      // Efface tous les champs en cas d'erreur
+      code.value.fill("");
+      nextTick(() => {
+        codeInput.value[0]?.focus();
+      });
     }
   };
 
