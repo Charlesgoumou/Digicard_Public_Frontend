@@ -203,6 +203,8 @@
             pageData.youtube_url ||
             pageData.deezer_url ||
             pageData.spotify_url ||
+            pageData.tiktok_url ||
+            pageData.threads_url ||
             isAppointmentEnabled
           "
           class="flex justify-center items-center mb-6"
@@ -423,6 +425,24 @@
         iconClass: 'fab fa-spotify',
         hoverClass: 'hover:text-green-500',
         title: 'Spotify'
+      });
+    }
+    if (props.pageData?.tiktok_url) {
+      icons.push({
+        name: 'tiktok',
+        url: props.pageData.tiktok_url,
+        iconClass: 'fab fa-tiktok',
+        hoverClass: 'hover:text-black dark:hover:text-white',
+        title: 'TikTok'
+      });
+    }
+    if (props.pageData?.threads_url) {
+      icons.push({
+        name: 'threads',
+        url: props.pageData.threads_url,
+        iconClass: 'fab fa-threads',
+        hoverClass: 'hover:text-gray-800 dark:hover:text-gray-200',
+        title: 'Threads'
       });
     }
     

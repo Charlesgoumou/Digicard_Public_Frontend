@@ -70,6 +70,26 @@
         placeholder="https://deezer.com/..."
       />
     </div>
+    <div>
+      <label for="tiktok_url" class="block text-sm font-medium text-slate-300 mb-1">Lien TikTok</label>
+      <input
+        v-model.trim="form.tiktok_url"
+        type="url"
+        id="tiktok_url"
+        class="input-field"
+        placeholder="https://tiktok.com/@..."
+      />
+    </div>
+    <div>
+      <label for="threads_url" class="block text-sm font-medium text-slate-300 mb-1">Lien Threads</label>
+      <input
+        v-model.trim="form.threads_url"
+        type="url"
+        id="threads_url"
+        class="input-field"
+        placeholder="https://threads.net/@..."
+      />
+    </div>
   </div>
 </template>
 

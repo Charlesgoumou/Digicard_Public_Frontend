@@ -59,6 +59,8 @@ export function useCardSettings(
     youtube_url: "",
     deezer_url: "",
     spotify_url: "",
+    tiktok_url: "",
+    threads_url: "",
     // Design de la carte
     card_design_type: null, // 'template' ou 'custom'
     card_design_number: null, // Numéro du template (1-30) ou null
@@ -200,6 +202,8 @@ export function useCardSettings(
         form.youtube_url = profileData.youtube_url || "";
         form.deezer_url = profileData.deezer_url || "";
         form.spotify_url = profileData.spotify_url || "";
+        form.tiktok_url = profileData.tiktok_url || "";
+        form.threads_url = profileData.threads_url || "";
         form.card_design_type = profileData.card_design_type || null;
         form.card_design_number = profileData.card_design_number || null;
         form.card_design_custom_url = profileData.card_design_custom_url || null;
@@ -340,6 +344,8 @@ export function useCardSettings(
         form.youtube_url = profileData.youtube_url || "";
         form.deezer_url = profileData.deezer_url || "";
         form.spotify_url = profileData.spotify_url || "";
+        form.tiktok_url = profileData.tiktok_url || "";
+        form.threads_url = profileData.threads_url || "";
 
         // Charger les données de design
         form.card_design_type = profileData.card_design_type || null;
@@ -412,6 +418,8 @@ export function useCardSettings(
         form.youtube_url = currentUser.youtube_url || "";
         form.deezer_url = currentUser.deezer_url || "";
         form.spotify_url = currentUser.spotify_url || "";
+        form.tiktok_url = currentUser.tiktok_url || "";
+        form.threads_url = currentUser.threads_url || "";
 
         // ✅ OPTIMISATION: Charger l'avatar utilisateur immédiatement pour les commandes non configurées
         // Cela évite le scintillement lors de la navigation
@@ -610,6 +618,8 @@ export function useCardSettings(
             youtube_url: form.youtube_url,
             deezer_url: form.deezer_url,
             spotify_url: form.spotify_url,
+            tiktok_url: form.tiktok_url,
+            threads_url: form.threads_url,
           };
 
           // Ajouter les champs de design de la carte
