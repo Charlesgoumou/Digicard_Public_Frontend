@@ -204,13 +204,26 @@ export function useAuth() {
         setTimeout(() => {
           closeAuthModal();
         }, 100);
+      } else if (response.data.token && response.data.user) {
+        // ✅ NOUVEAU : Cas où la 2FA est désactivée et la connexion est directe
+        // Le backend a déjà établi la session avec Auth::login(), donc on peut récupérer l'utilisateur
+        // Avec Sanctum et les cookies de session, la session est automatiquement établie
+        // On récupère l'utilisateur depuis la session Laravel via _fetchUser()
+        await _fetchUser();
+        if (user.value) {
+          console.log("Connexion réussie (2FA désactivée), utilisateur chargé, redirection vers Dashboard.");
+          closeAuthModal();
+          router.push({ name: "Dashboard" });
+        } else {
+          throw new Error("Échec de la récupération des données utilisateur après connexion.");
+        }
       } else if (response.data.password_reset_required) {
         // Cas 2: L'employé doit changer son mot de passe (après validation 2FA)
         await _fetchUser(); // S'assure que user.value est défini
         closeAuthModal();
         router.push({ name: "EmployeeSetPassword" }); // Redirige vers la page de mdp
       } else {
-        // Cas 3: Connexion normale (ne devrait plus arriver avec le 2FA obligatoire)
+        // Cas 3: Connexion normale (fallback)
         await _fetchUser();
         if (user.value) {
           console.log("Connexion réussie, utilisateur chargé, redirection vers Dashboard.");
