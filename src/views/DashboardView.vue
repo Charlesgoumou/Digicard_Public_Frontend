@@ -59,7 +59,7 @@
         <div 
           v-else
           class="grid gap-4 md:gap-5 max-w-4xl mx-auto"
-          :class="hasAppointmentsEnabled ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 max-w-7xl' : 'grid-cols-2 md:grid-cols-4'"
+          :class="hasAppointmentsEnabled ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 max-w-7xl' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-5 max-w-6xl'"
         >
           <button
             @click="goToSettings"
@@ -110,6 +110,15 @@
               {{ newContactsCount }} nouveau{{ newContactsCount > 1 ? 'x' : '' }}
             </span>
           </button>
+          <!-- Carte "Marketplace" -->
+          <button
+            @click="goToMarketplace"
+            class="bg-slate-800 rounded-lg px-4 py-3 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center justify-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 min-h-[120px]"
+          >
+            <span class="text-3xl mb-1.5 block group-hover:scale-110 transition-transform duration-300">🛍️</span>
+            <h2 class="text-sm font-semibold text-white mb-0.5">Marketplace</h2>
+            <p class="text-xs text-slate-400">Acheter et Vendre</p>
+          </button>
         </div> <!-- Fin de la grille individual -->
       </div> <!-- Fin du v-if individual -->
 
@@ -121,8 +130,8 @@
           v-else
           class="grid gap-4 md:gap-5 mb-16"
           :class="hasBusinessOrder 
-            ? (hasAppointmentsEnabled ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 max-w-7xl mx-auto' : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 max-w-6xl mx-auto')
-            : (hasAppointmentsEnabled ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 max-w-7xl mx-auto' : 'grid-cols-2 md:grid-cols-4 max-w-4xl mx-auto')"
+            ? (hasAppointmentsEnabled ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 max-w-8xl mx-auto' : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 max-w-7xl mx-auto')
+            : (hasAppointmentsEnabled ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 max-w-7xl mx-auto' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-5 max-w-6xl mx-auto')"
         >
           <button
             v-if="hasBusinessOrder"
@@ -181,6 +190,15 @@
             <span v-if="newContactsCount > 0" class="px-2 py-0.5 bg-sky-500/20 text-sky-400 rounded-full text-xs border border-sky-500/30">
               {{ newContactsCount }} nouveau{{ newContactsCount > 1 ? 'x' : '' }}
             </span>
+          </button>
+          <!-- Carte "Marketplace" pour les business_admin -->
+          <button
+            @click="goToMarketplace"
+            class="bg-slate-800 rounded-lg px-4 py-3 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center justify-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 min-h-[120px]"
+          >
+            <span class="text-3xl mb-1.5 block group-hover:scale-110 transition-transform duration-300">🛍️</span>
+            <h2 class="text-sm font-semibold text-white mb-0.5">Marketplace</h2>
+            <p class="text-xs text-slate-400">Acheter et Vendre</p>
           </button>
         </div>
 
@@ -694,7 +712,7 @@
           <!-- Boutons d'action -->
           <div 
             class="grid gap-4 md:gap-5 max-w-3xl mx-auto"
-            :class="hasAppointmentsEnabled ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-4' : 'grid-cols-1 md:grid-cols-3'"
+            :class="hasAppointmentsEnabled ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 max-w-6xl' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4 max-w-5xl'"
           >
             <button
               @click="goToSettings"
@@ -736,6 +754,15 @@
               <span v-if="newContactsCount > 0" class="px-2 py-0.5 bg-sky-500/20 text-sky-400 rounded-full text-xs border border-sky-500/30">
                 {{ newContactsCount }} nouveau{{ newContactsCount > 1 ? 'x' : '' }}
               </span>
+            </button>
+            <!-- Carte "Marketplace" pour les employés -->
+            <button
+              @click="goToMarketplace"
+              class="bg-slate-800 rounded-lg px-4 py-3 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center justify-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 min-h-[120px]"
+            >
+              <span class="text-3xl mb-1.5 block group-hover:scale-110 transition-transform duration-300">🛍️</span>
+              <h2 class="text-sm font-semibold text-white mb-0.5">Marketplace</h2>
+              <p class="text-xs text-slate-400">Découvrez nos services.</p>
             </button>
           </div>
         </template>
@@ -1520,12 +1547,12 @@
       }
 
       // Stocker l'orderId utilisé pour charger les rendez-vous
-      // Pour les utilisateurs individuels, ne pas filtrer par order_id (afficher TOUS les rendez-vous)
-      // Pour les business_admin et employee, filtrer par la commande
-      if (user.value.role === 'individual') {
-        appointmentsOrderId.value = null; // Pas de filtre pour individual
+      // Pour les utilisateurs individuels et business_admin, ne pas filtrer par order_id (afficher TOUS les rendez-vous)
+      // Pour les employés, filtrer par la commande
+      if (user.value.role === 'individual' || user.value.role === 'business_admin') {
+        appointmentsOrderId.value = null; // Pas de filtre pour individual et business_admin (afficher tous les rendez-vous)
       } else {
-        appointmentsOrderId.value = orderIdToCheck; // Filtrer par commande pour business_admin et employee
+        appointmentsOrderId.value = orderIdToCheck; // Filtrer par commande pour employee uniquement
       }
 
       // La carte s'affiche si la prise de rendez-vous est activée
@@ -2140,6 +2167,10 @@
   };
   const goToOrders = () => {
     router.push({ name: "Orders" });
+  };
+  const goToMarketplace = () => {
+    // Rediriger vers la page Marketplace
+    router.push({ name: "Marketplace" });
   };
 
   // Fonction utilitaire pour obtenir le token d'accès d'une commande

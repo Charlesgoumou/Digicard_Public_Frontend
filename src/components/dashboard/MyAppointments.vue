@@ -504,31 +504,31 @@
     return date.toISOString().split("T")[0]; // Format YYYY-MM-DD
   };
 
-  // Computed: Rendez-vous du jour (non annulés)
+  // Computed: Rendez-vous du jour (confirmés uniquement, non annulés)
   const todayAppointments = computed(() => {
     const today = getToday();
     const tomorrow = getTomorrow();
     return appointments.value
       .filter((apt) => {
         const aptDate = getStartOfDay(apt.start_time);
-        return aptDate >= today && aptDate < tomorrow && apt.status !== "cancelled";
+        return aptDate >= today && aptDate < tomorrow && apt.status === "confirmed";
       })
       .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
   });
 
-  // Computed: Rendez-vous de demain (non annulés)
+  // Computed: Rendez-vous de demain (confirmés uniquement, non annulés)
   const tomorrowAppointments = computed(() => {
     const tomorrow = getTomorrow();
     const dayAfter = getDayAfterTomorrow();
     return appointments.value
       .filter((apt) => {
         const aptDate = getStartOfDay(apt.start_time);
-        return aptDate >= tomorrow && aptDate < dayAfter && apt.status !== "cancelled";
+        return aptDate >= tomorrow && aptDate < dayAfter && apt.status === "confirmed";
       })
       .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
   });
 
-  // Computed: Rendez-vous d'après-demain (non annulés)
+  // Computed: Rendez-vous d'après-demain (confirmés uniquement, non annulés)
   const dayAfterTomorrowAppointments = computed(() => {
     const dayAfter = getDayAfterTomorrow();
     const dayAfterPlus1 = new Date(dayAfter);
@@ -536,12 +536,12 @@
     return appointments.value
       .filter((apt) => {
         const aptDate = getStartOfDay(apt.start_time);
-        return aptDate >= dayAfter && aptDate < dayAfterPlus1 && apt.status !== "cancelled";
+        return aptDate >= dayAfter && aptDate < dayAfterPlus1 && apt.status === "confirmed";
       })
       .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
   });
 
-  // Computed: Rendez-vous suivants groupés par date (non annulés)
+  // Computed: Rendez-vous suivants groupés par date (confirmés uniquement, non annulés)
   const futureAppointmentsGrouped = computed(() => {
     const dayAfter = getDayAfterTomorrow();
     const dayAfterPlus1 = new Date(dayAfter);
@@ -550,7 +550,7 @@
     const futureApts = appointments.value
       .filter((apt) => {
         const aptDate = getStartOfDay(apt.start_time);
-        return aptDate >= dayAfterPlus1 && apt.status !== "cancelled";
+        return aptDate >= dayAfterPlus1 && apt.status === "confirmed";
       })
       .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
 

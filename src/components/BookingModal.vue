@@ -66,35 +66,115 @@
               <!-- Étape 1: Choix de la date -->
               <div v-if="step === 1" class="space-y-4">
                 <div>
-                  <label class="block text-sm font-medium text-slate-300 mb-2">
+                  <label class="block text-sm font-medium text-slate-300 mb-3">
                     📅 Choisissez une date
                   </label>
-                  <input
-                    type="date"
-                    v-model="selectedDate"
-                    :min="minDate"
-                    class="w-full bg-slate-700/50 border border-slate-600 rounded-xl py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all"
-                    @change="fetchSlots"
-                  />
+                  
+                  <!-- Chargement des dates disponibles -->
+                  <div v-if="isLoadingAvailableDates" class="w-full bg-slate-700/50 border border-slate-600 rounded-xl py-8 flex flex-col items-center justify-center gap-3">
+                    <div class="relative">
+                      <div class="w-12 h-12 rounded-full border-4 border-slate-700"></div>
+                      <div class="absolute top-0 left-0 w-12 h-12 rounded-full border-4 border-sky-500 border-t-transparent animate-spin"></div>
+                    </div>
+                    <span class="text-sm text-slate-400">Chargement des dates disponibles...</span>
+                  </div>
+                  
+                  <!-- Grille de dates visuelle -->
+                  <div v-else-if="availableDates.length > 0" class="space-y-6">
+                    <!-- Dates groupées par mois -->
+                    <div
+                      v-for="(monthGroup, monthKey) in groupedDatesByMonth"
+                      :key="monthKey"
+                      class="space-y-3"
+                    >
+                      <!-- En-tête du mois -->
+                      <div class="flex items-center gap-2 px-2">
+                        <div class="h-px flex-1 bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
+                        <h3 class="text-sm font-semibold text-sky-400 px-3 py-1 bg-slate-800/50 rounded-lg">
+                          {{ monthKey }}
+                        </h3>
+                        <div class="h-px flex-1 bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
+                      </div>
+                      
+                      <!-- Grille de dates -->
+                      <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        <button
+                          v-for="date in monthGroup"
+                          :key="date.value"
+                          @click="selectDate(date.value)"
+                          :class="[
+                            'group relative p-3 rounded-xl border-2 transition-all duration-200 text-left overflow-hidden',
+                            selectedDate === date.value
+                              ? 'bg-gradient-to-br from-sky-500/20 to-indigo-500/20 border-sky-500 shadow-lg shadow-sky-500/20 scale-105'
+                              : 'bg-slate-700/30 border-slate-600 hover:border-sky-400/50 hover:bg-slate-700/50 hover:scale-102'
+                          ]"
+                        >
+                          <!-- Effet de brillance au survol -->
+                          <div class="absolute inset-0 bg-gradient-to-br from-white/0 via-white/0 to-white/0 group-hover:from-white/5 group-hover:via-white/10 group-hover:to-white/5 transition-all duration-300"></div>
+                          
+                          <!-- Contenu -->
+                          <div class="relative z-10">
+                            <!-- Jour de la semaine -->
+                            <div class="flex items-center gap-1.5 mb-1">
+                              <span class="text-xs font-medium text-slate-400 uppercase tracking-wide">
+                                {{ getDayName(date.value) }}
+                              </span>
+                              <svg v-if="selectedDate === date.value" class="w-3 h-3 text-sky-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                              </svg>
+                            </div>
+                            
+                            <!-- Numéro du jour -->
+                            <div class="flex items-baseline gap-1">
+                              <span :class="[
+                                'text-2xl font-bold transition-colors',
+                                selectedDate === date.value ? 'text-sky-400' : 'text-white group-hover:text-sky-300'
+                              ]">
+                                {{ getDayNumber(date.value) }}
+                              </span>
+                            </div>
+                            
+                            <!-- Mois -->
+                            <div class="text-xs text-slate-400 mt-0.5">
+                              {{ getMonthName(date.value) }}
+                            </div>
+                          </div>
+                          
+                          <!-- Indicateur de sélection -->
+                          <div v-if="selectedDate === date.value" class="absolute top-2 right-2 w-2 h-2 rounded-full bg-sky-400 shadow-lg shadow-sky-400/50 animate-pulse"></div>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Message si aucune date disponible -->
+                  <div v-else-if="!isLoadingAvailableDates && availableDates.length === 0" class="w-full bg-slate-700/50 border border-slate-600 rounded-xl py-12 flex flex-col items-center justify-center gap-3">
+                    <div class="w-16 h-16 rounded-full bg-slate-700/50 flex items-center justify-center">
+                      <svg class="w-8 h-8 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <p class="text-slate-400 text-sm text-center px-4">Aucune date disponible pour le moment</p>
+                  </div>
                 </div>
 
-                <!-- Chargement optimisé -->
-                <div v-if="isLoadingSlots" class="flex flex-col items-center justify-center py-8 gap-3">
+                <!-- Chargement des créneaux -->
+                <div v-if="selectedDate && isLoadingSlots" class="flex flex-col items-center justify-center py-8 gap-3 mt-4">
                   <div class="relative">
                     <div class="w-12 h-12 rounded-full border-4 border-slate-700"></div>
                     <div class="absolute top-0 left-0 w-12 h-12 rounded-full border-4 border-sky-500 border-t-transparent animate-spin"></div>
                   </div>
-                  <p class="text-sm text-slate-400 animate-pulse">Chargement des créneaux...</p>
+                  <p class="text-sm text-slate-400 animate-pulse">Chargement des créneaux disponibles...</p>
                 </div>
 
                 <!-- Message si pas de date sélectionnée -->
-                <div v-else-if="!selectedDate" class="text-center py-8">
+                <div v-else-if="!selectedDate && !isLoadingAvailableDates && availableDates.length > 0 && !isLoadingSlots" class="text-center py-8 mt-4">
                   <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-700/50 flex items-center justify-center">
                     <svg class="w-8 h-8 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
-                  <p class="text-slate-400">Sélectionnez une date pour voir les créneaux disponibles</p>
+                  <p class="text-slate-400">Sélectionnez une date ci-dessus pour voir les créneaux disponibles</p>
                 </div>
 
                 <!-- Message d'erreur -->
@@ -330,6 +410,8 @@ const isLoadingSlots = ref(false);
 const slotsError = ref('');
 const isSubmitting = ref(false);
 const submitError = ref('');
+const availableDates = ref([]);
+const isLoadingAvailableDates = ref(false);
 
 // Formulaire
 const form = reactive({
@@ -366,6 +448,8 @@ const resetModal = () => {
   form.visitor_email = '';
   form.visitor_phone = '';
   form.message = '';
+  // Charger les dates disponibles quand le modal s'ouvre
+  fetchAvailableDates();
 };
 
 // Fermer la modale
@@ -376,6 +460,74 @@ const closeModal = () => {
 // Changer d'étape
 const goToStep = (s) => {
   step.value = s;
+};
+
+// Récupérer toutes les dates disponibles avec des créneaux
+const fetchAvailableDates = async () => {
+  isLoadingAvailableDates.value = true;
+  availableDates.value = [];
+
+  try {
+    // Utiliser le nouvel endpoint backend qui retourne toutes les dates disponibles en une seule requête
+    const params = {
+      days_ahead: 60 // Vérifier les 60 prochains jours
+    };
+    
+    if (props.orderId) {
+      params.order_id = parseInt(props.orderId, 10);
+    }
+    
+    console.log('[BookingModal] fetchAvailableDates - Paramètres:', {
+      userId: props.userId,
+      orderId: props.orderId,
+      params: params
+    });
+    
+    const response = await apiClient.get(`/api/user/${props.userId}/available-dates`, { 
+      params,
+      timeout: 10000 // Timeout plus long car c'est une seule requête
+    });
+    
+    console.log('[BookingModal] fetchAvailableDates - Réponse:', {
+      data: response.data,
+      available_dates_count: response.data?.available_dates?.length || 0
+    });
+    
+    const datesData = response.data?.available_dates || [];
+    
+    // Formater les dates pour l'affichage
+    const dates = datesData.map(dateInfo => ({
+      value: dateInfo.date,
+      label: dateInfo.formatted_date || formatDisplayDate(dateInfo.date),
+      dayName: dateInfo.day_name || getDayNameFromDate(dateInfo.date),
+      monthName: getMonthNameFromDate(dateInfo.date),
+      dayNumber: getDayNumberFromDate(dateInfo.date)
+    }));
+    
+    availableDates.value = dates;
+    
+    console.log('[BookingModal] fetchAvailableDates - Dates formatées:', dates);
+    
+  } catch (error) {
+    console.error('[BookingModal] Erreur lors de la récupération des dates disponibles:', {
+      error: error,
+      message: error.response?.data?.message || error.message,
+      status: error.response?.status,
+      userId: props.userId,
+      orderId: props.orderId
+    });
+    // En cas d'erreur, on peut toujours permettre la sélection manuelle
+    // mais on affichera un message d'avertissement
+    availableDates.value = [];
+  } finally {
+    isLoadingAvailableDates.value = false;
+  }
+};
+
+// Sélectionner une date et charger les créneaux
+const selectDate = async (dateValue) => {
+  selectedDate.value = dateValue;
+  await fetchSlots();
 };
 
 // Récupérer les créneaux disponibles
@@ -488,13 +640,84 @@ const formatDisplayDate = (dateStr) => {
   const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
   return date.toLocaleDateString('fr-FR', options);
 };
+
+// Grouper les dates par mois
+const groupedDatesByMonth = computed(() => {
+  const grouped = {};
+  
+  availableDates.value.forEach(date => {
+    const dateObj = new Date(date.value);
+    const monthKey = dateObj.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    // Capitaliser la première lettre
+    const capitalizedMonth = monthKey.charAt(0).toUpperCase() + monthKey.slice(1);
+    
+    if (!grouped[capitalizedMonth]) {
+      grouped[capitalizedMonth] = [];
+    }
+    grouped[capitalizedMonth].push(date);
+  });
+  
+  // Trier les dates dans chaque mois
+  Object.keys(grouped).forEach(month => {
+    grouped[month].sort((a, b) => {
+      return new Date(a.value) - new Date(b.value);
+    });
+  });
+  
+  return grouped;
+});
+
+// Helpers pour extraire les informations de date
+const getDayName = (dateStr) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('fr-FR', { weekday: 'short' });
+};
+
+const getDayNumber = (dateStr) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  return date.getDate();
+};
+
+const getMonthName = (dateStr) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('fr-FR', { month: 'short' });
+};
+
+// Helpers pour le formatage initial des dates
+const getDayNameFromDate = (dateStr) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('fr-FR', { weekday: 'short' });
+};
+
+const getMonthNameFromDate = (dateStr) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('fr-FR', { month: 'short' });
+};
+
+const getDayNumberFromDate = (dateStr) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  return date.getDate();
+};
 </script>
 
 <style scoped>
-/* Style personnalisé pour l'input date sur navigateurs webkit */
-input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(1);
-  cursor: pointer;
+/* Style personnalisé pour le select */
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+  padding-right: 2.5rem;
+}
+
+select:focus {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%230ea5e9' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
 }
 
 /* Animation de pulse pour le succès */

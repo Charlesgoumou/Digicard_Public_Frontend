@@ -554,39 +554,33 @@
               class="w-full bg-slate-700 hover:bg-slate-600 border border-slate-600 hover:border-sky-500 rounded-lg p-4 text-left transition-all group"
             >
               <div class="flex items-center justify-between">
-                <div>
-                  <div class="flex items-center gap-2">
-                    <svg
-                      v-if="account.type === 'business'"
-                      class="w-6 h-6 text-sky-400"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
+                <div class="flex items-center gap-4 flex-1 min-w-0">
+                  <div class="flex-shrink-0">
+                    <div
+                      :class="[
+                        'w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold',
+                        account.type === 'business' ? 'bg-purple-500/20 text-purple-400' :
+                        account.type === 'employee' ? 'bg-green-500/20 text-green-400' :
+                        'bg-blue-500/20 text-blue-400'
+                      ]"
                     >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                      />
-                    </svg>
-                    <svg v-else class="w-6 h-6 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                      />
-                    </svg>
-                    <span class="text-white font-semibold">
-                      {{ account.type === "business" ? "Compte Entreprise" : (account.type === "employee" || account.role === "employee" ? "Compte Employé" : "Compte Particulier") }}
-                    </span>
+                      {{ account.type === 'business' ? '🏢' : account.type === 'employee' ? '👨‍💼' : '👤' }}
+                    </div>
                   </div>
-                  <p class="text-slate-400 text-sm mt-1">{{ account.name }}</p>
-                  <p v-if="account.company_name" class="text-slate-500 text-xs mt-0.5">{{ account.company_name }}</p>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 mb-1">
+                      <span class="text-white font-semibold">
+                        {{ account.type === "business" ? "Compte Entreprise" : 
+                           account.type === "employee" ? "Compte Employé" : 
+                           "Compte Particulier" }}
+                      </span>
+                    </div>
+                    <p class="text-slate-400 text-sm truncate">{{ account.name }}</p>
+                    <p v-if="account.company_name" class="text-slate-500 text-xs mt-0.5 truncate">{{ account.company_name }}</p>
+                  </div>
                 </div>
                 <svg
-                  class="w-5 h-5 text-slate-400 group-hover:text-sky-400 transition-colors"
+                  class="w-5 h-5 text-slate-400 group-hover:text-sky-400 transition-colors flex-shrink-0 ml-4"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"

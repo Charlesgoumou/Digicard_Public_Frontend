@@ -429,6 +429,7 @@
   import { useOrderModal } from "@/composables/useOrderModal";
   import { useCardSettings } from "@/composables/useCardSettings";
   import { useOrderManagement } from "@/composables/useOrderManagement";
+  import apiClient from "@/api";
   import CompanyServicesForm from "@/components/CompanyServicesForm.vue";
   import UserPortfolioForm from "@/components/UserPortfolioForm.vue";
   import ProfileSettingsForm from "@/components/Settings/ProfileSettingsForm.vue";
@@ -795,6 +796,80 @@
     return false;
   });
 
+  // Fonction pour vérifier si "Nos Services" est configuré
+  const hasServicesConfigured = async () => {
+    if (!selectedOrderId.value) return false;
+    
+    try {
+      // Faire un appel API direct pour vérifier si la page entreprise existe et est configurée
+      const response = await apiClient.get('/api/company-page', {
+        params: { order_id: selectedOrderId.value }
+      });
+      
+      if (response.data) {
+        const companyPage = response.data;
+        
+        // Vérifier si des services sont configurés
+        const hasServices = (
+          (companyPage.company_services && Array.isArray(companyPage.company_services) && companyPage.company_services.length > 0) ||
+          (companyPage.services && Array.isArray(companyPage.services) && companyPage.services.length > 0)
+        );
+        
+        // Vérifier aussi si le site web est mis en avant (cela compte comme une configuration)
+        const hasWebsiteFeatured = companyPage.website_featured_in_services_button === true && companyPage.company_website_url;
+        
+        // Vérifier aussi si la page est publiée (cela indique qu'elle est configurée)
+        const isPublished = companyPage.is_published === true;
+        
+        return hasServices || hasWebsiteFeatured || isPublished;
+      }
+      
+      return false;
+    } catch (error) {
+      // Si l'erreur est 404, cela signifie qu'aucune page entreprise n'existe pour cette commande
+      if (error.response?.status === 404) {
+        return false;
+      }
+      
+      console.error('Erreur lors de la vérification des services configurés:', error);
+      return false;
+    }
+  };
+
+  // Fonction pour vérifier si "Mon Portfolio" est configuré
+  const hasPortfolioConfigured = async () => {
+    try {
+      // Faire un appel API direct pour vérifier si le portfolio existe et est configuré
+      const response = await apiClient.get('/api/user-portfolio');
+      
+      if (response.data) {
+        const portfolio = response.data;
+        
+        // Vérifier si le portfolio a du contenu configuré
+        // Le portfolio peut avoir plusieurs profils (student, teacher, freelance)
+        // Vérifier si au moins un profil a du contenu
+        const hasPortfolioContent = (
+          (portfolio.bio && portfolio.bio.trim() !== '') ||
+          (portfolio.skills && Array.isArray(portfolio.skills) && portfolio.skills.length > 0) ||
+          (portfolio.projects && Array.isArray(portfolio.projects) && portfolio.projects.length > 0) ||
+          (portfolio.timeline && Array.isArray(portfolio.timeline) && portfolio.timeline.length > 0)
+        );
+        
+        return hasPortfolioContent;
+      }
+      
+      return false;
+    } catch (error) {
+      // Si l'erreur est 404, cela signifie qu'aucun portfolio n'existe
+      if (error.response?.status === 404) {
+        return false;
+      }
+      
+      console.error('Erreur lors de la vérification du portfolio configuré:', error);
+      return false;
+    }
+  };
+
   // Wrapper pour handleSaveSettings
   const handleSaveSettings = async () => {
     // ✅ NOUVEAU: Sauvegarder d'abord les paramètres de rendez-vous si le composant est disponible
@@ -821,15 +896,10 @@
     }
     // Après la sauvegarde de "Ma Carte", vérifier si les sections sont déjà configurées
     else if (user.value && user.value.role === 'business_admin') {
-      // Vérifier si "Nos Services" est déjà configuré
-      // Le bouton "Découvrir nos Services" apparaît si company_name et services sont configurés
-      const selectedOrder = loadedOrderData.value || getSelectedOrder();
-      const hasServicesConfigured = selectedOrder && (
-        (selectedOrder.company_name && selectedOrder.company_services && selectedOrder.company_services.length > 0) ||
-        (selectedOrder.company_name && selectedOrder.services && Array.isArray(selectedOrder.services) && selectedOrder.services.length > 0)
-      );
+      // Vérifier si "Nos Services" est déjà configuré (avec rechargement des données)
+      const servicesConfigured = await hasServicesConfigured();
       
-      if (hasServicesConfigured) {
+      if (servicesConfigured) {
         // Si les services sont déjà configurés, rediriger vers le dashboard
         router.push({ name: "Dashboard" });
       } else {
@@ -838,16 +908,11 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } else if (user.value && user.value.role === 'individual') {
-      // Vérifier si "Mon Profil" est déjà configuré
-      // Le profil est considéré comme configuré si profile_name et profile_title existent
-      const selectedOrder = loadedOrderData.value || getSelectedOrder();
-      const hasProfileConfigured = selectedOrder && (
-        (selectedOrder.profile_name && selectedOrder.profile_title) ||
-        (selectedOrder.user_portfolio && Object.keys(selectedOrder.user_portfolio).length > 0)
-      );
+      // Vérifier si "Mon Portfolio" est déjà configuré (avec rechargement des données)
+      const portfolioConfigured = await hasPortfolioConfigured();
       
-      if (hasProfileConfigured) {
-        // Si le profil est déjà configuré, rediriger vers le dashboard
+      if (portfolioConfigured) {
+        // Si le portfolio est déjà configuré, rediriger vers le dashboard
         router.push({ name: "Dashboard" });
       } else {
         // Sinon, basculer vers l'onglet "Mon Profil" immédiatement

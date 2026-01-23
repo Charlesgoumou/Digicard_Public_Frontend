@@ -352,7 +352,14 @@
 
   // ID de la commande pour les rendez-vous (pour la configuration spécifique)
   const appointmentOrderId = computed(() => {
-    return props.pageData?.order_id || null;
+    const orderId = props.pageData?.order_id || props.pageData?.order?.id || null;
+    console.log('[PageTemplate] appointmentOrderId computed:', {
+      order_id: props.pageData?.order_id,
+      order_id_direct: orderId,
+      pageData_keys: props.pageData ? Object.keys(props.pageData) : [],
+      full_pageData: props.pageData
+    });
+    return orderId;
   });
 
   // Nom du propriétaire

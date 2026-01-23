@@ -98,6 +98,16 @@ const router = createRouter({
       component: () => import("../views/AccountView.vue"),
       meta: { requiresAuth: true },
     },
+    {
+      path: "/marketplace",
+      name: "Marketplace",
+      component: () => import("../views/MarketplaceView.vue"),
+      meta: { 
+        requiresAuth: true,
+        hideNavbar: true,  // Masquer le header
+        hideFooter: true   // Masquer le footer
+      },
+    },
   ],
   scrollBehavior(to, from, savedPosition) {
     // Si une position sauvegardée existe (bouton retour), l'utiliser

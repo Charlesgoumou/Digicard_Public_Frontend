@@ -16,7 +16,7 @@
           Cette sélection permettra d'adapter le formulaire et l'assistance IA à votre profil
         </p>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
           <button
             v-for="profileOption in profileOptions"
             :key="profileOption.value"
@@ -38,7 +38,7 @@
       </div>
 
       <!-- Formulaire adaptatif uniquement si profil sélectionné -->
-      <div v-if="selectedProfile">
+      <div v-if="selectedProfile" ref="formContainer">
         <!-- 2. Informations personnelles -->
         <div class="bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-700">
           <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-2">
@@ -431,7 +431,7 @@
 </template>
 
 <script setup>
-  import { ref, computed, onMounted } from "vue";
+  import { ref, computed, onMounted, nextTick } from "vue";
   import apiClient from "@/api";
   import Cookies from "js-cookie";
   import { useAuth } from "@/composables/useAuth";
@@ -453,6 +453,71 @@
       value: "freelance",
       label: "Freelance / Indépendant",
       icon: "💼",
+    },
+    {
+      value: "pharmacist",
+      label: "Pharmacien",
+      icon: "💊",
+    },
+    {
+      value: "doctor",
+      label: "Médecin",
+      icon: "⚕️",
+    },
+    {
+      value: "lawyer",
+      label: "Avocat",
+      icon: "⚖️",
+    },
+    {
+      value: "notary",
+      label: "Notaire",
+      icon: "📜",
+    },
+    {
+      value: "bailiff",
+      label: "Huissier de Justice",
+      icon: "📋",
+    },
+    {
+      value: "architect",
+      label: "Architecte",
+      icon: "🏗️",
+    },
+    {
+      value: "engineer",
+      label: "Ingénieur",
+      icon: "🔧",
+    },
+    {
+      value: "consultant",
+      label: "Consultant",
+      icon: "💡",
+    },
+    {
+      value: "accountant",
+      label: "Comptable",
+      icon: "📊",
+    },
+    {
+      value: "financial_analyst",
+      label: "Analyste Financier",
+      icon: "📈",
+    },
+    {
+      value: "photographer",
+      label: "Photographe",
+      icon: "📷",
+    },
+    {
+      value: "graphic_designer",
+      label: "Graphiste",
+      icon: "🎨",
+    },
+    {
+      value: "developer",
+      label: "Développeur",
+      icon: "💻",
     },
   ];
 
@@ -482,6 +547,110 @@
       projects: "Mon Portfolio / Projets Clients",
       projectsPlaceholder: 'Ex: "Refonte du site E-commerce Z"',
     },
+    pharmacist: {
+      headline: "Titre / Rôle",
+      headlinePlaceholder: 'Ex: "Pharmacien d\'officine"',
+      timeline: "Mon Parcours Professionnel",
+      timelinePlaceholder: 'Ex: "Pharmacien Titulaire", "Spécialisation"',
+      projects: "Mes Réalisations & Projets",
+      projectsPlaceholder: 'Ex: "Conseil pharmaceutique", "Projet de santé publique"',
+    },
+    doctor: {
+      headline: "Titre / Rôle",
+      headlinePlaceholder: 'Ex: "Médecin Généraliste"',
+      timeline: "Mon Parcours Professionnel",
+      timelinePlaceholder: 'Ex: "Internat", "Spécialisation"',
+      projects: "Mes Réalisations & Projets",
+      projectsPlaceholder: 'Ex: "Recherche médicale", "Publication scientifique"',
+    },
+    lawyer: {
+      headline: "Titre / Rôle",
+      headlinePlaceholder: 'Ex: "Avocat en Droit des Affaires"',
+      timeline: "Mon Parcours Professionnel",
+      timelinePlaceholder: 'Ex: "Cabinet d\'avocats", "Barreau"',
+      projects: "Mes Réalisations & Projets",
+      projectsPlaceholder: 'Ex: "Affaires traitées", "Publications juridiques"',
+    },
+    notary: {
+      headline: "Titre / Rôle",
+      headlinePlaceholder: 'Ex: "Notaire"',
+      timeline: "Mon Parcours Professionnel",
+      timelinePlaceholder: 'Ex: "Étude notariale", "Chambre des Notaires"',
+      projects: "Mes Réalisations & Projets",
+      projectsPlaceholder: 'Ex: "Actes notariés", "Conseil juridique"',
+    },
+    bailiff: {
+      headline: "Titre / Rôle",
+      headlinePlaceholder: 'Ex: "Huissier de Justice"',
+      timeline: "Mon Parcours Professionnel",
+      timelinePlaceholder: 'Ex: "Étude d\'huissier", "Chambre des Huissiers"',
+      projects: "Mes Réalisations & Projets",
+      projectsPlaceholder: 'Ex: "Significations", "Exécutions"',
+    },
+    architect: {
+      headline: "Titre / Rôle",
+      headlinePlaceholder: 'Ex: "Architecte DPLG"',
+      timeline: "Mon Parcours Professionnel",
+      timelinePlaceholder: 'Ex: "Agence d\'architecture", "Ordre des Architectes"',
+      projects: "Mes Réalisations & Projets",
+      projectsPlaceholder: 'Ex: "Projet immobilier", "Rénovation"',
+    },
+    engineer: {
+      headline: "Titre / Rôle",
+      headlinePlaceholder: 'Ex: "Ingénieur en Génie Civil"',
+      timeline: "Mon Parcours Professionnel",
+      timelinePlaceholder: 'Ex: "Entreprise", "Bureau d\'études"',
+      projects: "Mes Réalisations & Projets",
+      projectsPlaceholder: 'Ex: "Projet d\'infrastructure", "Innovation technique"',
+    },
+    consultant: {
+      headline: "Titre / Rôle",
+      headlinePlaceholder: 'Ex: "Consultant en Management"',
+      timeline: "Mon Parcours Professionnel",
+      timelinePlaceholder: 'Ex: "Cabinet de conseil", "Mission"',
+      projects: "Mes Réalisations & Projets",
+      projectsPlaceholder: 'Ex: "Mission de conseil", "Transformation digitale"',
+    },
+    accountant: {
+      headline: "Titre / Rôle",
+      headlinePlaceholder: 'Ex: "Expert-Comptable"',
+      timeline: "Mon Parcours Professionnel",
+      timelinePlaceholder: 'Ex: "Cabinet comptable", "Ordre des Experts-Comptables"',
+      projects: "Mes Réalisations & Projets",
+      projectsPlaceholder: 'Ex: "Audit", "Conseil fiscal"',
+    },
+    financial_analyst: {
+      headline: "Titre / Rôle",
+      headlinePlaceholder: 'Ex: "Analyste Financier"',
+      timeline: "Mon Parcours Professionnel",
+      timelinePlaceholder: 'Ex: "Banque", "Fonds d\'investissement"',
+      projects: "Mes Réalisations & Projets",
+      projectsPlaceholder: 'Ex: "Analyse financière", "Évaluation d\'entreprise"',
+    },
+    photographer: {
+      headline: "Titre / Rôle",
+      headlinePlaceholder: 'Ex: "Photographe Professionnel"',
+      timeline: "Mon Parcours Professionnel",
+      timelinePlaceholder: 'Ex: "Studio photo", "Agence"',
+      projects: "Mes Réalisations & Projets",
+      projectsPlaceholder: 'Ex: "Séance photo", "Reportage"',
+    },
+    graphic_designer: {
+      headline: "Titre / Rôle",
+      headlinePlaceholder: 'Ex: "Graphiste"',
+      timeline: "Mon Parcours Professionnel",
+      timelinePlaceholder: 'Ex: "Agence de communication", "Freelance"',
+      projects: "Mes Réalisations & Projets",
+      projectsPlaceholder: 'Ex: "Identité visuelle", "Création graphique"',
+    },
+    developer: {
+      headline: "Titre / Rôle",
+      headlinePlaceholder: 'Ex: "Développeur Full Stack"',
+      timeline: "Mon Parcours Professionnel",
+      timelinePlaceholder: 'Ex: "Startup", "Entreprise tech"',
+      projects: "Mes Réalisations & Projets",
+      projectsPlaceholder: 'Ex: "Application web", "Projet open source"',
+    },
   };
 
   const { user } = useAuth();
@@ -499,6 +668,7 @@
   const generateError = ref(false);
 
   const selectedProfile = ref(null);
+  const formContainer = ref(null);
 
   // Stocker les données séparées pour chaque profil
   const profileData = ref({
@@ -521,6 +691,123 @@
       timeline_title: "Mon Parcours",
     },
     freelance: {
+      bio: "",
+      skills: [],
+      projects: [],
+      timeline: [],
+      skills_title: "Mes Compétences",
+      projects_title: "Mes Projets",
+      timeline_title: "Mon Parcours",
+    },
+    pharmacist: {
+      bio: "",
+      skills: [],
+      projects: [],
+      timeline: [],
+      skills_title: "Mes Compétences",
+      projects_title: "Mes Projets",
+      timeline_title: "Mon Parcours",
+    },
+    doctor: {
+      bio: "",
+      skills: [],
+      projects: [],
+      timeline: [],
+      skills_title: "Mes Compétences",
+      projects_title: "Mes Projets",
+      timeline_title: "Mon Parcours",
+    },
+    lawyer: {
+      bio: "",
+      skills: [],
+      projects: [],
+      timeline: [],
+      skills_title: "Mes Compétences",
+      projects_title: "Mes Projets",
+      timeline_title: "Mon Parcours",
+    },
+    notary: {
+      bio: "",
+      skills: [],
+      projects: [],
+      timeline: [],
+      skills_title: "Mes Compétences",
+      projects_title: "Mes Projets",
+      timeline_title: "Mon Parcours",
+    },
+    bailiff: {
+      bio: "",
+      skills: [],
+      projects: [],
+      timeline: [],
+      skills_title: "Mes Compétences",
+      projects_title: "Mes Projets",
+      timeline_title: "Mon Parcours",
+    },
+    architect: {
+      bio: "",
+      skills: [],
+      projects: [],
+      timeline: [],
+      skills_title: "Mes Compétences",
+      projects_title: "Mes Projets",
+      timeline_title: "Mon Parcours",
+    },
+    engineer: {
+      bio: "",
+      skills: [],
+      projects: [],
+      timeline: [],
+      skills_title: "Mes Compétences",
+      projects_title: "Mes Projets",
+      timeline_title: "Mon Parcours",
+    },
+    consultant: {
+      bio: "",
+      skills: [],
+      projects: [],
+      timeline: [],
+      skills_title: "Mes Compétences",
+      projects_title: "Mes Projets",
+      timeline_title: "Mon Parcours",
+    },
+    accountant: {
+      bio: "",
+      skills: [],
+      projects: [],
+      timeline: [],
+      skills_title: "Mes Compétences",
+      projects_title: "Mes Projets",
+      timeline_title: "Mon Parcours",
+    },
+    financial_analyst: {
+      bio: "",
+      skills: [],
+      projects: [],
+      timeline: [],
+      skills_title: "Mes Compétences",
+      projects_title: "Mes Projets",
+      timeline_title: "Mon Parcours",
+    },
+    photographer: {
+      bio: "",
+      skills: [],
+      projects: [],
+      timeline: [],
+      skills_title: "Mes Compétences",
+      projects_title: "Mes Projets",
+      timeline_title: "Mon Parcours",
+    },
+    graphic_designer: {
+      bio: "",
+      skills: [],
+      projects: [],
+      timeline: [],
+      skills_title: "Mes Compétences",
+      projects_title: "Mes Projets",
+      timeline_title: "Mon Parcours",
+    },
+    developer: {
       bio: "",
       skills: [],
       projects: [],
@@ -578,7 +865,7 @@
     return "";
   };
 
-  const selectProfile = (profileValue) => {
+  const selectProfile = async (profileValue) => {
     // Si l'utilisateur change de profil, sauvegarder les données actuelles
     if (selectedProfile.value && selectedProfile.value !== profileValue) {
       // Sauvegarder les données du profil actuel
@@ -606,6 +893,15 @@
       form.value.skills_title = savedData.skills_title;
       form.value.projects_title = savedData.projects_title;
       form.value.timeline_title = savedData.timeline_title;
+    }
+
+    // Attendre que le DOM soit mis à jour, puis scroller vers le formulaire
+    await nextTick();
+    if (formContainer.value) {
+      formContainer.value.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start' 
+      });
     }
   };
 
@@ -785,11 +1081,37 @@
   const getPromptForProfile = (profileType) => {
     const prompts = {
       student:
-        "Tu es un coach de carrière pour un jeune diplômé. Prends ses projets académiques et reformule-les pour montrer son potentiel et ses compétences techniques à un recruteur.",
+        "Tu es un coach de carrière pour un jeune diplômé. Prends ses projets académiques et reformule-les pour montrer son potentiel et ses compétences techniques à un recruteur. IMPORTANT: Tous les textes doivent être écrits à la PREMIÈRE PERSONNE DU SINGULIER (je, mon, ma, mes, j'ai, je suis, etc.). Ne jamais utiliser la troisième personne.",
       teacher:
-        "Tu es un rédacteur pour un expert. Prends ses réalisations et reformule-les pour montrer son expérience et son impact pédagogique.",
+        "Tu es un rédacteur pour un expert. Prends ses réalisations et reformule-les pour montrer son expérience et son impact pédagogique. IMPORTANT: Tous les textes doivent être écrits à la PREMIÈRE PERSONNE DU SINGULIER (je, mon, ma, mes, j'ai, je suis, etc.). Ne jamais utiliser la troisième personne.",
       freelance:
-        "Tu es un rédacteur commercial. Prends les projets clients de ce freelance et reformule-les pour montrer la valeur ajoutée et le retour sur investissement (ROI) pour un futur client, pas seulement les tâches techniques.",
+        "Tu es un rédacteur commercial. Prends les projets clients de ce freelance et reformule-les pour montrer la valeur ajoutée et le retour sur investissement (ROI) pour un futur client, pas seulement les tâches techniques. IMPORTANT: Tous les textes doivent être écrits à la PREMIÈRE PERSONNE DU SINGULIER (je, mon, ma, mes, j'ai, je suis, etc.). Ne jamais utiliser la troisième personne.",
+      pharmacist:
+        "Tu es un rédacteur professionnel pour un pharmacien. Prends ses réalisations et reformule-les pour montrer son expertise pharmaceutique, son conseil et son impact sur la santé publique. IMPORTANT: Tous les textes doivent être écrits à la PREMIÈRE PERSONNE DU SINGULIER (je, mon, ma, mes, j'ai, je suis, etc.). Ne jamais utiliser la troisième personne.",
+      doctor:
+        "Tu es un rédacteur médical pour un médecin. Prends ses réalisations et reformule-les pour montrer son expertise médicale, ses spécialisations et son impact sur la santé des patients. IMPORTANT: Tous les textes doivent être écrits à la PREMIÈRE PERSONNE DU SINGULIER (je, mon, ma, mes, j'ai, je suis, etc.). Ne jamais utiliser la troisième personne.",
+      lawyer:
+        "Tu es un rédacteur juridique pour un avocat. Prends ses réalisations et reformule-les pour montrer son expertise juridique, ses domaines de spécialisation et son impact pour ses clients. IMPORTANT: Tous les textes doivent être écrits à la PREMIÈRE PERSONNE DU SINGULIER (je, mon, ma, mes, j'ai, je suis, etc.). Ne jamais utiliser la troisième personne.",
+      notary:
+        "Tu es un rédacteur professionnel pour un notaire. Prends ses réalisations et reformule-les pour montrer son expertise notariale, sa fiabilité et son rôle dans les transactions immobilières et juridiques. IMPORTANT: Tous les textes doivent être écrits à la PREMIÈRE PERSONNE DU SINGULIER (je, mon, ma, mes, j'ai, je suis, etc.). Ne jamais utiliser la troisième personne.",
+      bailiff:
+        "Tu es un rédacteur professionnel pour un huissier de justice. Prends ses réalisations et reformule-les pour montrer son expertise dans l'exécution des décisions de justice et son rôle dans le système judiciaire. IMPORTANT: Tous les textes doivent être écrits à la PREMIÈRE PERSONNE DU SINGULIER (je, mon, ma, mes, j'ai, je suis, etc.). Ne jamais utiliser la troisième personne.",
+      architect:
+        "Tu es un rédacteur pour un architecte. Prends ses projets et reformule-les pour montrer sa créativité, son expertise technique et son impact sur l'environnement bâti. IMPORTANT: Tous les textes doivent être écrits à la PREMIÈRE PERSONNE DU SINGULIER (je, mon, ma, mes, j'ai, je suis, etc.). Ne jamais utiliser la troisième personne.",
+      engineer:
+        "Tu es un rédacteur technique pour un ingénieur. Prends ses projets et reformule-les pour montrer son expertise technique, ses innovations et son impact sur les solutions d'ingénierie. IMPORTANT: Tous les textes doivent être écrits à la PREMIÈRE PERSONNE DU SINGULIER (je, mon, ma, mes, j'ai, je suis, etc.). Ne jamais utiliser la troisième personne.",
+      consultant:
+        "Tu es un rédacteur commercial pour un consultant. Prends ses missions et reformule-les pour montrer la valeur ajoutée, les résultats obtenus et le retour sur investissement pour ses clients. IMPORTANT: Tous les textes doivent être écrits à la PREMIÈRE PERSONNE DU SINGULIER (je, mon, ma, mes, j'ai, je suis, etc.). Ne jamais utiliser la troisième personne.",
+      accountant:
+        "Tu es un rédacteur professionnel pour un expert-comptable. Prends ses réalisations et reformule-les pour montrer son expertise comptable, fiscale et son impact sur la gestion financière de ses clients. IMPORTANT: Tous les textes doivent être écrits à la PREMIÈRE PERSONNE DU SINGULIER (je, mon, ma, mes, j'ai, je suis, etc.). Ne jamais utiliser la troisième personne.",
+      financial_analyst:
+        "Tu es un rédacteur financier pour un analyste financier. Prends ses analyses et reformule-les pour montrer son expertise en analyse financière, en évaluation d'entreprises et son impact sur les décisions d'investissement. IMPORTANT: Tous les textes doivent être écrits à la PREMIÈRE PERSONNE DU SINGULIER (je, mon, ma, mes, j'ai, je suis, etc.). Ne jamais utiliser la troisième personne.",
+      photographer:
+        "Tu es un rédacteur créatif pour un photographe. Prends ses projets et reformule-les pour montrer sa créativité artistique, son style photographique et son impact visuel. IMPORTANT: Tous les textes doivent être écrits à la PREMIÈRE PERSONNE DU SINGULIER (je, mon, ma, mes, j'ai, je suis, etc.). Ne jamais utiliser la troisième personne.",
+      graphic_designer:
+        "Tu es un rédacteur créatif pour un graphiste. Prends ses projets et reformule-les pour montrer sa créativité, son sens esthétique et son impact visuel sur les identités de marque. IMPORTANT: Tous les textes doivent être écrits à la PREMIÈRE PERSONNE DU SINGULIER (je, mon, ma, mes, j'ai, je suis, etc.). Ne jamais utiliser la troisième personne.",
+      developer:
+        "Tu es un rédacteur technique pour un développeur. Prends ses projets et reformule-les pour montrer ses compétences techniques, ses innovations et son impact sur les solutions logicielles. IMPORTANT: Tous les textes doivent être écrits à la PREMIÈRE PERSONNE DU SINGULIER (je, mon, ma, mes, j'ai, je suis, etc.). Ne jamais utiliser la troisième personne.",
     };
     return prompts[profileType] || prompts.student;
   };
