@@ -2462,14 +2462,8 @@
   const goToHome = () => {
     router.push({ name: "Home" });
   };
-  const goToSettings = async () => {
-    // Afficher la bulle immédiatement
-    isNavigatingToSettings.value = true;
-    // Attendre que le DOM soit mis à jour pour afficher la bulle
-    await nextTick();
-    // Petite pause pour s'assurer que la bulle est visible avant la navigation
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    // Naviguer vers Settings
+  const goToSettings = () => {
+    // Navigation directe sans spinner : la page "Paramétrer votre Carte" affiche tout de suite son skeleton.
     router.push({ name: "Settings" });
   };
   const viewPublicProfile = () => {
