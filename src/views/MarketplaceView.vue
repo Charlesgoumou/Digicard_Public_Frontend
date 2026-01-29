@@ -76,15 +76,88 @@
           >
             Mes Messages
           </button>
+          <button
+            @click="goToDashboard"
+            :class="[
+              'px-6 py-3 font-semibold transition-all whitespace-nowrap',
+              'text-slate-400 hover:text-slate-300'
+            ]"
+          >
+            Dashboard
+          </button>
         </div>
       </div>
     </div>
 
     <!-- Contenu principal -->
     <div class="container mx-auto px-4 py-8 flex-1">
-      <!-- Chargement -->
-      <div v-if="isLoading" class="flex justify-center items-center py-20">
-        <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-sky-500"></div>
+      <!-- Skeleton Screen pour la grille d'offres -->
+      <div v-if="isLoading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+        <!-- Skeleton Card 1 -->
+        <div class="bg-slate-800/50 rounded-xl overflow-hidden border border-slate-700 animate-pulse">
+          <div class="h-48 bg-slate-700"></div>
+          <div class="p-4 space-y-3">
+            <div class="h-4 w-3/4 bg-slate-700 rounded"></div>
+            <div class="h-3 w-full bg-slate-700 rounded"></div>
+            <div class="h-3 w-2/3 bg-slate-700 rounded"></div>
+            <div class="flex items-center justify-between pt-2">
+              <div class="h-6 w-20 bg-slate-700 rounded"></div>
+              <div class="h-8 w-24 bg-slate-700 rounded"></div>
+            </div>
+          </div>
+        </div>
+        <!-- Skeleton Card 2 -->
+        <div class="bg-slate-800/50 rounded-xl overflow-hidden border border-slate-700 animate-pulse">
+          <div class="h-48 bg-slate-700"></div>
+          <div class="p-4 space-y-3">
+            <div class="h-4 w-3/4 bg-slate-700 rounded"></div>
+            <div class="h-3 w-full bg-slate-700 rounded"></div>
+            <div class="h-3 w-2/3 bg-slate-700 rounded"></div>
+            <div class="flex items-center justify-between pt-2">
+              <div class="h-6 w-20 bg-slate-700 rounded"></div>
+              <div class="h-8 w-24 bg-slate-700 rounded"></div>
+            </div>
+          </div>
+        </div>
+        <!-- Skeleton Card 3 -->
+        <div class="bg-slate-800/50 rounded-xl overflow-hidden border border-slate-700 animate-pulse">
+          <div class="h-48 bg-slate-700"></div>
+          <div class="p-4 space-y-3">
+            <div class="h-4 w-3/4 bg-slate-700 rounded"></div>
+            <div class="h-3 w-full bg-slate-700 rounded"></div>
+            <div class="h-3 w-2/3 bg-slate-700 rounded"></div>
+            <div class="flex items-center justify-between pt-2">
+              <div class="h-6 w-20 bg-slate-700 rounded"></div>
+              <div class="h-8 w-24 bg-slate-700 rounded"></div>
+            </div>
+          </div>
+        </div>
+        <!-- Skeleton Card 4 -->
+        <div class="bg-slate-800/50 rounded-xl overflow-hidden border border-slate-700 animate-pulse">
+          <div class="h-48 bg-slate-700"></div>
+          <div class="p-4 space-y-3">
+            <div class="h-4 w-3/4 bg-slate-700 rounded"></div>
+            <div class="h-3 w-full bg-slate-700 rounded"></div>
+            <div class="h-3 w-2/3 bg-slate-700 rounded"></div>
+            <div class="flex items-center justify-between pt-2">
+              <div class="h-6 w-20 bg-slate-700 rounded"></div>
+              <div class="h-8 w-24 bg-slate-700 rounded"></div>
+            </div>
+          </div>
+        </div>
+        <!-- Skeleton Card 5 -->
+        <div class="bg-slate-800/50 rounded-xl overflow-hidden border border-slate-700 animate-pulse">
+          <div class="h-48 bg-slate-700"></div>
+          <div class="p-4 space-y-3">
+            <div class="h-4 w-3/4 bg-slate-700 rounded"></div>
+            <div class="h-3 w-full bg-slate-700 rounded"></div>
+            <div class="h-3 w-2/3 bg-slate-700 rounded"></div>
+            <div class="flex items-center justify-between pt-2">
+              <div class="h-6 w-20 bg-slate-700 rounded"></div>
+              <div class="h-8 w-24 bg-slate-700 rounded"></div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Grille d'offres -->
@@ -95,7 +168,7 @@
           class="bg-slate-800/50 rounded-xl overflow-hidden border border-slate-700 hover:border-sky-500 transition-all shadow-lg hover:shadow-xl hover:-translate-y-1"
         >
           <!-- Image de l'offre -->
-          <div class="relative h-48 bg-gradient-to-br from-slate-700 to-slate-800">
+          <div class="relative h-48 bg-gradient-to-br from-slate-700 to-slate-800 cursor-pointer" @click="viewOfferDetails(offer.id)">
             <img
               v-if="offer.image_url"
               :src="offer.image_url"
@@ -106,15 +179,15 @@
               <span class="text-6xl text-slate-500">{{ offer.type === 'service' ? '🔧' : offer.type === 'product' ? '📦' : '🎯' }}</span>
             </div>
             <!-- Badge type -->
-            <div class="absolute top-2 right-2">
+            <div class="absolute top-2 right-2 z-10">
               <span class="px-2 py-1 bg-sky-500/80 backdrop-blur-sm text-white text-xs font-semibold rounded">
                 {{ offer.type === 'service' ? 'Service' : offer.type === 'product' ? 'Produit' : 'Offre' }}
               </span>
             </div>
             <!-- Bouton favoris -->
             <button
-              @click="toggleFavorite(offer.id)"
-              class="absolute top-2 left-2 w-10 h-10 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/70 transition-all"
+              @click.stop="toggleFavorite(offer.id)"
+              class="absolute top-2 left-2 w-10 h-10 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/70 transition-all z-10"
             >
               <svg
                 :class="[
@@ -559,15 +632,28 @@
                   class="relative group"
                 >
                   <img :src="img.preview" alt="Aperçu" class="w-full h-32 object-cover rounded-lg" />
-                  <button
-                    type="button"
-                    @click="removeImage(index)"
-                    class="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
+                  <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
+                    <button
+                      type="button"
+                      @click="openCropModal(index)"
+                      class="bg-sky-500 hover:bg-sky-600 text-white rounded-full p-2 transition-colors"
+                      title="Rogner l'image"
+                    >
+                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      @click="removeImage(index)"
+                      class="bg-red-500 hover:bg-red-600 text-white rounded-full p-2 transition-colors"
+                      title="Supprimer l'image"
+                    >
+                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -664,54 +750,54 @@
     <!-- Modal de contact avec l'annonceur -->
     <div
       v-if="showContactSellerModal && contactSellerOffer"
-      class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto"
       @click.self="showContactSellerModal = false"
     >
-      <div class="bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full">
-        <div class="p-6 border-b border-slate-700">
-          <h2 class="text-2xl font-bold text-white mb-2">Mode de paiement en cours de développement</h2>
-          <p class="text-slate-400 text-sm">
+      <div class="bg-slate-800 rounded-xl sm:rounded-2xl shadow-2xl max-w-md w-full my-auto max-h-[95vh] overflow-y-auto">
+        <div class="p-4 sm:p-6 border-b border-slate-700">
+          <h2 class="text-lg sm:text-2xl font-bold text-white mb-2">Mode de paiement en cours de développement</h2>
+          <p class="text-slate-400 text-xs sm:text-sm">
             Le système de paiement n'est pas encore disponible. Contactez directement l'annonceur pour finaliser votre achat.
           </p>
         </div>
 
-        <div class="p-6 space-y-4">
-          <div class="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
-            <div class="flex items-start gap-3">
-              <svg class="w-5 h-5 text-yellow-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+        <div class="p-4 sm:p-6 space-y-3 sm:space-y-4">
+          <div class="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 sm:p-4">
+            <div class="flex items-start gap-2 sm:gap-3">
+              <svg class="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
               </svg>
-              <div>
-                <p class="text-yellow-400 font-semibold mb-1">Information importante</p>
-                <p class="text-yellow-300 text-sm">
-                  Vous pouvez contacter directement <strong>{{ contactSellerOffer.seller_name }}</strong> ou lui laisser un message ci-dessous.
+              <div class="flex-1 min-w-0">
+                <p class="text-yellow-400 font-semibold mb-1 text-sm sm:text-base">Information importante</p>
+                <p class="text-yellow-300 text-xs sm:text-sm">
+                  Vous pouvez contacter directement <strong class="break-words">{{ contactSellerOffer.seller_name }}</strong> ou lui laisser un message ci-dessous.
                 </p>
               </div>
             </div>
           </div>
 
           <div>
-            <label class="block text-slate-300 font-medium mb-2">Votre message à l'annonceur</label>
+            <label class="block text-slate-300 font-medium mb-2 text-sm sm:text-base">Votre message à l'annonceur</label>
             <textarea
               v-model="contactMessage"
               rows="4"
               placeholder="Bonjour, je suis intéressé(e) par votre offre..."
-              class="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
+              class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 sm:px-4 py-2 text-sm sm:text-base text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 resize-none"
             ></textarea>
           </div>
 
-          <div class="flex gap-3">
+          <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <button
               type="button"
               @click="showContactSellerModal = false; contactMessage = ''; contactSellerOffer = null"
-              class="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 px-4 rounded-lg transition-colors font-medium"
+              class="w-full sm:flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2.5 sm:py-2 px-4 rounded-lg transition-colors font-medium text-sm sm:text-base"
             >
               Annuler
             </button>
             <button
               @click="sendMessageToSeller"
               :disabled="!contactMessage.trim() || isSendingMessage"
-              class="flex-1 bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 px-4 rounded-lg transition-all font-semibold"
+              class="w-full sm:flex-1 bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2.5 sm:py-2 px-4 rounded-lg transition-all font-semibold text-sm sm:text-base"
             >
               {{ isSendingMessage ? 'Envoi...' : 'Envoyer le message' }}
             </button>
@@ -951,8 +1037,6 @@
       v-if="showImageGallery && galleryImages.length > 0"
       class="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4"
       @click.self="closeImageGallery"
-      @touchstart="handleTouchStart"
-      @touchend="handleTouchEnd"
     >
       <div class="relative w-full h-full flex items-center justify-center max-w-7xl max-h-[90vh]">
         <!-- Bouton précédent -->
@@ -967,12 +1051,18 @@
         </button>
 
         <!-- Image principale -->
-        <div class="flex-1 flex items-center justify-center h-full">
+        <div 
+          class="flex-1 flex items-center justify-center h-full"
+          @touchstart="handleTouchStart"
+          @touchend="handleTouchEnd"
+          @touchmove.prevent
+        >
           <img
             :src="galleryImages[currentImageIndex].url || galleryImages[currentImageIndex]"
             :alt="`Image ${currentImageIndex + 1} de ${galleryImages.length}`"
-            class="max-w-full max-h-full object-contain rounded-lg"
+            class="max-w-full max-h-full object-contain rounded-lg select-none"
             @click="closeImageGallery"
+            draggable="false"
           />
         </div>
 
@@ -1192,41 +1282,114 @@
     </div>
 
     <!-- Footer avec navigation -->
-    <footer class="bg-slate-800/50 border-t border-slate-700 mt-auto">
-      <div class="container mx-auto px-4 py-6">
-        <div class="flex flex-col items-center gap-3">
-          <!-- Bouton Dashboard -->
-          <button
-            @click="goToDashboard"
-            class="w-full max-w-xs bg-slate-700 hover:bg-slate-600 text-white py-3 px-6 rounded-lg transition-colors font-medium flex items-center justify-center gap-3"
-          >
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-            </svg>
-            Dashboard
-          </button>
+  </div>
 
-          <!-- Bouton Mon Compte -->
-          <button
-            @click="goToAccount"
-            class="w-full max-w-xs bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white py-3 px-6 rounded-lg transition-all font-medium flex items-center justify-center gap-3 shadow-lg"
-          >
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-            Mon Compte
-          </button>
+  <!-- Modal de rognage d'image -->
+  <div
+    v-if="showCropModal"
+    class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+    @click.self="closeCropModal"
+  >
+    <div class="bg-slate-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+      <div class="sticky top-0 bg-slate-800 border-b border-slate-700 p-6 flex items-center justify-between">
+        <h2 class="text-2xl font-bold text-white">Rogner l'image</h2>
+        <button
+          @click="closeCropModal"
+          class="text-slate-400 hover:text-white transition-colors"
+        >
+          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
 
-          <!-- Bouton Se déconnecter -->
-          <button
-            @click="handleLogout"
-            class="w-full max-w-xs bg-red-500 hover:bg-red-600 text-white py-3 px-6 rounded-lg transition-colors font-medium"
-          >
-            Se déconnecter
-          </button>
+      <div class="p-6">
+        <div v-if="imageToCrop" class="space-y-4">
+          <div class="bg-slate-900 rounded-lg p-4">
+            <VueCropper
+              ref="cropper"
+              :src="imageToCrop.preview"
+              :aspect-ratio="16 / 9"
+              :guides="true"
+              :view-mode="1"
+              :background="false"
+              :auto-crop-area="0.8"
+              :min-container-width="300"
+              :min-container-height="300"
+              :zoomable="true"
+              :scalable="true"
+              :rotatable="false"
+              :movable="true"
+              :crop-box-movable="true"
+              :crop-box-resizable="true"
+              :toggle-drag-mode-on-dblclick="false"
+              :zoom-on-touch="true"
+              :zoom-on-wheel="true"
+              :wheel-zoom-ratio="0.1"
+              :min-canvas-height="200"
+              :min-canvas-width="200"
+              :min-crop-box-width="100"
+              :min-crop-box-height="100"
+              class="w-full"
+              style="max-height: 500px;"
+            ></VueCropper>
+          </div>
+
+          <div class="space-y-4">
+            <!-- Contrôles de zoom -->
+            <div class="flex items-center justify-center gap-4 bg-slate-700/50 rounded-lg p-3">
+              <span class="text-slate-300 text-sm font-medium">Zoom:</span>
+              <button
+                type="button"
+                @click="zoomOut"
+                class="bg-slate-600 hover:bg-slate-500 text-white rounded-lg px-4 py-2 transition-colors"
+                title="Dézoomer"
+              >
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                @click="zoomIn"
+                class="bg-slate-600 hover:bg-slate-500 text-white rounded-lg px-4 py-2 transition-colors"
+                title="Zoomer"
+              >
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                @click="resetZoom"
+                class="bg-slate-600 hover:bg-slate-500 text-white rounded-lg px-3 py-2 text-sm transition-colors"
+                title="Réinitialiser le zoom"
+              >
+                Réinitialiser
+              </button>
+            </div>
+
+            <!-- Boutons d'action -->
+            <div class="flex gap-4">
+              <button
+                type="button"
+                @click="closeCropModal"
+                class="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-3 px-6 rounded-lg transition-colors font-medium"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                @click="applyCrop"
+                class="flex-1 bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 text-white py-3 px-6 rounded-lg transition-all font-semibold shadow-lg"
+              >
+                Appliquer le rognage
+              </button>
+            </div>
+          </div>
         </div>
       </div>
-    </footer>
+    </div>
   </div>
 </template>
 
@@ -1235,6 +1398,9 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuth } from '@/composables/useAuth';
 import apiClient from '@/api';
+import VueCropper from 'vue-cropperjs';
+import 'cropperjs/dist/cropper.css';
+import Cookies from 'js-cookie';
 
 const router = useRouter();
 const { logout, user } = useAuth();
@@ -1261,6 +1427,10 @@ const newOffer = ref({
 
 const imageInput = ref(null);
 const selectedImages = ref([]);
+const showCropModal = ref(false);
+const imageToCrop = ref(null);
+const cropImageIndex = ref(-1);
+const cropper = ref(null);
 
 // Computed - Les offres sont déjà filtrées côté backend
 const filteredOffers = computed(() => {
@@ -1305,8 +1475,22 @@ const loadOffers = async () => {
 };
 
 const viewOfferDetails = async (offerId) => {
+  // Afficher immédiatement le modal avec les données déjà disponibles pour une réactivité instantanée
+  const existingOffer = offers.value.find(o => o.id === offerId);
+  if (existingOffer) {
+    // Créer une copie des données existantes pour afficher immédiatement
+    selectedOffer.value = { ...existingOffer };
+    
+    // Vérifier si l'utilisateur actuel est le vendeur
+    if (user.value && selectedOffer.value) {
+      selectedOffer.value.is_seller = selectedOffer.value.seller_id === user.value.id || selectedOffer.value.user_id === user.value.id;
+    }
+  }
+  
+  // Charger les détails complets en arrière-plan et mettre à jour le modal
   try {
     const response = await apiClient.get(`/api/marketplace/offers/${offerId}`);
+    // Mettre à jour avec les données complètes
     selectedOffer.value = response.data;
     
     // Vérifier si l'utilisateur actuel est le vendeur
@@ -1315,6 +1499,11 @@ const viewOfferDetails = async (offerId) => {
     }
   } catch (error) {
     console.error('Erreur lors du chargement des détails:', error);
+    // Si l'erreur survient et qu'on n'avait pas de données existantes, fermer le modal
+    if (!existingOffer) {
+      selectedOffer.value = null;
+      showNotification('Erreur lors du chargement des détails de l\'offre', 'error');
+    }
   }
 };
 
@@ -1355,7 +1544,9 @@ const showImageGallery = ref(false);
 const galleryImages = ref([]);
 const currentImageIndex = ref(0);
 const touchStartX = ref(0);
+const touchStartY = ref(0);
 const touchEndX = ref(0);
+const touchEndY = ref(0);
 
 // Système de notifications
 const notifications = ref([]);
@@ -1438,21 +1629,114 @@ const sendMessageToSeller = async () => {
 
 const handleImageSelect = (event) => {
   const files = Array.from(event.target.files || []);
-  files.forEach(file => {
+  files.forEach((file, fileIndex) => {
     if (file && file.size <= 5 * 1024 * 1024) { // Max 5MB
       const reader = new FileReader();
       reader.onload = (e) => {
-        selectedImages.value.push({
+        const imageData = {
           file: file,
           preview: e.target.result,
-          name: file.name
-        });
+          name: file.name,
+          originalFile: file
+        };
+        selectedImages.value.push(imageData);
+        // Ouvrir le modal de rognage pour cette image
+        openCropModal(selectedImages.value.length - 1);
       };
       reader.readAsDataURL(file);
     } else {
       showNotification(`L'image ${file.name} est trop grande (max 5MB)`, 'warning');
     }
   });
+};
+
+const openCropModal = (index) => {
+  if (index >= 0 && index < selectedImages.value.length) {
+    cropImageIndex.value = index;
+    imageToCrop.value = { ...selectedImages.value[index] };
+    showCropModal.value = true;
+  }
+};
+
+const closeCropModal = () => {
+  showCropModal.value = false;
+  imageToCrop.value = null;
+  cropImageIndex.value = -1;
+};
+
+const zoomIn = () => {
+  if (cropper.value && cropper.value.cropper) {
+    cropper.value.cropper.zoom(0.1);
+  }
+};
+
+const zoomOut = () => {
+  if (cropper.value && cropper.value.cropper) {
+    cropper.value.cropper.zoom(-0.1);
+  }
+};
+
+const resetZoom = () => {
+  if (cropper.value && cropper.value.cropper) {
+    cropper.value.cropper.reset();
+  }
+};
+
+const applyCrop = () => {
+  if (!cropper.value || cropImageIndex.value < 0) return;
+
+  try {
+    // Obtenir l'image rognée en canvas
+    const canvas = cropper.value.getCroppedCanvas({
+      width: 1200,
+      height: 675,
+      imageSmoothingEnabled: true,
+      imageSmoothingQuality: 'high'
+    });
+
+    if (!canvas) {
+      showNotification('Erreur lors du rognage de l\'image', 'error');
+      return;
+    }
+
+    // Convertir le canvas en blob
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        showNotification('Erreur lors de la conversion de l\'image', 'error');
+        return;
+      }
+
+      // Créer un nouveau fichier à partir du blob
+      const croppedFile = new File([blob], selectedImages.value[cropImageIndex.value].name, {
+        type: blob.type || 'image/jpeg',
+        lastModified: Date.now()
+      });
+
+      // Créer une preview de l'image rognée
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        // Mettre à jour l'image dans selectedImages
+        // On garde l'originalFile pour l'envoyer au backend
+        // Le preview rogné est utilisé pour l'aperçu dans la liste
+        const originalFile = selectedImages.value[cropImageIndex.value].originalFile || selectedImages.value[cropImageIndex.value].file;
+        selectedImages.value[cropImageIndex.value] = {
+          file: originalFile, // On garde l'originale pour l'envoi au backend
+          croppedFile: croppedFile, // On garde la version rognée pour l'aperçu
+          preview: e.target.result, // Preview de la version rognée pour l'affichage dans la liste
+          croppedPreview: e.target.result,
+          name: originalFile.name,
+          originalFile: originalFile // Toujours garder l'originale
+        };
+        
+        showNotification('Image rognée avec succès', 'success');
+        closeCropModal();
+      };
+      reader.readAsDataURL(croppedFile);
+    }, 'image/jpeg', 0.9);
+  } catch (error) {
+    console.error('Erreur lors du rognage:', error);
+    showNotification('Erreur lors du rognage de l\'image', 'error');
+  }
 };
 
 const removeImage = (index) => {
@@ -1493,6 +1777,25 @@ const createOffer = async () => {
   createError.value = '';
   
   try {
+    // ✅ CRITIQUE: Récupérer le cookie CSRF avant la requête
+    try {
+      await apiClient.get('/sanctum/csrf-cookie');
+    } catch (csrfError) {
+      console.warn('Erreur lors de la récupération du cookie CSRF:', csrfError);
+    }
+    
+    // ✅ CRITIQUE: Mettre à jour le header CSRF
+    const setCsrfHeader = () => {
+      const xsrfToken = Cookies.get('XSRF-TOKEN');
+      if (xsrfToken) {
+        apiClient.defaults.headers.common['X-XSRF-TOKEN'] = decodeURIComponent(xsrfToken);
+      } else {
+        console.warn('Cookie XSRF-TOKEN non trouvé.');
+        delete apiClient.defaults.headers.common['X-XSRF-TOKEN'];
+      }
+    };
+    setCsrfHeader();
+    
     const formData = new FormData();
     formData.append('title', newOffer.value.title);
     formData.append('description', newOffer.value.description);
@@ -1500,9 +1803,11 @@ const createOffer = async () => {
     formData.append('price', newOffer.value.price);
     formData.append('currency', newOffer.value.currency || 'EUR');
     
-    // Ajouter toutes les images
+    // Ajouter toutes les images (toujours envoyer l'image originale, pas la rognée)
     selectedImages.value.forEach((img, index) => {
-      formData.append(`images[${index}]`, img.file);
+      // Envoyer l'image originale au backend pour qu'elle soit disponible dans la galerie
+      const imageToSend = img.originalFile || img.file;
+      formData.append(`images[${index}]`, imageToSend);
     });
     
     const response = await apiClient.post('/api/marketplace/offers', formData, {
@@ -1514,11 +1819,19 @@ const createOffer = async () => {
     offers.value.unshift(response.data);
     resetCreateOfferForm();
     await loadOffers(); // Recharger les offres pour mettre à jour la liste
+    showNotification('Offre créée avec succès !', 'success');
   } catch (error) {
     console.error('Erreur lors de la création de l\'offre:', error);
-    createError.value = error.response?.data?.message || error.response?.data?.error || 'Erreur lors de la création de l\'offre';
+    if (error.response?.status === 419) {
+      createError.value = 'Session expirée. Veuillez rafraîchir la page et réessayer.';
+      showNotification('Session expirée. Veuillez rafraîchir la page.', 'error');
+    } else {
+      createError.value = error.response?.data?.message || error.response?.data?.error || 'Erreur lors de la création de l\'offre';
+    }
   } finally {
     isCreatingOffer.value = false;
+    // Nettoyer le header CSRF après la requête
+    delete apiClient.defaults.headers.common['X-XSRF-TOKEN'];
   }
 };
 
@@ -1615,6 +1928,27 @@ const handleLogout = async () => {
 
 // Fonctions de gestion des offres
 const editOffer = async (offerId) => {
+  // Afficher immédiatement le modal avec les données déjà disponibles
+  const existingOffer = offers.value.find(o => o.id === offerId) || selectedOffer.value;
+  if (existingOffer) {
+    editingOffer.value = { ...existingOffer };
+    newOffer.value = {
+      title: existingOffer.title,
+      description: existingOffer.description,
+      type: existingOffer.type,
+      price: existingOffer.price,
+      currency: existingOffer.currency || 'EUR',
+      image_url: existingOffer.image_url
+    };
+    selectedImages.value = [];
+    showEditOfferModal.value = true;
+    showCreateOfferModal.value = false;
+    if (selectedOffer.value) {
+      selectedOffer.value = null;
+    }
+  }
+  
+  // Charger les données complètes en arrière-plan
   try {
     const response = await apiClient.get(`/api/marketplace/offers/${offerId}`);
     editingOffer.value = response.data;
@@ -1626,15 +1960,26 @@ const editOffer = async (offerId) => {
       currency: editingOffer.value.currency || 'EUR',
       image_url: editingOffer.value.image_url
     };
-    selectedImages.value = [];
-    showEditOfferModal.value = true;
-    showCreateOfferModal.value = false;
-    if (selectedOffer.value) {
-      selectedOffer.value = null;
+    // Charger les images si disponibles
+    if (editingOffer.value.images && editingOffer.value.images.length > 0) {
+      selectedImages.value = editingOffer.value.images.map(img => ({
+        file: null,
+        preview: img.url || img.image_url || img,
+        name: 'image',
+        originalFile: null
+      }));
     }
   } catch (error) {
     console.error('Erreur lors du chargement de l\'offre:', error);
-    showNotification('Erreur lors du chargement de l\'offre', 'error');
+    // Si l'erreur survient et qu'on n'avait pas de données existantes, fermer le modal
+    if (!existingOffer) {
+      showEditOfferModal.value = false;
+      editingOffer.value = null;
+      showNotification('Erreur lors du chargement de l\'offre', 'error');
+    } else {
+      // Si on avait des données existantes, juste afficher une notification
+      showNotification('Erreur lors du chargement des détails complets de l\'offre', 'error');
+    }
   }
 };
 
@@ -1643,6 +1988,25 @@ const updateOffer = async () => {
   createError.value = '';
   
   try {
+    // ✅ CRITIQUE: Récupérer le cookie CSRF avant la requête
+    try {
+      await apiClient.get('/sanctum/csrf-cookie');
+    } catch (csrfError) {
+      console.warn('Erreur lors de la récupération du cookie CSRF:', csrfError);
+    }
+    
+    // ✅ CRITIQUE: Mettre à jour le header CSRF
+    const setCsrfHeader = () => {
+      const xsrfToken = Cookies.get('XSRF-TOKEN');
+      if (xsrfToken) {
+        apiClient.defaults.headers.common['X-XSRF-TOKEN'] = decodeURIComponent(xsrfToken);
+      } else {
+        console.warn('Cookie XSRF-TOKEN non trouvé.');
+        delete apiClient.defaults.headers.common['X-XSRF-TOKEN'];
+      }
+    };
+    setCsrfHeader();
+    
     const formData = new FormData();
     formData.append('title', newOffer.value.title);
     formData.append('description', newOffer.value.description);
@@ -1652,7 +2016,9 @@ const updateOffer = async () => {
     
     if (selectedImages.value.length > 0) {
       selectedImages.value.forEach((image, index) => {
-        formData.append(`images[${index}]`, image.file);
+        // Envoyer l'image originale au backend pour qu'elle soit disponible dans la galerie
+        const imageToSend = image.originalFile || image.file;
+        formData.append(`images[${index}]`, imageToSend);
       });
     }
     
@@ -1673,9 +2039,17 @@ const updateOffer = async () => {
     editingOffer.value = null;
     showNotification('Offre mise à jour avec succès !', 'success');
   } catch (error) {
-    createError.value = error.response?.data?.message || 'Erreur lors de la mise à jour de l\'offre';
+    console.error('Erreur lors de la mise à jour de l\'offre:', error);
+    if (error.response?.status === 419) {
+      createError.value = 'Session expirée. Veuillez rafraîchir la page et réessayer.';
+      showNotification('Session expirée. Veuillez rafraîchir la page.', 'error');
+    } else {
+      createError.value = error.response?.data?.message || 'Erreur lors de la mise à jour de l\'offre';
+    }
   } finally {
     isCreatingOffer.value = false;
+    // Nettoyer le header CSRF après la requête
+    delete apiClient.defaults.headers.common['X-XSRF-TOKEN'];
   }
 };
 
@@ -1703,6 +2077,19 @@ const deleteOffer = async (offerId) => {
 };
 
 const viewOfferStats = async (offerId) => {
+  // Afficher immédiatement le modal avec des valeurs par défaut (0)
+  offerStats.value = {
+    total_views: 0,
+    total_favorites: 0,
+    total_reviews: 0,
+    average_rating: 0,
+    total_purchases: 0,
+    total_messages: 0,
+    revenue: 0,
+  };
+  showStatsModal.value = true;
+  
+  // Charger les statistiques réelles en arrière-plan
   try {
     const response = await apiClient.get(`/api/marketplace/offers/${offerId}/stats`);
     const raw = response.data || {};
@@ -1716,32 +2103,64 @@ const viewOfferStats = async (offerId) => {
       total_messages: Number(raw.total_messages || 0),
       revenue: Number(raw.revenue || 0),
     };
-    showStatsModal.value = true;
   } catch (error) {
     console.error('Erreur lors du chargement des statistiques:', error);
     showNotification(error.response?.data?.message || 'Erreur lors du chargement des statistiques', 'error');
+    // Fermer le modal si l'erreur survient
+    showStatsModal.value = false;
+    offerStats.value = null;
   }
 };
 
 const viewAllReviews = async (offerId) => {
+  // Afficher immédiatement le modal avec les données déjà disponibles
+  const existingOffer = offers.value.find(o => o.id === offerId) || selectedOffer.value;
+  if (existingOffer) {
+    // Si l'offre n'est pas déjà dans selectedOffer, l'ajouter temporairement
+    if (!selectedOffer.value || selectedOffer.value.id !== offerId) {
+      selectedOffer.value = { ...existingOffer };
+      // Si l'offre a déjà des avis, les utiliser
+      if (existingOffer.reviews && existingOffer.reviews.length > 0) {
+        selectedOffer.value.reviews = existingOffer.reviews;
+      }
+    }
+  }
+  
+  // Afficher le modal immédiatement
+  showAllReviewsModal.value = true;
+  
+  // Charger les détails complets en arrière-plan pour avoir tous les avis
   try {
-    // Recharger les détails de l'offre pour avoir tous les avis
-    await viewOfferDetails(offerId);
-    showAllReviewsModal.value = true;
+    const response = await apiClient.get(`/api/marketplace/offers/${offerId}`);
+    if (response.data && response.data.reviews && selectedOffer.value) {
+      selectedOffer.value.reviews = response.data.reviews;
+    }
   } catch (error) {
     console.error('Erreur lors du chargement des avis:', error);
+    // Ne pas fermer le modal, juste afficher une notification
     showNotification(error.response?.data?.message || 'Erreur lors du chargement des avis', 'error');
   }
 };
 
 const viewAllMessages = async (offerId) => {
+  // Afficher immédiatement le modal avec une liste vide
+  offerMessages.value = [];
+  showAllMessagesModal.value = true;
+  
+  // S'assurer que selectedOffer est défini
+  const existingOffer = offers.value.find(o => o.id === offerId) || selectedOffer.value;
+  if (existingOffer && (!selectedOffer.value || selectedOffer.value.id !== offerId)) {
+    selectedOffer.value = { ...existingOffer };
+  }
+  
+  // Charger les messages en arrière-plan
   try {
     const response = await apiClient.get(`/api/marketplace/offers/${offerId}/messages`);
-    offerMessages.value = response.data;
-    showAllMessagesModal.value = true;
+    offerMessages.value = response.data || [];
   } catch (error) {
     console.error('Erreur lors du chargement des messages:', error);
     showNotification(error.response?.data?.message || 'Erreur lors du chargement des messages', 'error');
+    // Ne pas fermer le modal, juste afficher une notification
   }
 };
 
@@ -1842,6 +2261,42 @@ const previousImage = () => {
   }
 };
 
+// Gestion du swipe tactile pour mobile
+const handleTouchStart = (event) => {
+  if (!showImageGallery.value) return;
+  if (event.touches && event.touches.length > 0) {
+    touchStartX.value = event.touches[0].clientX;
+    touchStartY.value = event.touches[0].clientY;
+  }
+};
+
+const handleTouchEnd = (event) => {
+  if (!showImageGallery.value) return;
+  if (!event.changedTouches || event.changedTouches.length === 0) return;
+  
+  touchEndX.value = event.changedTouches[0].clientX;
+  touchEndY.value = event.changedTouches[0].clientY;
+  
+  // Calculer la distance et la direction du swipe
+  const deltaX = touchStartX.value - touchEndX.value;
+  const deltaY = touchStartY.value - touchEndY.value;
+  
+  // Seuil minimum pour considérer un swipe (50px)
+  const minSwipeDistance = 50;
+  
+  // Vérifier si c'est un swipe horizontal (plus horizontal que vertical)
+  // Ratio de 2:1 pour favoriser les swipes horizontaux
+  if (Math.abs(deltaX) > Math.abs(deltaY) * 2 && Math.abs(deltaX) > minSwipeDistance) {
+    if (deltaX > 0) {
+      // Swipe vers la gauche = image suivante
+      nextImage();
+    } else {
+      // Swipe vers la droite = image précédente
+      previousImage();
+    }
+  }
+};
+
 // Navigation au clavier
 const handleKeyPress = (event) => {
   if (!showImageGallery.value) return;
@@ -1855,30 +2310,6 @@ const handleKeyPress = (event) => {
   }
 };
 
-// Support du swipe (touch)
-const handleTouchStart = (event) => {
-  touchStartX.value = event.touches[0].clientX;
-};
-
-const handleTouchEnd = (event) => {
-  touchEndX.value = event.changedTouches[0].clientX;
-  handleSwipe();
-};
-
-const handleSwipe = () => {
-  const swipeThreshold = 50; // Minimum distance pour déclencher le swipe
-  const diff = touchStartX.value - touchEndX.value;
-  
-  if (Math.abs(diff) > swipeThreshold) {
-    if (diff > 0) {
-      // Swipe vers la gauche = image suivante
-      nextImage();
-    } else {
-      // Swipe vers la droite = image précédente
-      previousImage();
-    }
-  }
-};
 
 // Fonction helper pour compter le total d'images
 const getTotalImageCount = (offer) => {

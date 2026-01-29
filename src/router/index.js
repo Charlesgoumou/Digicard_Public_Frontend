@@ -108,6 +108,12 @@ const router = createRouter({
         hideFooter: true   // Masquer le footer
       },
     },
+    {
+      path: "/menu-du-jour",
+      name: "RestaurantMenu",
+      component: () => import("../views/RestaurantMenuView.vue"),
+      meta: { requiresAuth: true },
+    },
   ],
   scrollBehavior(to, from, savedPosition) {
     // Si une position sauvegardée existe (bouton retour), l'utiliser
@@ -188,6 +194,15 @@ router.beforeEach(async (to, from, next) => {
     return next();
   }
 
+  // ✅ EXCEPTION: Navigation depuis SelectAccount vers une route protégée (ex: Dashboard)
+  // L'utilisateur vient d'être défini par updateUserLocally juste avant router.push.
+  // On autorise la navigation sans exiger user.value pour éviter un flash vers Home.
+  const isFromSelectAccount = from.name === "SelectAccount";
+  if (isFromSelectAccount && (to.name === "Dashboard" || to.name === "FinalizeRegistration" || to.name === "Settings" || to.name === "Orders" || to.name === "Account" || to.name === "ProfileSelection")) {
+    console.log("[Guard] Navigation from SelectAccount to protected route. Allowing (user was just set).");
+    return next();
+  }
+
   // ✅ Si l'utilisateur est déjà chargé, vérifier le profil puis laisser passer
   if (user.value) {
     // ✅ CRITIQUE: Si l'utilisateur accède à /finaliser-inscription mais que son profil est déjà complété,
@@ -219,9 +234,6 @@ router.beforeEach(async (to, from, next) => {
   // ✅ CRITIQUE: Ne pas rediriger vers login avant d'avoir attendu la réponse du serveur
   // Même si fetchUser() met 500ms à répondre, on attend sans timeout arbitraire
   console.log("[Guard] User not loaded (refresh detected). Fetching user from API...");
-  
-  // ✅ Détecter si on vient de SelectAccount (après authentification Google)
-  const isFromSelectAccount = from.name === "SelectAccount";
   
   // ✅ 1. Si l'utilisateur n'est pas chargé en mémoire (cas du F5), attendre fetchUser()
   // IMPORTANT : Ne pas mettre de timeout arbitraire court ici, attendre la réponse

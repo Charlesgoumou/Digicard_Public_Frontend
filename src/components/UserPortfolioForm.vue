@@ -39,8 +39,63 @@
 
       <!-- Formulaire adaptatif uniquement si profil sélectionné -->
       <div v-if="selectedProfile" ref="formContainer">
-        <!-- 2. Informations personnelles -->
-        <div class="bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-700">
+        <!-- Upload de fichier pour tous les profils (en première ligne) -->
+        <div class="bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-700 mb-6">
+          <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+            <span class="text-3xl">📄</span> {{ selectedProfile === 'restaurant' ? 'Téléverser votre menu' : 'Téléverser un document' }}
+          </h2>
+          <p class="text-slate-300 text-sm mb-4">
+            <span v-if="selectedProfile === 'restaurant'">
+              Téléversez une image ou un PDF de votre menu. L'IA extraira automatiquement les plats, boissons et leurs prix pour remplir votre menu ci-dessous.
+            </span>
+            <span v-else>
+              Téléversez votre CV, lettre de motivation ou tout autre document. L'IA extraira automatiquement les informations pour remplir les champs ci-dessous selon votre profil.
+            </span>
+          </p>
+          
+          <div class="space-y-4">
+            <div>
+              <input
+                ref="documentInput"
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png"
+                @change="handleDocumentUpload"
+                class="hidden"
+                id="document-upload-input"
+                :disabled="isExtractingDocument"
+              />
+              <label
+                for="document-upload-input"
+                :class="[
+                  'block cursor-pointer bg-slate-700 border-2 border-dashed rounded-lg px-6 py-8 text-center transition-colors',
+                  isExtractingDocument ? 'border-slate-500 opacity-50 cursor-not-allowed' : 'border-slate-600 hover:border-indigo-500'
+                ]"
+              >
+                <div v-if="!isExtractingDocument" class="space-y-2">
+                  <svg class="w-12 h-12 mx-auto text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  <p class="text-slate-300 font-medium">{{ selectedProfile === 'restaurant' ? 'Cliquez pour téléverser votre menu' : 'Cliquez pour téléverser un document' }}</p>
+                  <p class="text-slate-400 text-xs">PDF, JPG, PNG (max 2MB)</p>
+                </div>
+                <div v-else class="space-y-2">
+                  <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mx-auto"></div>
+                  <p class="text-slate-300 font-medium">Extraction en cours...</p>
+                </div>
+              </label>
+            </div>
+            
+            <div v-if="extractionMessage" :class="[
+              'p-4 rounded-lg text-sm',
+              extractionError ? 'bg-red-500/20 border border-red-500/50 text-red-400' : 'bg-green-500/20 border border-green-500/50 text-green-400'
+            ]">
+              {{ extractionMessage }}
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Informations personnelles (masqué pour restaurant) -->
+        <div v-if="selectedProfile !== 'restaurant'" class="bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-700">
           <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-2">
             <span class="text-3xl">📝</span> Informations personnelles
           </h2>
@@ -53,14 +108,289 @@
                 v-model="form.bio"
                 rows="4"
                 class="w-full bg-slate-700 text-white border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                placeholder="Décrivez-vous en quelques lignes..."
+                :placeholder="selectedProfile === 'restaurant' ? 'Décrivez votre restaurant, votre spécialité culinaire, votre histoire...' : 'Décrivez-vous en quelques lignes...'"
               ></textarea>
             </div>
           </div>
         </div>
 
-        <!-- 3. Compétences -->
-        <div class="bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-700">
+        <!-- Menu Restaurant (uniquement pour le profil restaurant) -->
+        <div v-if="selectedProfile === 'restaurant'" class="bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-700">
+          <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+            <span class="text-3xl">🍽️</span> Mon Menu
+          </h2>
+
+          <!-- Plats -->
+          <div class="mb-8">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-xl font-semibold text-white">Plats</h3>
+              <button
+                @click="addDish"
+                type="button"
+                class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
+              >
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Ajouter un plat
+              </button>
+            </div>
+
+            <div class="space-y-6">
+              <div
+                v-for="(dish, index) in form.menu?.dishes || []"
+                :key="index"
+                class="bg-slate-700 p-6 rounded-lg border border-slate-600"
+              >
+                <div class="flex justify-between items-start mb-4">
+                  <h4 class="text-white font-semibold text-lg">Plat {{ index + 1 }}</h4>
+                  <button
+                    @click="removeDish(index)"
+                    type="button"
+                    class="text-red-400 hover:text-red-300 transition-colors"
+                  >
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <!-- Nom du plat -->
+                  <div>
+                    <label class="block text-slate-300 text-sm font-medium mb-1">Nom du plat *</label>
+                    <input
+                      v-model="dish.name"
+                      type="text"
+                      class="w-full bg-slate-600 text-white border border-slate-500 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      placeholder="Ex: Poulet Yassa"
+                      required
+                    />
+                  </div>
+
+                  <!-- Prix -->
+                  <div>
+                    <label class="block text-slate-300 text-sm font-medium mb-1">Prix (GNF) *</label>
+                    <input
+                      v-model.number="dish.price"
+                      type="number"
+                      min="0"
+                      step="100"
+                      class="w-full bg-slate-600 text-white border border-slate-500 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      placeholder="Ex: 15000"
+                      required
+                    />
+                  </div>
+
+                  <!-- Description -->
+                  <div class="md:col-span-2">
+                    <label class="block text-slate-300 text-sm font-medium mb-1">Description</label>
+                    <textarea
+                      v-model="dish.description"
+                      rows="2"
+                      class="w-full bg-slate-600 text-white border border-slate-500 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      placeholder="Description du plat..."
+                    ></textarea>
+                  </div>
+
+                  <!-- Image du plat -->
+                  <div class="md:col-span-2">
+                    <label class="block text-slate-300 text-sm font-medium mb-1">Image du plat</label>
+                    <div class="flex items-center gap-4">
+                      <input
+                        :ref="`dishImageInput-${index}`"
+                        type="file"
+                        accept="image/*"
+                        @change="(e) => handleDishImageUpload(e, index)"
+                        class="hidden"
+                        :id="`dish-image-${index}`"
+                      />
+                      <label
+                        :for="`dish-image-${index}`"
+                        class="cursor-pointer bg-slate-600 border border-slate-500 rounded-lg px-4 py-2 text-white hover:bg-slate-500 transition-colors"
+                      >
+                        {{ dish.image ? 'Changer l\'image' : 'Choisir une image' }}
+                      </label>
+                      <div v-if="dish.image" class="flex items-center gap-2">
+                        <img :src="dish.image" alt="Aperçu" class="w-20 h-20 object-cover rounded-lg" />
+                        <button
+                          @click="openCropModal('dish', index)"
+                          type="button"
+                          class="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded text-sm"
+                        >
+                          Rogner
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Disponibilité -->
+                  <div>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input
+                        v-model="dish.available"
+                        type="checkbox"
+                        class="w-4 h-4 text-indigo-600 bg-slate-600 border-slate-500 rounded focus:ring-indigo-500"
+                      />
+                      <span class="text-slate-300 text-sm font-medium">Disponible</span>
+                    </label>
+                  </div>
+
+                  <!-- Accompagnements -->
+                  <div>
+                    <label class="flex items-center gap-2 cursor-pointer mb-2">
+                      <input
+                        v-model="dish.hasSides"
+                        type="checkbox"
+                        @change="dish.hasSides ? (dish.sides = dish.sides || []) : (dish.sides = [])"
+                        class="w-4 h-4 text-indigo-600 bg-slate-600 border-slate-500 rounded focus:ring-indigo-500"
+                      />
+                      <span class="text-slate-300 text-sm font-medium">Avec accompagnements</span>
+                    </label>
+                    <div v-if="dish.hasSides" class="mt-2 space-y-2">
+                      <div v-for="(side, sideIndex) in dish.sides" :key="sideIndex" class="flex items-center gap-2">
+                        <input
+                          v-model="dish.sides[sideIndex]"
+                          type="text"
+                          class="flex-1 bg-slate-600 text-white border border-slate-500 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm"
+                          placeholder="Ex: Riz, Frites, Salade"
+                        />
+                        <button
+                          @click="dish.sides.splice(sideIndex, 1)"
+                          type="button"
+                          class="text-red-400 hover:text-red-300"
+                        >
+                          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                      <button
+                        @click="dish.sides.push('')"
+                        type="button"
+                        class="text-indigo-400 hover:text-indigo-300 text-sm"
+                      >
+                        + Ajouter un accompagnement
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Boissons -->
+          <div>
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-xl font-semibold text-white">Boissons</h3>
+              <button
+                @click="addDrink"
+                type="button"
+                class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
+              >
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Ajouter une boisson
+              </button>
+            </div>
+
+            <div class="space-y-6">
+              <div
+                v-for="(drink, index) in form.menu?.drinks || []"
+                :key="index"
+                class="bg-slate-700 p-6 rounded-lg border border-slate-600"
+              >
+                <div class="flex justify-between items-start mb-4">
+                  <h4 class="text-white font-semibold text-lg">Boisson {{ index + 1 }}</h4>
+                  <button
+                    @click="removeDrink(index)"
+                    type="button"
+                    class="text-red-400 hover:text-red-300 transition-colors"
+                  >
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <!-- Nom de la boisson -->
+                  <div>
+                    <label class="block text-slate-300 text-sm font-medium mb-1">Nom de la boisson *</label>
+                    <input
+                      v-model="drink.name"
+                      type="text"
+                      class="w-full bg-slate-600 text-white border border-slate-500 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      placeholder="Ex: Jus de Bissap"
+                      required
+                    />
+                  </div>
+
+                  <!-- Prix -->
+                  <div>
+                    <label class="block text-slate-300 text-sm font-medium mb-1">Prix (GNF) *</label>
+                    <input
+                      v-model.number="drink.price"
+                      type="number"
+                      min="0"
+                      step="100"
+                      class="w-full bg-slate-600 text-white border border-slate-500 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      placeholder="Ex: 3000"
+                      required
+                    />
+                  </div>
+
+                  <!-- Image de la boisson -->
+                  <div class="md:col-span-2">
+                    <label class="block text-slate-300 text-sm font-medium mb-1">Image de la boisson</label>
+                    <div class="flex items-center gap-4">
+                      <input
+                        :ref="`drinkImageInput-${index}`"
+                        type="file"
+                        accept="image/*"
+                        @change="(e) => handleDrinkImageUpload(e, index)"
+                        class="hidden"
+                        :id="`drink-image-${index}`"
+                      />
+                      <label
+                        :for="`drink-image-${index}`"
+                        class="cursor-pointer bg-slate-600 border border-slate-500 rounded-lg px-4 py-2 text-white hover:bg-slate-500 transition-colors"
+                      >
+                        {{ drink.image ? 'Changer l\'image' : 'Choisir une image' }}
+                      </label>
+                      <div v-if="drink.image" class="flex items-center gap-2">
+                        <img :src="drink.image" alt="Aperçu" class="w-20 h-20 object-cover rounded-lg" />
+                        <button
+                          @click="openCropModal('drink', index)"
+                          type="button"
+                          class="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded text-sm"
+                        >
+                          Rogner
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Disponibilité -->
+                  <div>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input
+                        v-model="drink.available"
+                        type="checkbox"
+                        class="w-4 h-4 text-indigo-600 bg-slate-600 border-slate-500 rounded focus:ring-indigo-500"
+                      />
+                      <span class="text-slate-300 text-sm font-medium">Disponible</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Compétences (masqué pour restaurant) -->
+        <div v-if="selectedProfile !== 'restaurant'" class="bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-700">
           <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-2">
             <span class="text-3xl">🛠️</span> Compétences
           </h2>
@@ -105,8 +435,8 @@
           </button>
         </div>
 
-        <!-- 4. Projets -->
-        <div class="bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-700">
+        <!-- 4. Projets (masqué pour restaurant) -->
+        <div v-if="selectedProfile !== 'restaurant'" class="bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-700">
           <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-2">
             <span class="text-3xl">🎯</span> {{ getLabel("projects", true) }}
           </h2>
@@ -198,10 +528,93 @@
           </button>
         </div>
 
-        <!-- 5. Timeline (Parcours) -->
-        <div class="bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-700">
+        <!-- 5. Formations (masqué pour restaurant) -->
+        <div v-if="selectedProfile !== 'restaurant'" class="bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-700">
           <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-            <span class="text-3xl">📅</span> {{ getLabel("timeline", true) }}
+            <span class="text-3xl">🎓</span> Mes Formations
+          </h2>
+
+          <!-- Liste des formations -->
+          <div class="space-y-4 mb-4">
+            <div
+              v-for="(item, index) in form.formations"
+              :key="index"
+              class="bg-slate-700 p-4 rounded-lg border border-slate-600"
+            >
+              <div class="flex justify-between items-start mb-3">
+                <h3 class="text-white font-semibold">Formation {{ index + 1 }}</h3>
+                <button
+                  @click="removeFormationItem(index)"
+                  type="button"
+                  class="text-red-400 hover:text-red-300 transition-colors"
+                >
+                  <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div class="space-y-3">
+                <div>
+                  <label class="block text-slate-300 text-sm font-medium mb-1">Titre</label>
+                  <input
+                    v-model="item.title"
+                    type="text"
+                    class="w-full bg-slate-600 text-white border border-slate-500 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    placeholder="Ex: Master 2 en..., Licence en..., Baccalauréat..."
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-slate-300 text-sm font-medium mb-1">Établissement</label>
+                  <input
+                    v-model="item.organization"
+                    type="text"
+                    class="w-full bg-slate-600 text-white border border-slate-500 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    placeholder="Ex: Nom de l'établissement ou organisme"
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-slate-300 text-sm font-medium mb-1">Date</label>
+                  <input
+                    v-model="item.date"
+                    type="text"
+                    class="w-full bg-slate-600 text-white border border-slate-500 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    placeholder="Ex: 2016-2019, 2024, Depuis 2024"
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-slate-300 text-sm font-medium mb-1">Description</label>
+                  <textarea
+                    v-model="item.description"
+                    rows="3"
+                    class="w-full bg-slate-600 text-white border border-slate-500 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono text-sm"
+                    placeholder="Description à la première personne (ex: 'J'ai suivi une formation en...', 'J'ai obtenu mon diplôme de...')"
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bouton Ajouter -->
+          <button
+            @click="addFormationItem"
+            type="button"
+            class="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+          >
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            Ajouter une formation
+          </button>
+        </div>
+
+        <!-- 6. Timeline (Parcours Professionnel) (masqué pour restaurant) -->
+        <div v-if="selectedProfile !== 'restaurant'" class="bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-700">
+          <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+            <span class="text-3xl">📅</span> Mon Parcours Professionnel
           </h2>
 
           <!-- Liste des événements timeline -->
@@ -246,22 +659,22 @@
                 </div>
 
                 <div>
-                  <label class="block text-slate-300 text-sm font-medium mb-1">Dates</label>
+                  <label class="block text-slate-300 text-sm font-medium mb-1">Date</label>
                   <input
-                    v-model="item.dates"
+                    v-model="item.date"
                     type="text"
                     class="w-full bg-slate-600 text-white border border-slate-500 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    placeholder="Ex: Jan 2020 - Déc 2022"
+                    placeholder="Ex: 01/05/2022 - Aujourd'hui, 2016-2019"
                   />
                 </div>
 
                 <div>
-                  <label class="block text-slate-300 text-sm font-medium mb-1">Détails (HTML)</label>
+                  <label class="block text-slate-300 text-sm font-medium mb-1">Description</label>
                   <textarea
-                    v-model="item.details"
+                    v-model="item.description"
                     rows="3"
                     class="w-full bg-slate-600 text-white border border-slate-500 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono text-sm"
-                    placeholder="Description détaillée (HTML supporté)..."
+                    placeholder="Description à la première personne (ex: 'J'ai occupé le poste de...', 'Mes responsabilités incluaient...')"
                   ></textarea>
                 </div>
 
@@ -345,52 +758,10 @@
         <input type="hidden" v-model="form.secondary_color" />
         <input type="hidden" v-model="form.skills_title" />
         <input type="hidden" v-model="form.projects_title" />
+        <input type="hidden" v-model="form.formations_title" />
         <input type="hidden" v-model="form.timeline_title" />
 
-        <!-- 8. Bouton Générer avec l'IA -->
-        <div class="bg-gradient-to-r from-purple-800 to-indigo-800 rounded-xl p-6 shadow-lg border border-purple-600">
-          <div class="mb-4">
-            <h2 class="text-2xl font-bold text-white mb-2 flex items-center gap-2">
-              <span class="text-3xl">✨</span> Génération avec l'IA
-            </h2>
-            <p class="text-purple-200 text-sm">
-              Laissez l'intelligence artificielle créer un contenu professionnel adapté à votre profil
-            </p>
-          </div>
-
-          <button
-            @click="generateContent"
-            :disabled="isGenerating || !canGenerate"
-            class="w-full bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg transition-all flex items-center justify-center gap-2"
-          >
-            <svg v-if="isGenerating" class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
-            <svg v-else class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-            {{ isGenerating ? "Génération en cours..." : "Générer le contenu avec l'IA" }}
-          </button>
-
-          <p v-if="!canGenerate" class="text-yellow-300 text-sm mt-2 text-center">
-            ⚠️ Veuillez remplir les informations personnelles et ajouter au moins un projet ou un événement
-          </p>
-
-          <p
-            v-if="generateMessage"
-            :class="generateError ? 'text-red-300' : 'text-green-300'"
-            class="text-sm mt-2 text-center"
-          >
-            {{ generateMessage }}
-          </p>
-        </div>
-
-        <!-- 9. Bouton Enregistrer et Quitter -->
+        <!-- 8. Bouton Enregistrer et Quitter -->
         <div class="bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-700">
           <div class="mb-4">
             <h2 class="text-2xl font-bold text-white mb-2 flex items-center gap-2">
@@ -427,15 +798,62 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal de rognage d'image -->
+    <div
+      v-if="cropModalOpen"
+      class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      @click.self="closeCropModal"
+    >
+      <div class="bg-slate-800 rounded-xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <h3 class="text-xl font-bold text-white mb-4">Rogner l'image</h3>
+        <div v-if="cropImage" class="mb-4">
+          <div class="w-full" style="max-height: 500px;">
+            <vue-cropper
+              ref="cropper"
+              :src="cropImage"
+              :aspect-ratio="1"
+              :guides="true"
+              :view-mode="2"
+              :background="false"
+              :min-crop-box-resize="true"
+              :auto-crop-area="0.8"
+              :check-orientation="false"
+              :zoomable="true"
+              :movable="true"
+              :scalable="true"
+              class="w-full"
+              @ready="onCropReady"
+            ></vue-cropper>
+          </div>
+        </div>
+        <div class="flex justify-end gap-4">
+          <button
+            @click="closeCropModal"
+            class="px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg transition-colors"
+          >
+            Annuler
+          </button>
+          <button
+            @click="getCroppedImage"
+            class="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition-colors"
+          >
+            Appliquer
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-  import { ref, computed, onMounted, nextTick } from "vue";
+  import { ref, onMounted, nextTick, watch } from "vue";
   import apiClient from "@/api";
   import Cookies from "js-cookie";
   import { useAuth } from "@/composables/useAuth";
   import { useRouter } from "vue-router";
+  import VueCropper from "vue-cropperjs";
+  import "cropperjs/dist/cropper.css";
 
   // Options de profil
   const profileOptions = [
@@ -518,6 +936,16 @@
       value: "developer",
       label: "Développeur",
       icon: "💻",
+    },
+    {
+      value: "banker",
+      label: "Banquier",
+      icon: "🏦",
+    },
+    {
+      value: "restaurant",
+      label: "Restaurant",
+      icon: "🍽️",
     },
   ];
 
@@ -651,6 +1079,14 @@
       projects: "Mes Réalisations & Projets",
       projectsPlaceholder: 'Ex: "Application web", "Projet open source"',
     },
+    banker: {
+      headline: "Titre / Rôle",
+      headlinePlaceholder: 'Ex: "Banquier d\'affaires"',
+      timeline: "Mon Parcours Professionnel",
+      timelinePlaceholder: 'Ex: "Banque X", "Spécialisation"',
+      projects: "Mes Réalisations & Projets",
+      projectsPlaceholder: 'Ex: "Financement de projet", "Conseil financier"',
+    },
   };
 
   const { user } = useAuth();
@@ -663,9 +1099,10 @@
   const photoUploadError = ref(false);
   const isUploadingPhoto = ref(false);
   const photoInput = ref(null);
-  const isGenerating = ref(false);
-  const generateMessage = ref("");
-  const generateError = ref(false);
+  const documentInput = ref(null);
+  const isExtractingDocument = ref(false);
+  const extractionMessage = ref("");
+  const extractionError = ref(false);
 
   const selectedProfile = ref(null);
   const formContainer = ref(null);
@@ -816,6 +1253,15 @@
       projects_title: "Mes Projets",
       timeline_title: "Mon Parcours",
     },
+    banker: {
+      bio: "",
+      skills: [],
+      projects: [],
+      timeline: [],
+      skills_title: "Mes Compétences",
+      projects_title: "Mes Projets",
+      timeline_title: "Mon Parcours",
+    },
   });
 
   const form = ref({
@@ -826,7 +1272,12 @@
     bio: "",
     skills: [],
     projects: [],
+    formations: [],
     timeline: [],
+    menu: {
+      dishes: [],
+      drinks: [],
+    },
     email: "",
     phone: "",
     linkedin_url: "",
@@ -835,7 +1286,8 @@
     secondary_color: "#ffffff",
     skills_title: "Mes Compétences",
     projects_title: "Mes Projets",
-    timeline_title: "Mon Parcours",
+    formations_title: "Mes Formations",
+    timeline_title: "Mon Parcours Professionnel",
   });
 
   // Fonctions pour les labels adaptatifs
@@ -869,15 +1321,24 @@
     // Si l'utilisateur change de profil, sauvegarder les données actuelles
     if (selectedProfile.value && selectedProfile.value !== profileValue) {
       // Sauvegarder les données du profil actuel
-      profileData.value[selectedProfile.value] = {
+      const currentData = {
         bio: form.value.bio,
         skills: [...form.value.skills],
         projects: [...form.value.projects],
+        formations: [...form.value.formations],
         timeline: [...form.value.timeline],
         skills_title: form.value.skills_title,
         projects_title: form.value.projects_title,
+        formations_title: form.value.formations_title,
         timeline_title: form.value.timeline_title,
       };
+      
+      // Pour le profil restaurant, sauvegarder aussi le menu
+      if (selectedProfile.value === 'restaurant' && form.value.menu) {
+        currentData.menu = JSON.parse(JSON.stringify(form.value.menu));
+      }
+      
+      profileData.value[selectedProfile.value] = currentData;
     }
 
     selectedProfile.value = profileValue;
@@ -887,12 +1348,23 @@
     const savedData = profileData.value[profileValue];
     if (savedData) {
       form.value.bio = savedData.bio;
-      form.value.skills = [...savedData.skills];
-      form.value.projects = [...savedData.projects];
-      form.value.timeline = [...savedData.timeline];
+      form.value.skills = [...(savedData.skills || [])];
+      form.value.projects = [...(savedData.projects || [])];
+      form.value.formations = savedData.formations ? [...savedData.formations] : [];
+      form.value.timeline = [...(savedData.timeline || [])];
       form.value.skills_title = savedData.skills_title;
       form.value.projects_title = savedData.projects_title;
-      form.value.timeline_title = savedData.timeline_title;
+      form.value.formations_title = savedData.formations_title || "Mes Formations";
+      form.value.timeline_title = savedData.timeline_title || "Mon Parcours Professionnel";
+      
+      // Pour le profil restaurant, charger aussi le menu
+      if (profileValue === 'restaurant' && savedData.menu) {
+        form.value.menu = JSON.parse(JSON.stringify(savedData.menu));
+      } else if (profileValue === 'restaurant' && !form.value.menu) {
+        form.value.menu = { dishes: [], drinks: [] };
+      }
+    } else if (profileValue === 'restaurant' && !form.value.menu) {
+      form.value.menu = { dishes: [], drinks: [] };
     }
 
     // Attendre que le DOM soit mis à jour, puis scroller vers le formulaire
@@ -920,19 +1392,49 @@
       // Initialiser les arrays vides si nécessaire
       if (!form.value.skills) form.value.skills = [];
       if (!form.value.projects) form.value.projects = [];
+      if (!form.value.formations) form.value.formations = [];
       if (!form.value.timeline) form.value.timeline = [];
+      
+      // Initialiser le menu pour le profil restaurant
+      if (form.value.profile_type === 'restaurant' && !form.value.menu) {
+        form.value.menu = { dishes: [], drinks: [] };
+      } else if (form.value.menu && typeof form.value.menu === 'string') {
+        // Si le menu est une chaîne JSON, le parser
+        try {
+          form.value.menu = JSON.parse(form.value.menu);
+        } catch (e) {
+          form.value.menu = { dishes: [], drinks: [] };
+        }
+      } else if (!form.value.menu) {
+        form.value.menu = { dishes: [], drinks: [] };
+      }
+      
+      // S'assurer que les titres sont définis
+      if (!form.value.formations_title) form.value.formations_title = "Mes Formations";
+      if (!form.value.timeline_title || form.value.timeline_title === "Mon Parcours" || form.value.timeline_title === "Ma Formation & Stages") {
+        form.value.timeline_title = "Mon Parcours Professionnel";
+      }
 
       // Si un profil était déjà configuré, charger ses données dans profileData
       if (form.value.profile_type) {
-        profileData.value[form.value.profile_type] = {
+        const profileDataToSave = {
           bio: form.value.bio || "",
           skills: [...form.value.skills],
           projects: [...form.value.projects],
+          formations: form.value.formations ? [...form.value.formations] : [],
           timeline: [...form.value.timeline],
           skills_title: form.value.skills_title || "Mes Compétences",
           projects_title: form.value.projects_title || "Mes Projets",
-          timeline_title: form.value.timeline_title || "Mon Parcours",
+          formations_title: form.value.formations_title || "Mes Formations",
+          timeline_title: form.value.timeline_title || "Mon Parcours Professionnel",
         };
+        
+        // Pour le profil restaurant, sauvegarder aussi le menu
+        if (form.value.profile_type === 'restaurant' && form.value.menu) {
+          profileDataToSave.menu = JSON.parse(JSON.stringify(form.value.menu));
+        }
+        
+        profileData.value[form.value.profile_type] = profileDataToSave;
         selectedProfile.value = form.value.profile_type;
       }
     } catch (error) {
@@ -974,6 +1476,135 @@
     }
   };
 
+  const handleDocumentUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Vérifier la taille (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      extractionMessage.value = `Le fichier est trop volumineux (${(file.size / 1024 / 1024).toFixed(2)} Mo). Taille maximale : 2 Mo.`;
+      extractionError.value = true;
+      return;
+    }
+
+    extractionMessage.value = "";
+    extractionError.value = false;
+    isExtractingDocument.value = true;
+
+    try {
+      setCsrfHeader();
+      const formData = new FormData();
+      formData.append("document", file);
+
+      const response = await apiClient.post("/api/user-portfolio/extract-document", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        params: {
+          profile_type: selectedProfile.value
+        }
+      });
+
+      if (response.data.extractedData) {
+        const data = response.data.extractedData;
+        
+        // Pour le profil restaurant, extraire le menu
+        if (selectedProfile.value === 'restaurant') {
+          // Extraire la bio et hero_headline si disponibles
+          if (data.bio) form.value.bio = data.bio;
+          if (data.hero_headline) form.value.hero_headline = data.hero_headline;
+          
+          // Extraire le menu
+          if (data.menu) {
+            // Initialiser le menu s'il n'existe pas
+            if (!form.value.menu) {
+              form.value.menu = { dishes: [], drinks: [] };
+            }
+            
+            if (data.menu.dishes && Array.isArray(data.menu.dishes)) {
+              form.value.menu.dishes = data.menu.dishes.map(dish => ({
+                name: dish.name || "",
+                price: dish.price || 0,
+                description: dish.description || "",
+                image: dish.image || null,
+                available: dish.available !== undefined ? dish.available : true,
+                hasSides: dish.hasSides || false,
+                sides: dish.sides || [],
+              }));
+            }
+            if (data.menu.drinks && Array.isArray(data.menu.drinks)) {
+              form.value.menu.drinks = data.menu.drinks.map(drink => ({
+                name: drink.name || "",
+                price: drink.price || 0,
+                image: drink.image || null,
+                available: drink.available !== undefined ? drink.available : true,
+              }));
+            }
+          }
+          
+          // Rechercher automatiquement des images pour les plats/boissons sans image
+          // Faire cela en arrière-plan pour ne pas bloquer l'interface
+          searchImagesForMenuItems().catch(err => {
+            console.error('Erreur lors de la recherche automatique d\'images:', err);
+          });
+          
+          extractionMessage.value = "Menu analysé avec succès ! Les plats et boissons ont été extraits automatiquement. Recherche d'images en cours...";
+        } else {
+          // Remplir les champs avec les données extraites pour les autres profils
+          if (data.bio) form.value.bio = data.bio;
+          if (data.hero_headline) form.value.hero_headline = data.hero_headline;
+          if (data.skills && Array.isArray(data.skills)) {
+            form.value.skills = data.skills.map(skill => ({
+              icon: skill.icon || "🏷️",
+              name: skill.name || skill
+            }));
+          }
+          if (data.projects && Array.isArray(data.projects)) {
+            form.value.projects = data.projects.map(project => ({
+              title: project.title || project,
+              short_description: project.short_description || project.description || "",
+              full_description: project.full_description || project.description || "",
+            }));
+          }
+          if (data.formations && Array.isArray(data.formations)) {
+            form.value.formations = data.formations.map(formation => ({
+              title: formation.title || formation,
+              organization: formation.organization || "",
+              date: formation.date || "",
+              description: formation.description || "",
+            }));
+          }
+          if (data.timeline && Array.isArray(data.timeline)) {
+            form.value.timeline = data.timeline.map(item => ({
+              title: item.title || item,
+              organization: item.organization || "",
+              date: item.date || item.dates || "",
+              description: item.description || item.details || "",
+            }));
+          }
+          if (data.email) form.value.email = data.email;
+          if (data.phone) form.value.phone = data.phone;
+          if (data.linkedin_url) form.value.linkedin_url = data.linkedin_url;
+          extractionMessage.value = "Document analysé avec succès ! Les informations ont été extraites et remplies automatiquement.";
+        }
+        extractionError.value = false;
+      } else {
+        extractionMessage.value = "Aucune donnée n'a pu être extraite du document.";
+        extractionError.value = true;
+      }
+    } catch (error) {
+      console.error("Erreur lors de l'extraction:", error);
+      extractionMessage.value = error.response?.data?.message || "Erreur lors de l'extraction du document.";
+      extractionError.value = true;
+    } finally {
+      isExtractingDocument.value = false;
+      delete apiClient.defaults.headers.common["X-XSRF-TOKEN"];
+      if (documentInput.value) {
+        documentInput.value.value = "";
+      }
+    }
+  };
+
   const addSkill = () => {
     form.value.skills.push({
       icon: "🏷️",
@@ -999,13 +1630,25 @@
     form.value.projects.splice(index, 1);
   };
 
+  const addFormationItem = () => {
+    form.value.formations.push({
+      title: "",
+      organization: "",
+      date: "",
+      description: "",
+    });
+  };
+
+  const removeFormationItem = (index) => {
+    form.value.formations.splice(index, 1);
+  };
+
   const addTimelineItem = () => {
     form.value.timeline.push({
       title: "",
       organization: "",
-      dates: "",
-      details: "",
-      icon: "🎓",
+      date: "",
+      description: "",
     });
   };
 
@@ -1013,107 +1656,179 @@
     form.value.timeline.splice(index, 1);
   };
 
-  const canGenerate = computed(() => {
-    return (
-      selectedProfile.value &&
-      ((form.value.projects && form.value.projects.length > 0) ||
-        (form.value.timeline && form.value.timeline.length > 0))
-    );
-  });
+  // Fonctions pour gérer le menu restaurant
+  const addDish = () => {
+    if (!form.value.menu) {
+      form.value.menu = { dishes: [], drinks: [] };
+    }
+    if (!form.value.menu.dishes) {
+      form.value.menu.dishes = [];
+    }
+    form.value.menu.dishes.push({
+      name: "",
+      price: 0,
+      description: "",
+      image: null,
+      available: true,
+      hasSides: false,
+      sides: [],
+    });
+  };
 
-  const generateContent = async () => {
-    isGenerating.value = true;
-    generateMessage.value = "";
-    generateError.value = false;
-
-    try {
-      setCsrfHeader();
-
-      // Préparer le prompt selon le profil
-      const promptTemplate = getPromptForProfile(selectedProfile.value);
-
-      const payload = {
-        profile_type: selectedProfile.value,
-        name: form.value.name,
-        hero_headline: form.value.hero_headline,
-        bio: form.value.bio,
-        skills: form.value.skills,
-        projects: form.value.projects,
-        timeline: form.value.timeline,
-        prompt_template: promptTemplate,
-        primary_color: form.value.primary_color,
-      };
-
-      const response = await apiClient.post("/api/user-portfolio/generate-content", payload);
-
-      // Mettre à jour le formulaire avec le contenu généré
-      if (response.data.portfolio) {
-        Object.assign(form.value, response.data.portfolio);
-
-        // Mettre à jour profileData avec le contenu généré pour ce profil
-        profileData.value[selectedProfile.value] = {
-          bio: form.value.bio || "",
-          skills: [...form.value.skills],
-          projects: [...form.value.projects],
-          timeline: [...form.value.timeline],
-          skills_title: form.value.skills_title || "Mes Compétences",
-          projects_title: form.value.projects_title || "Mes Projets",
-          timeline_title: form.value.timeline_title || "Mon Parcours",
-        };
-      }
-
-      generateMessage.value = response.data.message || "Contenu généré avec succès !";
-      generateError.value = false;
-
-      setTimeout(() => {
-        generateMessage.value = "";
-      }, 5000);
-    } catch (error) {
-      console.error("Erreur lors de la génération:", error);
-      generateMessage.value = error.response?.data?.message || "Erreur lors de la génération du contenu.";
-      generateError.value = true;
-    } finally {
-      isGenerating.value = false;
-      delete apiClient.defaults.headers.common["X-XSRF-TOKEN"];
+  const removeDish = (index) => {
+    if (form.value.menu?.dishes) {
+      form.value.menu.dishes.splice(index, 1);
     }
   };
 
-  const getPromptForProfile = (profileType) => {
-    const prompts = {
-      student:
-        "Tu es un coach de carrière pour un jeune diplômé. Prends ses projets académiques et reformule-les pour montrer son potentiel et ses compétences techniques à un recruteur. IMPORTANT: Tous les textes doivent être écrits à la PREMIÈRE PERSONNE DU SINGULIER (je, mon, ma, mes, j'ai, je suis, etc.). Ne jamais utiliser la troisième personne.",
-      teacher:
-        "Tu es un rédacteur pour un expert. Prends ses réalisations et reformule-les pour montrer son expérience et son impact pédagogique. IMPORTANT: Tous les textes doivent être écrits à la PREMIÈRE PERSONNE DU SINGULIER (je, mon, ma, mes, j'ai, je suis, etc.). Ne jamais utiliser la troisième personne.",
-      freelance:
-        "Tu es un rédacteur commercial. Prends les projets clients de ce freelance et reformule-les pour montrer la valeur ajoutée et le retour sur investissement (ROI) pour un futur client, pas seulement les tâches techniques. IMPORTANT: Tous les textes doivent être écrits à la PREMIÈRE PERSONNE DU SINGULIER (je, mon, ma, mes, j'ai, je suis, etc.). Ne jamais utiliser la troisième personne.",
-      pharmacist:
-        "Tu es un rédacteur professionnel pour un pharmacien. Prends ses réalisations et reformule-les pour montrer son expertise pharmaceutique, son conseil et son impact sur la santé publique. IMPORTANT: Tous les textes doivent être écrits à la PREMIÈRE PERSONNE DU SINGULIER (je, mon, ma, mes, j'ai, je suis, etc.). Ne jamais utiliser la troisième personne.",
-      doctor:
-        "Tu es un rédacteur médical pour un médecin. Prends ses réalisations et reformule-les pour montrer son expertise médicale, ses spécialisations et son impact sur la santé des patients. IMPORTANT: Tous les textes doivent être écrits à la PREMIÈRE PERSONNE DU SINGULIER (je, mon, ma, mes, j'ai, je suis, etc.). Ne jamais utiliser la troisième personne.",
-      lawyer:
-        "Tu es un rédacteur juridique pour un avocat. Prends ses réalisations et reformule-les pour montrer son expertise juridique, ses domaines de spécialisation et son impact pour ses clients. IMPORTANT: Tous les textes doivent être écrits à la PREMIÈRE PERSONNE DU SINGULIER (je, mon, ma, mes, j'ai, je suis, etc.). Ne jamais utiliser la troisième personne.",
-      notary:
-        "Tu es un rédacteur professionnel pour un notaire. Prends ses réalisations et reformule-les pour montrer son expertise notariale, sa fiabilité et son rôle dans les transactions immobilières et juridiques. IMPORTANT: Tous les textes doivent être écrits à la PREMIÈRE PERSONNE DU SINGULIER (je, mon, ma, mes, j'ai, je suis, etc.). Ne jamais utiliser la troisième personne.",
-      bailiff:
-        "Tu es un rédacteur professionnel pour un huissier de justice. Prends ses réalisations et reformule-les pour montrer son expertise dans l'exécution des décisions de justice et son rôle dans le système judiciaire. IMPORTANT: Tous les textes doivent être écrits à la PREMIÈRE PERSONNE DU SINGULIER (je, mon, ma, mes, j'ai, je suis, etc.). Ne jamais utiliser la troisième personne.",
-      architect:
-        "Tu es un rédacteur pour un architecte. Prends ses projets et reformule-les pour montrer sa créativité, son expertise technique et son impact sur l'environnement bâti. IMPORTANT: Tous les textes doivent être écrits à la PREMIÈRE PERSONNE DU SINGULIER (je, mon, ma, mes, j'ai, je suis, etc.). Ne jamais utiliser la troisième personne.",
-      engineer:
-        "Tu es un rédacteur technique pour un ingénieur. Prends ses projets et reformule-les pour montrer son expertise technique, ses innovations et son impact sur les solutions d'ingénierie. IMPORTANT: Tous les textes doivent être écrits à la PREMIÈRE PERSONNE DU SINGULIER (je, mon, ma, mes, j'ai, je suis, etc.). Ne jamais utiliser la troisième personne.",
-      consultant:
-        "Tu es un rédacteur commercial pour un consultant. Prends ses missions et reformule-les pour montrer la valeur ajoutée, les résultats obtenus et le retour sur investissement pour ses clients. IMPORTANT: Tous les textes doivent être écrits à la PREMIÈRE PERSONNE DU SINGULIER (je, mon, ma, mes, j'ai, je suis, etc.). Ne jamais utiliser la troisième personne.",
-      accountant:
-        "Tu es un rédacteur professionnel pour un expert-comptable. Prends ses réalisations et reformule-les pour montrer son expertise comptable, fiscale et son impact sur la gestion financière de ses clients. IMPORTANT: Tous les textes doivent être écrits à la PREMIÈRE PERSONNE DU SINGULIER (je, mon, ma, mes, j'ai, je suis, etc.). Ne jamais utiliser la troisième personne.",
-      financial_analyst:
-        "Tu es un rédacteur financier pour un analyste financier. Prends ses analyses et reformule-les pour montrer son expertise en analyse financière, en évaluation d'entreprises et son impact sur les décisions d'investissement. IMPORTANT: Tous les textes doivent être écrits à la PREMIÈRE PERSONNE DU SINGULIER (je, mon, ma, mes, j'ai, je suis, etc.). Ne jamais utiliser la troisième personne.",
-      photographer:
-        "Tu es un rédacteur créatif pour un photographe. Prends ses projets et reformule-les pour montrer sa créativité artistique, son style photographique et son impact visuel. IMPORTANT: Tous les textes doivent être écrits à la PREMIÈRE PERSONNE DU SINGULIER (je, mon, ma, mes, j'ai, je suis, etc.). Ne jamais utiliser la troisième personne.",
-      graphic_designer:
-        "Tu es un rédacteur créatif pour un graphiste. Prends ses projets et reformule-les pour montrer sa créativité, son sens esthétique et son impact visuel sur les identités de marque. IMPORTANT: Tous les textes doivent être écrits à la PREMIÈRE PERSONNE DU SINGULIER (je, mon, ma, mes, j'ai, je suis, etc.). Ne jamais utiliser la troisième personne.",
-      developer:
-        "Tu es un rédacteur technique pour un développeur. Prends ses projets et reformule-les pour montrer ses compétences techniques, ses innovations et son impact sur les solutions logicielles. IMPORTANT: Tous les textes doivent être écrits à la PREMIÈRE PERSONNE DU SINGULIER (je, mon, ma, mes, j'ai, je suis, etc.). Ne jamais utiliser la troisième personne.",
+  const addDrink = () => {
+    if (!form.value.menu) {
+      form.value.menu = { dishes: [], drinks: [] };
+    }
+    if (!form.value.menu.drinks) {
+      form.value.menu.drinks = [];
+    }
+    form.value.menu.drinks.push({
+      name: "",
+      price: 0,
+      image: null,
+      available: true,
+    });
+  };
+
+  const removeDrink = (index) => {
+    if (form.value.menu?.drinks) {
+      form.value.menu.drinks.splice(index, 1);
+    }
+  };
+
+  // Gestion des images pour plats et boissons
+  const handleDishImageUpload = (event, index) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (form.value.menu?.dishes?.[index]) {
+        form.value.menu.dishes[index].image = e.target.result;
+      }
     };
-    return prompts[profileType] || prompts.student;
+    reader.readAsDataURL(file);
+  };
+
+  const handleDrinkImageUpload = (event, index) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (form.value.menu?.drinks?.[index]) {
+        form.value.menu.drinks[index].image = e.target.result;
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Recherche automatique d'image pour un plat ou une boisson
+  const searchImageForItem = async (itemName, type, index) => {
+    if (!itemName || itemName.trim() === '') return;
+    
+    try {
+      const response = await apiClient.get('/api/image-search', {
+        params: {
+          query: itemName,
+          type: type, // 'dish' ou 'drink'
+        },
+      });
+
+      if (response.data.success && response.data.image_url) {
+        if (type === 'dish' && form.value.menu?.dishes?.[index]) {
+          form.value.menu.dishes[index].image = response.data.image_url;
+        } else if (type === 'drink' && form.value.menu?.drinks?.[index]) {
+          form.value.menu.drinks[index].image = response.data.image_url;
+        }
+      }
+    } catch (error) {
+      console.error('Erreur lors de la recherche d\'image:', error);
+      // Ne pas afficher d'erreur à l'utilisateur, c'est silencieux
+    }
+  };
+
+  // Recherche automatique d'images pour tous les plats/boissons sans image
+  const searchImagesForMenuItems = async () => {
+    if (!form.value.menu) return;
+
+    // Rechercher des images pour les plats sans image
+    if (form.value.menu.dishes && Array.isArray(form.value.menu.dishes)) {
+      for (let i = 0; i < form.value.menu.dishes.length; i++) {
+        const dish = form.value.menu.dishes[i];
+        if (dish.name && !dish.image) {
+          // Attendre un peu entre chaque requête pour éviter de surcharger l'API
+          await new Promise(resolve => setTimeout(resolve, 300 * i));
+          await searchImageForItem(dish.name, 'dish', i);
+        }
+      }
+    }
+
+    // Rechercher des images pour les boissons sans image
+    if (form.value.menu.drinks && Array.isArray(form.value.menu.drinks)) {
+      const dishesCount = form.value.menu.dishes?.length || 0;
+      for (let i = 0; i < form.value.menu.drinks.length; i++) {
+        const drink = form.value.menu.drinks[i];
+        if (drink.name && !drink.image) {
+          // Attendre un peu entre chaque requête pour éviter de surcharger l'API
+          await new Promise(resolve => setTimeout(resolve, 300 * (dishesCount + i)));
+          await searchImageForItem(drink.name, 'drink', i);
+        }
+      }
+    }
+  };
+
+  // Modal de rognage d'image
+  const cropModalOpen = ref(false);
+  const cropType = ref(null); // 'dish' ou 'drink'
+  const cropIndex = ref(null);
+  const cropImage = ref(null);
+  const croppedImage = ref(null);
+  const cropper = ref(null);
+
+  const openCropModal = (type, index) => {
+    cropType.value = type;
+    cropIndex.value = index;
+    if (type === 'dish' && form.value.menu?.dishes?.[index]?.image) {
+      cropImage.value = form.value.menu.dishes[index].image;
+    } else if (type === 'drink' && form.value.menu?.drinks?.[index]?.image) {
+      cropImage.value = form.value.menu.drinks[index].image;
+    }
+    cropModalOpen.value = true;
+  };
+
+  const closeCropModal = () => {
+    cropModalOpen.value = false;
+    cropImage.value = null;
+    croppedImage.value = null;
+  };
+
+  const onCropReady = () => {
+    // Le cropper est prêt
+  };
+
+  const getCroppedImage = () => {
+    if (cropper.value) {
+      croppedImage.value = cropper.value.getCroppedCanvas().toDataURL();
+      applyCrop();
+    }
+  };
+
+  const applyCrop = () => {
+    if (croppedImage.value && cropType.value && cropIndex.value !== null) {
+      if (cropType.value === 'dish' && form.value.menu?.dishes?.[cropIndex.value]) {
+        form.value.menu.dishes[cropIndex.value].image = croppedImage.value;
+      } else if (cropType.value === 'drink' && form.value.menu?.drinks?.[cropIndex.value]) {
+        form.value.menu.drinks[cropIndex.value].image = croppedImage.value;
+      }
+    }
+    closeCropModal();
   };
 
   const savePortfolio = async () => {
@@ -1126,15 +1841,24 @@
       await apiClient.put("/api/user-portfolio", form.value);
 
       // Mettre à jour profileData avec les données sauvegardées
-      profileData.value[selectedProfile.value] = {
+      const profileDataToSave = {
         bio: form.value.bio || "",
         skills: [...form.value.skills],
         projects: [...form.value.projects],
+        formations: form.value.formations ? [...form.value.formations] : [],
         timeline: [...form.value.timeline],
         skills_title: form.value.skills_title || "Mes Compétences",
         projects_title: form.value.projects_title || "Mes Projets",
-        timeline_title: form.value.timeline_title || "Mon Parcours",
+        formations_title: form.value.formations_title || "Mes Formations",
+        timeline_title: form.value.timeline_title || "Mon Parcours Professionnel",
       };
+      
+      // Pour le profil restaurant, sauvegarder aussi le menu
+      if (selectedProfile.value === 'restaurant' && form.value.menu) {
+        profileDataToSave.menu = JSON.parse(JSON.stringify(form.value.menu));
+      }
+      
+      profileData.value[selectedProfile.value] = profileDataToSave;
 
       saveMessage.value = "Profil enregistré avec succès !";
       saveError.value = false;
@@ -1152,6 +1876,57 @@
       delete apiClient.defaults.headers.common["X-XSRF-TOKEN"];
     }
   };
+
+  // Watcher avec debounce pour rechercher automatiquement une image quand le nom d'un plat/boisson est saisi
+  const imageSearchTimeouts = new Map(); // Pour stocker les timeouts de debounce
+
+  watch(
+    () => form.value.menu,
+    (newMenu) => {
+      if (!newMenu || selectedProfile.value !== 'restaurant') return;
+
+      // Watcher pour les plats
+      if (newMenu.dishes && Array.isArray(newMenu.dishes)) {
+        newMenu.dishes.forEach((dish, index) => {
+          // Nettoyer le timeout précédent pour ce plat
+          const key = `dish-${index}`;
+          if (imageSearchTimeouts.has(key)) {
+            clearTimeout(imageSearchTimeouts.get(key));
+          }
+
+          // Si le plat a un nom mais pas d'image, rechercher une image après 1.5 secondes
+          if (dish.name && dish.name.trim() !== '' && !dish.image) {
+            const timeout = setTimeout(() => {
+              searchImageForItem(dish.name, 'dish', index);
+              imageSearchTimeouts.delete(key);
+            }, 1500); // Debounce de 1.5 secondes
+            imageSearchTimeouts.set(key, timeout);
+          }
+        });
+      }
+
+      // Watcher pour les boissons
+      if (newMenu.drinks && Array.isArray(newMenu.drinks)) {
+        newMenu.drinks.forEach((drink, index) => {
+          // Nettoyer le timeout précédent pour cette boisson
+          const key = `drink-${index}`;
+          if (imageSearchTimeouts.has(key)) {
+            clearTimeout(imageSearchTimeouts.get(key));
+          }
+
+          // Si la boisson a un nom mais pas d'image, rechercher une image après 1.5 secondes
+          if (drink.name && drink.name.trim() !== '' && !drink.image) {
+            const timeout = setTimeout(() => {
+              searchImageForItem(drink.name, 'drink', index);
+              imageSearchTimeouts.delete(key);
+            }, 1500); // Debounce de 1.5 secondes
+            imageSearchTimeouts.set(key, timeout);
+          }
+        });
+      }
+    },
+    { deep: true }
+  );
 
   onMounted(() => {
     loadPortfolio();

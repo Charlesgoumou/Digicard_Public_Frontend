@@ -95,7 +95,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, nextTick } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import apiClient from "../api.js";
 import { useAuth } from "../composables/useAuth";
@@ -267,53 +267,65 @@ const selectAccountAndLogin = async (accountId) => {
         });
       }
       
-      // Attendre un peu pour que la session soit bien établie
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // ✅ CRITIQUE: Attendre le prochain tick pour que la réactivité Vue soit à jour
+      // avant la navigation. Sinon la garde du routeur peut voir user.value à null
+      // et rediriger vers la page d'accueil pendant une seconde.
+      await nextTick();
       
-      // ✅ CRITIQUE: Préserver l'avatar existant avant d'appeler fetchUser()
-      const existingAvatarUrl = user.value?.avatar_url;
-      
-      // Réessayer fetchUser() plusieurs fois pour s'assurer que la session est accessible
-      let userFound = false;
-      const maxRetries = 5;
-      for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        try {
-          console.log(`[SelectAccount] Fetching user attempt ${attempt}/${maxRetries}...`);
-          await fetchUser();
-          if (user.value) {
-            console.log(`[SelectAccount] User found on attempt ${attempt}`, {
-              hasAvatar: !!user.value?.avatar_url,
-              avatarUrl: user.value?.avatar_url,
-            });
-            
-            // ✅ CRITIQUE: Si fetchUser() a perdu l'avatar, le restaurer
-            if (!user.value.avatar_url && existingAvatarUrl && user.value.id === user.value.id) {
-              console.warn("[SelectAccount] Avatar perdu après fetchUser(), restauration:", existingAvatarUrl);
-              user.value.avatar_url = existingAvatarUrl;
-            }
-            
-            userFound = true;
-            break;
-          }
-        } catch (fetchError) {
-          console.error(`[SelectAccount] Fetch user attempt ${attempt} failed:`, fetchError);
-        }
-        
-        if (!user.value && attempt < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-      }
-      
-      // Si l'utilisateur n'est toujours pas trouvé mais que la réponse indique un succès,
-      // on considère que la session est établie (le backend a connecté l'utilisateur)
-      if (!userFound && response.data.user) {
-        console.warn("[SelectAccount] User not found via fetchUser, but backend confirmed login. Session should be established.");
-      }
-
-      // Rediriger selon le profil
       const redirectTo = response.data.redirect_to || "/dashboard";
       console.log(`[SelectAccount] Redirecting to: ${redirectTo}`);
       router.push(redirectTo);
+      
+      // ✅ OPTIMISATION: Charger les données utilisateur en arrière-plan après la redirection
+      // Ne pas bloquer la redirection
+      (async () => {
+        try {
+          // Attendre un peu pour que la session soit bien établie
+          await new Promise(resolve => setTimeout(resolve, 300));
+          
+          // ✅ CRITIQUE: Préserver l'avatar existant avant d'appeler fetchUser()
+          const existingAvatarUrl = user.value?.avatar_url;
+          
+          // Réessayer fetchUser() plusieurs fois pour s'assurer que la session est accessible
+          let userFound = false;
+          const maxRetries = 3; // Réduire le nombre de tentatives pour accélérer
+          for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+              console.log(`[SelectAccount] Fetching user attempt ${attempt}/${maxRetries}...`);
+              await fetchUser();
+              if (user.value) {
+                console.log(`[SelectAccount] User found on attempt ${attempt}`, {
+                  hasAvatar: !!user.value?.avatar_url,
+                  avatarUrl: user.value?.avatar_url,
+                });
+                
+                // ✅ CRITIQUE: Si fetchUser() a perdu l'avatar, le restaurer
+                if (!user.value.avatar_url && existingAvatarUrl && user.value.id === user.value.id) {
+                  console.warn("[SelectAccount] Avatar perdu après fetchUser(), restauration:", existingAvatarUrl);
+                  user.value.avatar_url = existingAvatarUrl;
+                }
+                
+                userFound = true;
+                break;
+              }
+            } catch (fetchError) {
+              console.error(`[SelectAccount] Fetch user attempt ${attempt} failed:`, fetchError);
+            }
+            
+            if (!user.value && attempt < maxRetries) {
+              await new Promise(resolve => setTimeout(resolve, 300));
+            }
+          }
+          
+          // Si l'utilisateur n'est toujours pas trouvé mais que la réponse indique un succès,
+          // on considère que la session est établie (le backend a connecté l'utilisateur)
+          if (!userFound && response.data.user) {
+            console.warn("[SelectAccount] User not found via fetchUser, but backend confirmed login. Session should be established.");
+          }
+        } catch (error) {
+          console.error("[SelectAccount] Error in background user fetch:", error);
+        }
+      })();
     } else {
       errorMessage.value = "Erreur lors de la sélection du compte.";
     }

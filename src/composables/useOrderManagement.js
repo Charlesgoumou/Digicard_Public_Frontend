@@ -33,6 +33,8 @@ export function useOrderManagement(user) {
 
   // Logique de chargement des commandes
   const loadOrders = async () => {
+    // ✅ S'assurer que isLoading reste true pendant le chargement
+    isLoading.value = true;
     try {
       const response = await apiClient.get("/api/orders");
       // S'assurer que response.data est un tableau
@@ -74,6 +76,7 @@ export function useOrderManagement(user) {
 
   // Logique au montage (déplacée depuis SettingsView)
   onMounted(async () => {
+    // ✅ CRITIQUE: S'assurer que isLoading est true dès le début pour afficher le skeleton
     isLoading.value = true;
     loadingError.value = "";
     try {
@@ -103,10 +106,16 @@ export function useOrderManagement(user) {
       console.error("useOrderManagement: Error during onMounted:", error);
       loadingError.value = "Erreur lors du chargement de vos paramètres.";
     } finally {
-      // Si on doit charger les données de la carte, on le laisse en chargement
-      // C'est le composable useCardSettings qui s'en chargera
+      // ✅ CRITIQUE: Ne mettre isLoading à false que si on affiche la sélection de commande
+      // Cela garantit que le skeleton s'affiche pendant le chargement
       if (showOrderSelection.value) {
-        isLoading.value = false;
+        // Délai minimum pour que le skeleton "Paramétrer votre Carte" soit visible
+        setTimeout(() => {
+          isLoading.value = false;
+        }, 350);
+      } else {
+        // Si une commande est sélectionnée, isLoading reste true pour le skeleton du formulaire
+        // Il sera géré par useCardSettings
       }
     }
   });

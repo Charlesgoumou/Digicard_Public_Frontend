@@ -556,10 +556,18 @@ export function useCardSettings(
     async (newOrderId, oldOrderId) => {
       if (!newOrderId) return;
       console.log("useCardSettings: selectedOrderId changed from", oldOrderId, "to", newOrderId);
+      
+      // ✅ S'assurer que isLoadingOrderData est true dès le début si on n'a pas de données
+      const hasExistingData = loadedOrderData.value && loadedOrderData.value.id === parseInt(newOrderId);
+      if (!hasExistingData) {
+        isLoadingOrderData.value = true;
+      }
+      
       try {
         await loadOrderData(newOrderId);
       } catch (error) {
         console.error("useCardSettings: Error in watch handler:", error);
+        isLoadingOrderData.value = false; // Désactiver en cas d'erreur
       }
     },
     { immediate: false }, // Ne pas charger immédiatement, onMounted s'en chargera

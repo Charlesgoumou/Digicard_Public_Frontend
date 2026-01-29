@@ -216,6 +216,11 @@ const app = createApp(App)
 app.use(pinia)
 app.use(router)
 
-// 9. Monter (afficher) l'application dans l'élément HTML qui a l'id "app"
+// 9. Initialiser le store de préférences AVANT le montage (pour un affichage instantané)
+import { usePreferencesStore } from './stores/preferences'
+const preferencesStore = usePreferencesStore()
+preferencesStore.initialize()
+
+// 10. Monter (afficher) l'application dans l'élément HTML qui a l'id "app"
 app.mount('#app')
 

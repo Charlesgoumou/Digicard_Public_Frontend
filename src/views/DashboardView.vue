@@ -6,56 +6,139 @@
       class="w-full h-64 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center"
     >
       <div class="text-center relative">
-        <div
-          @click="openFileInput"
-          class="relative w-40 h-40 mx-auto rounded-full border-4 border-slate-700 bg-slate-800 flex items-center justify-center cursor-pointer group overflow-hidden"
-        >
-          <!-- ✅ OPTIMISATION: Afficher l'avatar immédiatement avec la valeur synchrone -->
-          <!-- Si userAvatarUrl est null, le SVG placeholder s'affichera automatiquement -->
-          <img
-            v-if="userAvatarUrl"
-            :src="userAvatarUrl"
-            :key="userAvatarUrl"
-            class="w-full h-full object-cover"
-            alt="Avatar actuel"
-            @error="handleAvatarError"
-          />
-          <svg v-else class="w-20 h-20 text-slate-500" fill="currentColor" viewBox="0 0 24 24">
-            <path
-              d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z"
-            />
-          </svg>
+        <!-- Skeleton header (avatar + nom + société) quand user non chargé -->
+        <template v-if="!user">
+          <div class="w-40 h-40 mx-auto rounded-full border-4 border-slate-700 bg-slate-700 animate-pulse" />
+          <div class="mt-4 h-9 w-56 bg-slate-700 rounded animate-pulse mx-auto" />
+          <div class="mt-2 h-6 w-36 bg-slate-700 rounded animate-pulse mx-auto" />
+        </template>
+        <template v-else>
           <div
-            class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+            @click="openFileInput"
+            class="relative w-40 h-40 mx-auto rounded-full border-4 border-slate-700 bg-slate-800 flex items-center justify-center cursor-pointer group overflow-hidden"
           >
-            <svg class="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <img
+              v-if="userAvatarUrl"
+              :src="userAvatarUrl"
+              :key="userAvatarUrl"
+              class="w-full h-full object-cover"
+              alt="Avatar actuel"
+              @load="avatarImageLoaded = true"
+              @error="handleAvatarError"
+            />
+            <svg v-else class="w-20 h-20 text-slate-500" fill="currentColor" viewBox="0 0 24 24">
               <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-              />
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z"
               />
             </svg>
+            <!-- Skeleton overlay sur la photo pendant le chargement de l'image -->
+            <div
+              v-if="userAvatarUrl && !avatarImageLoaded"
+              class="absolute inset-0 rounded-full bg-slate-700 animate-pulse"
+              aria-hidden="true"
+            />
+            <div
+              class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <svg class="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                />
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+              </svg>
+            </div>
           </div>
-        </div>
-        <h1 class="mt-4 text-3xl font-bold tracking-tight">{{ user?.name || "Chargement..." }}</h1>
-        <p v-if="user?.company_name" class="text-lg text-slate-400">{{ user.company_name }}</p>
+          <!-- Skeleton nom / société tant que le dashboard n'est pas prêt -->
+          <div v-if="!isDashboardReady" class="mt-4 space-y-2">
+            <div class="h-9 w-56 bg-slate-700 rounded animate-pulse mx-auto" />
+            <div class="h-6 w-36 bg-slate-700 rounded animate-pulse mx-auto" />
+          </div>
+          <template v-else>
+            <h1 class="mt-4 text-3xl font-bold tracking-tight">{{ user.name }}</h1>
+            <p v-if="user.company_name" class="text-lg text-slate-400">{{ user.company_name }}</p>
+          </template>
+        </template>
       </div>
     </div>
     <!-- ✅ SUPPRIMÉ: Le skeleton loader bloquant - le contenu s'affiche maintenant immédiatement -->
 
     <!-- ✅ OPTIMISATION: Afficher le contenu immédiatement, même si user n'est pas encore chargé -->
     <div class="container mx-auto px-4 py-12">
-      <div v-if="user?.role === 'individual'">
-        <h1 class="text-4xl font-bold text-center mb-12">Bienvenue, {{ user?.name || "Chargement..." }} !</h1>
-        <!-- Spinner pendant le chargement initial -->
-        <LoadingSpinner v-if="!isDashboardReady" :is-loading="!isDashboardReady" />
+      <!-- Skeleton titre + cartes quand user non chargé -->
+      <div v-if="!user" class="max-w-4xl mx-auto">
+        <div class="h-10 w-72 bg-slate-700 rounded animate-pulse mx-auto mb-12" />
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-5 max-w-4xl mx-auto">
+          <div
+            v-for="i in 6"
+            :key="i"
+            class="bg-slate-800 rounded-lg px-4 py-3 min-h-[120px] flex flex-col items-center justify-center border border-slate-700 animate-pulse"
+          >
+            <div class="w-12 h-12 bg-slate-700 rounded-full mb-3" />
+            <div class="h-4 w-24 bg-slate-700 rounded mb-2" />
+            <div class="h-3 w-32 bg-slate-700 rounded" />
+          </div>
+        </div>
+      </div>
+
+      <div v-else-if="user?.role === 'individual'">
+        <div v-if="!isDashboardReady" class="h-12 w-96 max-w-full bg-slate-700 rounded animate-pulse mx-auto mb-12" />
+        <h1 v-else class="text-4xl font-bold text-center mb-12">Bienvenue, {{ user?.name || "Chargement..." }} !</h1>
+        
+        <!-- Skeleton Screen pour les cartes du dashboard -->
+        <div 
+          v-if="!isDashboardReady"
+          class="grid gap-4 md:gap-5 max-w-4xl mx-auto"
+          :class="hasAppointmentsEnabled ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 max-w-7xl' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-5 max-w-6xl'"
+        >
+          <!-- Skeleton Card 1 -->
+          <div class="bg-slate-800 rounded-lg px-4 py-3 min-h-[120px] flex flex-col items-center justify-center border border-slate-700 animate-pulse">
+            <div class="w-12 h-12 bg-slate-700 rounded-full mb-3"></div>
+            <div class="h-4 w-24 bg-slate-700 rounded mb-2"></div>
+            <div class="h-3 w-32 bg-slate-700 rounded"></div>
+          </div>
+          <!-- Skeleton Card 2 -->
+          <div class="bg-slate-800 rounded-lg px-4 py-3 min-h-[120px] flex flex-col items-center justify-center border border-slate-700 animate-pulse">
+            <div class="w-12 h-12 bg-slate-700 rounded-full mb-3"></div>
+            <div class="h-4 w-24 bg-slate-700 rounded mb-2"></div>
+            <div class="h-3 w-32 bg-slate-700 rounded"></div>
+          </div>
+          <!-- Skeleton Card 3 -->
+          <div class="bg-slate-800 rounded-lg px-4 py-3 min-h-[120px] flex flex-col items-center justify-center border border-slate-700 animate-pulse">
+            <div class="w-12 h-12 bg-slate-700 rounded-full mb-3"></div>
+            <div class="h-4 w-24 bg-slate-700 rounded mb-2"></div>
+            <div class="h-3 w-32 bg-slate-700 rounded"></div>
+          </div>
+          <!-- Skeleton Card 4 -->
+          <div class="bg-slate-800 rounded-lg px-4 py-3 min-h-[120px] flex flex-col items-center justify-center border border-slate-700 animate-pulse">
+            <div class="w-12 h-12 bg-slate-700 rounded-full mb-3"></div>
+            <div class="h-4 w-24 bg-slate-700 rounded mb-2"></div>
+            <div class="h-3 w-32 bg-slate-700 rounded"></div>
+          </div>
+          <!-- Skeleton Card 5 -->
+          <div class="bg-slate-800 rounded-lg px-4 py-3 min-h-[120px] flex flex-col items-center justify-center border border-slate-700 animate-pulse">
+            <div class="w-12 h-12 bg-slate-700 rounded-full mb-3"></div>
+            <div class="h-4 w-24 bg-slate-700 rounded mb-2"></div>
+            <div class="h-3 w-32 bg-slate-700 rounded"></div>
+          </div>
+          <!-- Skeleton Card 6 (si appointments enabled) -->
+          <div 
+            v-if="hasAppointmentsEnabled"
+            class="bg-slate-800 rounded-lg px-4 py-3 min-h-[120px] flex flex-col items-center justify-center border border-slate-700 animate-pulse"
+          >
+            <div class="w-12 h-12 bg-slate-700 rounded-full mb-3"></div>
+            <div class="h-4 w-24 bg-slate-700 rounded mb-2"></div>
+            <div class="h-3 w-32 bg-slate-700 rounded"></div>
+          </div>
+        </div>
+        
         <div 
           v-else
           class="grid gap-4 md:gap-5 max-w-4xl mx-auto"
@@ -73,9 +156,9 @@
             @click="viewPublicProfile"
             class="bg-slate-800 rounded-lg px-4 py-3 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center justify-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 min-h-[120px]"
           >
-            <span class="text-3xl mb-1.5 block group-hover:scale-110 transition-transform duration-300">👀</span>
-            <h2 class="text-sm font-semibold text-white mb-0.5">Afficher mon Profil</h2>
-            <p class="text-xs text-slate-400">Voyez votre profil.</p>
+            <span class="text-3xl mb-1.5 block group-hover:scale-110 transition-transform duration-300">{{ isRestaurantProfile ? '🍽️' : '👀' }}</span>
+            <h2 class="text-sm font-semibold text-white mb-0.5">{{ isRestaurantProfile ? 'Menu du jour' : 'Afficher mon Profil' }}</h2>
+            <p class="text-xs text-slate-400">{{ isRestaurantProfile ? 'Consultez votre menu' : 'Voyez votre profil.' }}</p>
           </button>
           <button
             @click="goToOrders"
@@ -123,9 +206,67 @@
       </div> <!-- Fin du v-if individual -->
 
       <div v-else-if="user?.role === 'business_admin'">
-        <h1 class="text-4xl font-bold text-center mb-12">Espace Entreprise</h1>
-        <!-- ✅ Masquer le contenu jusqu'à ce que le chargement des commandes business soit terminé -->
-        <LoadingSpinner v-if="!isDashboardReady" :is-loading="!isDashboardReady" />
+        <div v-if="!isDashboardReady" class="h-12 w-80 max-w-full bg-slate-700 rounded animate-pulse mx-auto mb-12" />
+        <h1 v-else class="text-4xl font-bold text-center mb-12">Espace Entreprise</h1>
+        
+        <!-- Skeleton Screen pour les cartes du dashboard business_admin -->
+        <div
+          v-if="!isDashboardReady"
+          class="grid gap-4 md:gap-5 mb-16"
+          :class="hasBusinessOrder 
+            ? (hasAppointmentsEnabled ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 max-w-8xl mx-auto' : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 max-w-7xl mx-auto')
+            : (hasAppointmentsEnabled ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 max-w-7xl mx-auto' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-5 max-w-6xl mx-auto')"
+        >
+          <!-- Skeleton Card 1 (Tableau de bord si hasBusinessOrder) -->
+          <div 
+            v-if="hasBusinessOrder"
+            class="bg-slate-800 rounded-lg px-4 py-3 min-h-[120px] flex flex-col items-center justify-center border border-slate-700 animate-pulse"
+          >
+            <div class="w-12 h-12 bg-slate-700 rounded-full mb-3"></div>
+            <div class="h-4 w-24 bg-slate-700 rounded mb-2"></div>
+            <div class="h-3 w-32 bg-slate-700 rounded"></div>
+          </div>
+          <!-- Skeleton Card 2 -->
+          <div class="bg-slate-800 rounded-lg px-4 py-3 min-h-[120px] flex flex-col items-center justify-center border border-slate-700 animate-pulse">
+            <div class="w-12 h-12 bg-slate-700 rounded-full mb-3"></div>
+            <div class="h-4 w-24 bg-slate-700 rounded mb-2"></div>
+            <div class="h-3 w-32 bg-slate-700 rounded"></div>
+          </div>
+          <!-- Skeleton Card 3 -->
+          <div class="bg-slate-800 rounded-lg px-4 py-3 min-h-[120px] flex flex-col items-center justify-center border border-slate-700 animate-pulse">
+            <div class="w-12 h-12 bg-slate-700 rounded-full mb-3"></div>
+            <div class="h-4 w-24 bg-slate-700 rounded mb-2"></div>
+            <div class="h-3 w-32 bg-slate-700 rounded"></div>
+          </div>
+          <!-- Skeleton Card 4 -->
+          <div class="bg-slate-800 rounded-lg px-4 py-3 min-h-[120px] flex flex-col items-center justify-center border border-slate-700 animate-pulse">
+            <div class="w-12 h-12 bg-slate-700 rounded-full mb-3"></div>
+            <div class="h-4 w-24 bg-slate-700 rounded mb-2"></div>
+            <div class="h-3 w-32 bg-slate-700 rounded"></div>
+          </div>
+          <!-- Skeleton Card 5 -->
+          <div class="bg-slate-800 rounded-lg px-4 py-3 min-h-[120px] flex flex-col items-center justify-center border border-slate-700 animate-pulse">
+            <div class="w-12 h-12 bg-slate-700 rounded-full mb-3"></div>
+            <div class="h-4 w-24 bg-slate-700 rounded mb-2"></div>
+            <div class="h-3 w-32 bg-slate-700 rounded"></div>
+          </div>
+          <!-- Skeleton Card 6 (si appointments enabled) -->
+          <div 
+            v-if="hasAppointmentsEnabled"
+            class="bg-slate-800 rounded-lg px-4 py-3 min-h-[120px] flex flex-col items-center justify-center border border-slate-700 animate-pulse"
+          >
+            <div class="w-12 h-12 bg-slate-700 rounded-full mb-3"></div>
+            <div class="h-4 w-24 bg-slate-700 rounded mb-2"></div>
+            <div class="h-3 w-32 bg-slate-700 rounded"></div>
+          </div>
+          <!-- Skeleton Card 7 (Marketplace) -->
+          <div class="bg-slate-800 rounded-lg px-4 py-3 min-h-[120px] flex flex-col items-center justify-center border border-slate-700 animate-pulse">
+            <div class="w-12 h-12 bg-slate-700 rounded-full mb-3"></div>
+            <div class="h-4 w-24 bg-slate-700 rounded mb-2"></div>
+            <div class="h-3 w-32 bg-slate-700 rounded"></div>
+          </div>
+        </div>
+        
         <div
           v-else
           class="grid gap-4 md:gap-5 mb-16"
@@ -154,9 +295,9 @@
             @click="viewPublicProfile"
             class="bg-slate-800 rounded-lg px-4 py-3 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center justify-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 min-h-[120px]"
           >
-            <span class="text-3xl mb-1.5 block group-hover:scale-110 transition-transform duration-300">👀</span>
-            <h2 class="text-sm font-semibold text-white mb-0.5">Afficher mon Profil</h2>
-            <p class="text-xs text-slate-400">Voyez votre profil.</p>
+            <span class="text-3xl mb-1.5 block group-hover:scale-110 transition-transform duration-300">{{ isRestaurantProfile ? '🍽️' : '👀' }}</span>
+            <h2 class="text-sm font-semibold text-white mb-0.5">{{ isRestaurantProfile ? 'Menu du jour' : 'Afficher mon Profil' }}</h2>
+            <p class="text-xs text-slate-400">{{ isRestaurantProfile ? 'Consultez votre menu' : 'Voyez votre profil.' }}</p>
           </button>
           <button
             @click="goToOrders"
@@ -202,9 +343,59 @@
           </button>
         </div>
 
+        <!-- Skeleton Screen pour la section "Gérer le Personnel" -->
+        <div
+          v-if="!isDashboardReady && hasBusinessOrder"
+          id="employee-section"
+          class="max-w-6xl mx-auto p-4 sm:p-6 bg-slate-800/50 rounded-lg border border-slate-700 scroll-mt-24 animate-pulse"
+        >
+          <!-- Skeleton Titre -->
+          <div class="h-8 w-48 bg-slate-700 rounded mb-6"></div>
+          
+          <!-- Skeleton Sélecteur de commande -->
+          <div class="mb-6">
+            <div class="h-5 w-40 bg-slate-700 rounded mb-3"></div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div class="h-24 bg-slate-700/50 rounded-xl border border-slate-600"></div>
+              <div class="h-24 bg-slate-700/50 rounded-xl border border-slate-600"></div>
+            </div>
+          </div>
+          
+          <!-- Skeleton Liste des slots (3 éléments) -->
+          <div class="space-y-4">
+            <div class="bg-slate-700/30 rounded-lg border border-slate-600 p-4">
+              <div class="flex items-center justify-between">
+                <div class="flex flex-wrap items-center gap-2 sm:gap-3 flex-1">
+                  <div class="h-6 sm:h-8 w-20 sm:w-24 bg-slate-600/50 rounded-full"></div>
+                  <div class="h-5 sm:h-6 w-24 sm:w-32 bg-slate-600/50 rounded"></div>
+                  <div class="h-5 sm:h-6 w-16 sm:w-20 bg-slate-600/50 rounded-full"></div>
+                </div>
+              </div>
+            </div>
+            <div class="bg-slate-700/30 rounded-lg border border-slate-600 p-4">
+              <div class="flex items-center justify-between">
+                <div class="flex flex-wrap items-center gap-2 sm:gap-3 flex-1">
+                  <div class="h-6 sm:h-8 w-20 sm:w-24 bg-slate-600/50 rounded-full"></div>
+                  <div class="h-5 sm:h-6 w-24 sm:w-32 bg-slate-600/50 rounded"></div>
+                  <div class="h-5 sm:h-6 w-16 sm:w-20 bg-slate-600/50 rounded-full"></div>
+                </div>
+              </div>
+            </div>
+            <div class="bg-slate-700/30 rounded-lg border border-slate-600 p-4">
+              <div class="flex items-center justify-between">
+                <div class="flex flex-wrap items-center gap-2 sm:gap-3 flex-1">
+                  <div class="h-6 sm:h-8 w-20 sm:w-24 bg-slate-600/50 rounded-full"></div>
+                  <div class="h-5 sm:h-6 w-24 sm:w-32 bg-slate-600/50 rounded"></div>
+                  <div class="h-5 sm:h-6 w-16 sm:w-20 bg-slate-600/50 rounded-full"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
         <!-- ✅ Masquer la section "Tableau de bord" jusqu'à ce que le chargement soit terminé -->
         <div
-          v-if="isDashboardReady && hasBusinessOrder"
+          v-else-if="isDashboardReady && hasBusinessOrder"
           id="employee-section"
           class="max-w-6xl mx-auto p-4 sm:p-6 bg-slate-800/50 rounded-lg border border-slate-700 scroll-mt-24"
         >
@@ -635,10 +826,50 @@
       </div>
 
       <div v-else-if="user?.role === 'employee'">
-        <h1 class="text-4xl font-bold text-center mb-4">Bienvenue, {{ user.name }} !</h1>
+        <div v-if="!isDashboardReady" class="h-12 w-96 max-w-full bg-slate-700 rounded animate-pulse mx-auto mb-4" />
+        <h1 v-else class="text-4xl font-bold text-center mb-4">Bienvenue, {{ user.name }} !</h1>
 
-        <!-- ✅ Masquer le contenu jusqu'à ce que le chargement soit terminé -->
-        <LoadingSpinner v-if="!isDashboardReady" :is-loading="!isDashboardReady" />
+        <!-- Skeleton Screen pour les cartes employé -->
+        <div 
+          v-if="!isDashboardReady"
+          class="grid gap-4 md:gap-5 max-w-4xl mx-auto"
+          :class="hasAppointmentsEnabled ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 max-w-7xl' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-5 max-w-6xl'"
+        >
+          <!-- Skeleton Card 1 -->
+          <div class="bg-slate-800 rounded-lg px-4 py-3 min-h-[120px] flex flex-col items-center justify-center border border-slate-700 animate-pulse">
+            <div class="w-12 h-12 bg-slate-700 rounded-full mb-3"></div>
+            <div class="h-4 w-24 bg-slate-700 rounded mb-2"></div>
+            <div class="h-3 w-32 bg-slate-700 rounded"></div>
+          </div>
+          <!-- Skeleton Card 2 -->
+          <div class="bg-slate-800 rounded-lg px-4 py-3 min-h-[120px] flex flex-col items-center justify-center border border-slate-700 animate-pulse">
+            <div class="w-12 h-12 bg-slate-700 rounded-full mb-3"></div>
+            <div class="h-4 w-24 bg-slate-700 rounded mb-2"></div>
+            <div class="h-3 w-32 bg-slate-700 rounded"></div>
+          </div>
+          <!-- Skeleton Card 3 -->
+          <div class="bg-slate-800 rounded-lg px-4 py-3 min-h-[120px] flex flex-col items-center justify-center border border-slate-700 animate-pulse">
+            <div class="w-12 h-12 bg-slate-700 rounded-full mb-3"></div>
+            <div class="h-4 w-24 bg-slate-700 rounded mb-2"></div>
+            <div class="h-3 w-32 bg-slate-700 rounded"></div>
+          </div>
+          <!-- Skeleton Card 4 -->
+          <div class="bg-slate-800 rounded-lg px-4 py-3 min-h-[120px] flex flex-col items-center justify-center border border-slate-700 animate-pulse">
+            <div class="w-12 h-12 bg-slate-700 rounded-full mb-3"></div>
+            <div class="h-4 w-24 bg-slate-700 rounded mb-2"></div>
+            <div class="h-3 w-32 bg-slate-700 rounded"></div>
+          </div>
+          <!-- Skeleton Card 5 (si appointments enabled) -->
+          <div 
+            v-if="hasAppointmentsEnabled"
+            class="bg-slate-800 rounded-lg px-4 py-3 min-h-[120px] flex flex-col items-center justify-center border border-slate-700 animate-pulse"
+          >
+            <div class="w-12 h-12 bg-slate-700 rounded-full mb-3"></div>
+            <div class="h-4 w-24 bg-slate-700 rounded mb-2"></div>
+            <div class="h-3 w-32 bg-slate-700 rounded"></div>
+          </div>
+        </div>
+        
         <template v-else>
           <!-- ✅ NOUVEAU: Badge avec le total de toutes les cartes assignées -->
           <div v-if="employeeOrders.length > 0" class="text-center mb-12">
@@ -726,9 +957,9 @@
               @click="viewPublicProfile"
               class="bg-slate-800 rounded-lg px-4 py-3 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center justify-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 min-h-[120px]"
             >
-              <span class="text-3xl mb-1.5 block group-hover:scale-110 transition-transform duration-300">👀</span>
-              <h2 class="text-sm font-semibold text-white mb-0.5">Afficher mon Profil</h2>
-              <p class="text-xs text-slate-400">Voyez votre profil.</p>
+              <span class="text-3xl mb-1.5 block group-hover:scale-110 transition-transform duration-300">{{ isRestaurantProfile ? '🍽️' : '👀' }}</span>
+              <h2 class="text-sm font-semibold text-white mb-0.5">{{ isRestaurantProfile ? 'Menu du jour' : 'Afficher mon Profil' }}</h2>
+              <p class="text-xs text-slate-400">{{ isRestaurantProfile ? 'Consultez votre menu' : 'Voyez votre profil.' }}</p>
             </button>
             <!-- Carte "Mes Rendez-vous" pour les employés -->
             <button
@@ -876,6 +1107,7 @@
   import { ref, watch, reactive, onMounted, onUnmounted, nextTick, computed } from "vue";
   import { useRouter, useRoute } from "vue-router";
   import { useAuth } from "@/composables/useAuth";
+  import { useLoadingStore } from "@/stores/loading";
   import apiClient from "@/api";
   import ProfilePictureModal from "@/components/ProfilePictureModal.vue";
   import LoadingSpinner from "@/components/layout/LoadingSpinner.vue";
@@ -885,7 +1117,12 @@
 
   const router = useRouter();
   const route = useRoute();
+  const loadingStore = useLoadingStore();
   const { user, logout, fetchUser, updateUserAvatar } = useAuth();
+
+  // Portfolio pour vérifier le type de profil
+  const userPortfolio = ref(null);
+  const isRestaurantProfile = computed(() => userPortfolio.value?.profile_type === 'restaurant');
 
   const isCropperOpen = ref(false);
   const selectedImageUrl = ref(null);
@@ -899,7 +1136,10 @@
   const isEmployeeError = ref(false);
   const isLoadingEmployees = ref(false);
   const isRemovingEmployee = ref(null);
-  const hasBusinessOrder = ref(false);
+  // ✅ OPTIMISATION: Initialiser à true pour business_admin pour affichage instantané (affichage optimiste)
+  // La vérification en arrière-plan mettra à jour cette valeur si nécessaire
+  // Pour les autres rôles, on garde false par défaut
+  const hasBusinessOrder = ref(user.value?.role === 'business_admin' ? true : false);
   const isLoadingBusinessOrders = ref(false); // ✅ Variable d'état pour le chargement des commandes business
 
   // --- Variables pour le système de slots ---
@@ -924,7 +1164,9 @@
   const isNavigatingToSettings = ref(false);
 
   // --- Variables pour les rendez-vous ---
-  const hasAppointmentsEnabled = ref(false);
+  // ✅ OPTIMISATION: Initialiser à true pour affichage instantané (affichage optimiste)
+  // La vérification en arrière-plan mettra à jour cette valeur si nécessaire
+  const hasAppointmentsEnabled = ref(true);
   const hasAppointments = ref(false);
   const appointmentsCount = ref(0);
   const isCheckingAppointments = ref(false); // Pour éviter les appels multiples simultanés
@@ -982,8 +1224,28 @@
   // ✅ OPTIMISATION: Initialisation synchrone de l'avatar pour affichage immédiat (0ms de délai)
   // Utiliser user.value?.avatar_url directement depuis le composable useAuth
   // Cela garantit que l'avatar s'affiche dès le premier rendu, sans attendre fetchUser()
-  const initialAvatarUrl = user.value?.avatar_url || null;
-  const userAvatarUrl = ref(initialAvatarUrl ? getUserAvatarUrl(initialAvatarUrl) : null);
+  // ✅ CRITIQUE: Initialiser avec la valeur actuelle de user.value si disponible
+  const getInitialAvatarUrl = () => {
+    // Pour les employés, vérifier d'abord employeeOrders
+    if (user.value?.role === 'employee' && employeeOrders.value.length > 0) {
+      const employeeOrder = employeeOrders.value[0];
+      if (employeeOrder?.employee_avatar_url) {
+        return getUserAvatarUrl(employeeOrder.employee_avatar_url);
+      }
+    }
+    // Pour les autres rôles, utiliser l'avatar utilisateur
+    if (user.value?.avatar_url) {
+      return getUserAvatarUrl(user.value.avatar_url);
+    }
+    return null;
+  };
+  const userAvatarUrl = ref(getInitialAvatarUrl());
+  const avatarImageLoaded = ref(false);
+
+  // Réinitialiser le skeleton photo quand l'URL change (nouvelle image à charger)
+  watch(userAvatarUrl, (url) => {
+    avatarImageLoaded.value = !url;
+  }, { immediate: true });
 
   // ✅ Computed réactif pour mettre à jour l'avatar quand user.value.avatar_url change
   // Pour les employés, utiliser employee_avatar_url de leur commande
@@ -1031,12 +1293,26 @@
   watch(
     userAvatarUrlComputed,
     (newUrl) => {
-      if (newUrl) {
+      if (newUrl && newUrl !== userAvatarUrl.value) {
         userAvatarUrl.value = newUrl;
+        console.log("[Dashboard] userAvatarUrl mis à jour depuis computed:", newUrl);
       }
     },
     { immediate: true },
   );
+  
+  // ✅ CRITIQUE: Initialiser l'avatar immédiatement si user.value est déjà disponible
+  // Cela garantit que l'avatar s'affiche dès le premier rendu, même avant les watchers
+  // Utiliser nextTick pour s'assurer que le DOM est prêt
+  nextTick(() => {
+    if (user.value && !userAvatarUrl.value) {
+      const initialUrl = getInitialAvatarUrl();
+      if (initialUrl) {
+        userAvatarUrl.value = initialUrl;
+        console.log("[Dashboard] Avatar initialisé immédiatement (nextTick):", initialUrl);
+      }
+    }
+  });
 
   // ✅ CORRECTION : Watcher pour forcer la mise à jour de l'avatar quand user change
   // Cela garantit que l'avatar s'affiche immédiatement après une connexion
@@ -1107,8 +1383,8 @@
   // ✅ CORRECTION : Gérer les erreurs de chargement d'avatar
   const handleAvatarError = (event) => {
     console.error("Erreur de chargement de l'avatar:", event.target.src);
-    // Ne pas afficher l'image en cas d'erreur, le SVG par défaut sera affiché
     event.target.style.display = "none";
+    avatarImageLoaded.value = true;
   };
 
   // --- Function to check if user has business orders and load them ---
@@ -1643,6 +1919,17 @@
   };
   
   onMounted(async () => {
+    loadingStore.setDashboardViewMounted(true);
+    // ✅ CRITIQUE: Initialiser l'avatar immédiatement au montage si disponible
+    // Cela garantit que l'avatar s'affiche dès le premier rendu
+    if (user.value && !userAvatarUrl.value) {
+      const initialUrl = getInitialAvatarUrl();
+      if (initialUrl) {
+        userAvatarUrl.value = initialUrl;
+        console.log("[Dashboard] Avatar initialisé dans onMounted:", initialUrl);
+      }
+    }
+    
     console.log("[Dashboard] onMounted - user.value:", {
       hasUser: !!user.value,
       hasAvatar: !!user.value?.avatar_url,
@@ -1653,103 +1940,122 @@
     // Écouter l'événement de mise à jour de l'avatar employé
     window.addEventListener('employee-avatar-updated', handleEmployeeAvatarUpdate);
 
-    // Charger les commandes business si l'utilisateur est un business_admin
+    // ✅ OPTIMISATION: Afficher le dashboard immédiatement avec un état de chargement
+    // Les données se chargeront en arrière-plan
+    isDashboardReady.value = true;
+
+    // Charger le portfolio pour vérifier le type de profil
+    if (user.value?.role === 'individual') {
+      loadUserPortfolio();
+    }
+
+    // ✅ OPTIMISATION: Initialiser hasBusinessOrder à true pour business_admin pour affichage instantané
+    // La vérification en arrière-plan mettra à jour cette valeur si nécessaire
+    if (user.value?.role === "business_admin") {
+      hasBusinessOrder.value = true;
+    }
+
+    // Charger les données en arrière-plan
     if (user.value?.role === "business_admin") {
       // ✅ Activer le spinner une seule fois pour toute la séquence
       isLoadingBusinessOrders.value = true;
       
-      try {
-        // Vérifier les settings EN PREMIER (sans gérer le spinner, on le fait manuellement)
-        isCheckingAppointments.value = true;
-        await checkAppointmentsEnabled();
-        
-        // Puis charger les commandes business (sans gérer le spinner, on le fait ici)
-        await checkBusinessOrders(false); // false = ne pas gérer le spinner
-        
-        // ✅ NOUVEAU: Charger les compteurs AVANT d'afficher le dashboard
-        console.log('[Dashboard] 📊 Chargement des compteurs pour business_admin...');
-        await Promise.all([
-          loadContactsCount(),
-          loadAppointmentsCount()
-        ]);
-        console.log('[Dashboard] ✅ Compteurs chargés:', {
-          contactsCount: newContactsCount.value,
-          appointmentsCount: appointmentsCount.value,
-        });
-      } finally {
-        // Désactiver le spinner à la fin de toute la séquence
-        isLoadingBusinessOrders.value = false;
-        isCheckingAppointments.value = false;
-        
-        // ✅ IMPORTANT: Marquer le dashboard comme prêt APRÈS tout le chargement
-        isDashboardReady.value = true;
-        
-        console.log('[Dashboard] ✅ Chargement terminé pour business_admin:', {
-          isLoadingBusinessOrders: isLoadingBusinessOrders.value,
-          hasAppointmentsEnabled: hasAppointmentsEnabled.value,
-          hasBusinessOrder: hasBusinessOrder.value,
-          isDashboardReady: isDashboardReady.value,
-          newContactsCount: newContactsCount.value,
-          appointmentsCount: appointmentsCount.value,
-        });
-      }
+      // Charger les données en arrière-plan (ne pas bloquer l'affichage)
+      (async () => {
+        try {
+          // Vérifier les settings EN PREMIER (sans gérer le spinner, on le fait manuellement)
+          isCheckingAppointments.value = true;
+          await checkAppointmentsEnabled();
+          
+          // Puis charger les commandes business (sans gérer le spinner, on le fait ici)
+          await checkBusinessOrders(false); // false = ne pas gérer le spinner
+          
+          // ✅ NOUVEAU: Charger les compteurs AVANT d'afficher le dashboard
+          console.log('[Dashboard] 📊 Chargement des compteurs pour business_admin...');
+          await Promise.all([
+            loadContactsCount(),
+            loadAppointmentsCount()
+          ]);
+          console.log('[Dashboard] ✅ Compteurs chargés:', {
+            contactsCount: newContactsCount.value,
+            appointmentsCount: appointmentsCount.value,
+          });
+        } finally {
+          // Désactiver le spinner à la fin de toute la séquence
+          isLoadingBusinessOrders.value = false;
+          isCheckingAppointments.value = false;
+          
+          console.log('[Dashboard] ✅ Chargement terminé pour business_admin:', {
+            isLoadingBusinessOrders: isLoadingBusinessOrders.value,
+            hasAppointmentsEnabled: hasAppointmentsEnabled.value,
+            hasBusinessOrder: hasBusinessOrder.value,
+            isDashboardReady: isDashboardReady.value,
+            newContactsCount: newContactsCount.value,
+            appointmentsCount: appointmentsCount.value,
+          });
+        }
+      })();
     } else if (user.value?.role === "employee") {
       // Pour les employés, charger les commandes et vérifier les settings
       isLoadingEmployeeOrder.value = true;
       isCheckingAppointments.value = true;
       
-      try {
-        await loadEmployeeOrder();
-        await checkAppointmentsEnabled();
-        
-        // Charger les compteurs pour les employés
-        console.log('[Dashboard] 📊 Chargement des compteurs pour employee...');
-        await Promise.all([
-          loadContactsCount(),
-          loadAppointmentsCount()
-        ]);
-        console.log('[Dashboard] ✅ Compteurs chargés pour employee:', {
-          contactsCount: newContactsCount.value,
-          appointmentsCount: appointmentsCount.value,
-        });
-      } finally {
-        isLoadingEmployeeOrder.value = false;
-        isCheckingAppointments.value = false;
-        isDashboardReady.value = true;
-        
-        console.log('[Dashboard] ✅ Chargement terminé pour employee:', {
-          hasAppointmentsEnabled: hasAppointmentsEnabled.value,
-          isDashboardReady: isDashboardReady.value,
-        });
-      }
+      // Charger les données en arrière-plan
+      (async () => {
+        try {
+          await loadEmployeeOrder();
+          await checkAppointmentsEnabled();
+          
+          // Charger les compteurs pour les employés
+          console.log('[Dashboard] 📊 Chargement des compteurs pour employee...');
+          await Promise.all([
+            loadContactsCount(),
+            loadAppointmentsCount()
+          ]);
+          console.log('[Dashboard] ✅ Compteurs chargés pour employee:', {
+            contactsCount: newContactsCount.value,
+            appointmentsCount: appointmentsCount.value,
+          });
+        } finally {
+          isLoadingEmployeeOrder.value = false;
+          isCheckingAppointments.value = false;
+          
+          console.log('[Dashboard] ✅ Chargement terminé pour employee:', {
+            hasAppointmentsEnabled: hasAppointmentsEnabled.value,
+            isDashboardReady: isDashboardReady.value,
+          });
+        }
+      })();
     } else {
       // Pour les autres rôles (individual), vérifier directement les settings
       isLoadingDashboard.value = true;
       isCheckingAppointments.value = true;
       
-      try {
-        await checkAppointmentsEnabled();
-        
-        // Charger les compteurs pour les utilisateurs individuels
-        console.log('[Dashboard] 📊 Chargement des compteurs pour individual...');
-        await Promise.all([
-          loadContactsCount(),
-          loadAppointmentsCount()
-        ]);
-        console.log('[Dashboard] ✅ Compteurs chargés pour individual:', {
-          contactsCount: newContactsCount.value,
-          appointmentsCount: appointmentsCount.value,
-        });
-      } finally {
-        isLoadingDashboard.value = false;
-        isCheckingAppointments.value = false;
-        isDashboardReady.value = true;
-        
-        console.log('[Dashboard] ✅ Chargement terminé pour individual:', {
-          hasAppointmentsEnabled: hasAppointmentsEnabled.value,
-          isDashboardReady: isDashboardReady.value,
-        });
-      }
+      // Charger les données en arrière-plan
+      (async () => {
+        try {
+          await checkAppointmentsEnabled();
+          
+          // Charger les compteurs pour les utilisateurs individuels
+          console.log('[Dashboard] 📊 Chargement des compteurs pour individual...');
+          await Promise.all([
+            loadContactsCount(),
+            loadAppointmentsCount()
+          ]);
+          console.log('[Dashboard] ✅ Compteurs chargés pour individual:', {
+            contactsCount: newContactsCount.value,
+            appointmentsCount: appointmentsCount.value,
+          });
+        } finally {
+          isLoadingDashboard.value = false;
+          isCheckingAppointments.value = false;
+          
+          console.log('[Dashboard] ✅ Chargement terminé pour individual:', {
+            hasAppointmentsEnabled: hasAppointmentsEnabled.value,
+            isDashboardReady: isDashboardReady.value,
+          });
+        }
+      })();
     }
 
     // Créer un observer pour détecter quand la section "Gérer le Personnel" devient visible
@@ -1849,9 +2155,25 @@
 
   // --- Fonctions pour le modal de gestion d'employé (slots) ---
   const openEmployeeModal = async (slot) => {
-    // ✅ Charger les données complètes de la commande pour obtenir order_employees.card_quantity
+    // Afficher immédiatement le modal avec les données du slot disponibles
     let actualCardQuantity = slot.cards_quantity || 0;
+    
+    // Adapter le slot pour qu'il ressemble à un employé pour la modal
+    selectedEmployee.value = {
+      id: slot.employee_id,
+      name: slot.employee_name,
+      email: slot.employee_email,
+      username: slot.employee_username, // Ajouter le username pour le lien du profil
+      total_cards: actualCardQuantity, // Utiliser la valeur du slot pour l'affichage immédiat
+      email_verified_at: slot.is_configured ? new Date() : null, // Simuler la vérification
+      is_configured: slot.is_configured,
+      slot_number: slot.slot_number,
+    };
+    showEmployeeModal.value = true;
+    employeeModalFeedback.value = "";
+    employeeModalError.value = false;
 
+    // Charger les données complètes en arrière-plan pour obtenir le vrai nombre de cartes
     try {
       if (selectedOrderId.value && slot.employee_id) {
         const timestamp = new Date().getTime();
@@ -1863,28 +2185,17 @@
           const orderEmployee = order.order_employees.find((oe) => oe.employee_id === slot.employee_id);
           if (orderEmployee && orderEmployee.card_quantity !== undefined) {
             actualCardQuantity = orderEmployee.card_quantity;
+            // Mettre à jour le nombre de cartes dans le modal
+            if (selectedEmployee.value) {
+              selectedEmployee.value.total_cards = actualCardQuantity;
+            }
           }
         }
       }
     } catch (error) {
       console.error("Erreur lors du chargement des données order_employees:", error);
-      // En cas d'erreur, utiliser la valeur du slot
+      // En cas d'erreur, on garde les données du slot déjà affichées
     }
-
-    // Adapter le slot pour qu'il ressemble à un employé pour la modal
-    selectedEmployee.value = {
-      id: slot.employee_id,
-      name: slot.employee_name,
-      email: slot.employee_email,
-      username: slot.employee_username, // Ajouter le username pour le lien du profil
-      total_cards: actualCardQuantity, // ✅ Utiliser le nombre de cartes depuis order_employees
-      email_verified_at: slot.is_configured ? new Date() : null, // Simuler la vérification
-      is_configured: slot.is_configured,
-      slot_number: slot.slot_number,
-    };
-    showEmployeeModal.value = true;
-    employeeModalFeedback.value = "";
-    employeeModalError.value = false;
   };
 
   const closeEmployeeModal = () => {
@@ -2162,8 +2473,13 @@
     router.push({ name: "Settings" });
   };
   const viewPublicProfile = () => {
-    // Rediriger vers la page de sélection de profil
-    router.push({ name: "ProfileSelection" });
+    // Si c'est un profil restaurant, rediriger vers le menu
+    if (isRestaurantProfile.value) {
+      router.push({ name: "RestaurantMenu" });
+    } else {
+      // Sinon, rediriger vers la page de sélection de profil
+      router.push({ name: "ProfileSelection" });
+    }
   };
   const goToOrders = () => {
     router.push({ name: "Orders" });
@@ -2299,11 +2615,11 @@
   let sectionObserver = null;
 
   onUnmounted(() => {
+    loadingStore.setDashboardViewMounted(false);
     // Nettoyer l'observer quand le composant est détruit
     if (sectionObserver) {
       sectionObserver.disconnect();
     }
-    
     // Nettoyer l'événement de mise à jour de l'avatar employé
     window.removeEventListener('employee-avatar-updated', handleEmployeeAvatarUpdate);
   });

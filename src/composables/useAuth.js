@@ -22,16 +22,17 @@ export function useAuth() {
   const router = useRouter();
 
   const openAuthModal = async () => {
+    // Afficher le modal immédiatement pour une meilleure réactivité
+    isAuthModalOpen.value = true;
+    
+    // Charger le cookie CSRF en arrière-plan
     try {
       await apiClient.get("/sanctum/csrf-cookie");
-      isAuthModalOpen.value = true;
     } catch (error) {
       console.error("Impossible d'initialiser la session CSRF:", error);
       console.error("Détails de l'erreur:", error.response?.data || error.message);
-      alert(
-        "Erreur de connexion au serveur. Vérifiez votre connexion réseau.\n\nDétails: " +
-          (error.message || "Erreur inconnue"),
-      );
+      // Ne pas fermer le modal, juste logger l'erreur
+      // L'utilisateur pourra toujours essayer de se connecter
     }
   };
 
@@ -212,6 +213,14 @@ export function useAuth() {
         await _fetchUser();
         if (user.value) {
           console.log("Connexion réussie (2FA désactivée), utilisateur chargé, redirection vers Dashboard.");
+          // ✅ Synchroniser les préférences utilisateur après connexion
+          try {
+            const { usePreferencesStore } = await import("@/stores/preferences");
+            const preferencesStore = usePreferencesStore();
+            preferencesStore.syncWithServer();
+          } catch (error) {
+            console.warn("Erreur lors de la synchronisation des préférences:", error);
+          }
           closeAuthModal();
           router.push({ name: "Dashboard" });
         } else {
@@ -227,6 +236,14 @@ export function useAuth() {
         await _fetchUser();
         if (user.value) {
           console.log("Connexion réussie, utilisateur chargé, redirection vers Dashboard.");
+          // ✅ Synchroniser les préférences utilisateur après connexion
+          try {
+            const { usePreferencesStore } = await import("@/stores/preferences");
+            const preferencesStore = usePreferencesStore();
+            preferencesStore.syncWithServer();
+          } catch (error) {
+            console.warn("Erreur lors de la synchronisation des préférences:", error);
+          }
           closeAuthModal();
           router.push({ name: "Dashboard" });
         } else {
@@ -309,6 +326,14 @@ export function useAuth() {
           hasAvatar: !!user.value.avatar_url,
           avatarUrl: user.value.avatar_url,
         });
+        // ✅ Synchroniser les préférences utilisateur après vérification
+        try {
+          const { usePreferencesStore } = await import("@/stores/preferences");
+          const preferencesStore = usePreferencesStore();
+          preferencesStore.syncWithServer();
+        } catch (error) {
+          console.warn("Erreur lors de la synchronisation des préférences:", error);
+        }
         router.push({ name: "Dashboard" });
       } else {
         throw new Error("Données utilisateur manquantes après vérification.");
@@ -388,8 +413,17 @@ export function useAuth() {
         }
       });
 
-      // Nettoyer le localStorage si nécessaire
-      localStorage.clear();
+      // ✅ Nettoyer les préférences utilisateur (avec option de garder les préférences génériques)
+      try {
+        const { usePreferencesStore } = await import("@/stores/preferences");
+        const preferencesStore = usePreferencesStore();
+        preferencesStore.clearOnLogout(true); // Garder le thème et la langue pour la prochaine visite
+      } catch (error) {
+        console.warn("Erreur lors du nettoyage des préférences:", error);
+      }
+
+      // Nettoyer le localStorage si nécessaire (sauf les préférences génériques)
+      // localStorage.clear(); // ❌ Ne plus tout nettoyer, les préférences sont gérées par clearOnLogout
 
       // Supprimer l'en-tête CSRF
       delete apiClient.defaults.headers.common["X-XSRF-TOKEN"];

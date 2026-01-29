@@ -7,6 +7,35 @@
 
     <RouterView />
 
+    <!-- Overlay skeleton Dashboard : évite le "menu bleu" vide pendant le lazy-load du chunk -->
+    <div
+      v-if="showDashboardChunkSkeleton"
+      class="fixed inset-0 z-50 min-h-screen bg-slate-900 text-white overflow-y-auto"
+      aria-hidden="true"
+    >
+      <div class="w-full h-64 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center">
+        <div class="text-center">
+          <div class="w-40 h-40 mx-auto rounded-full border-4 border-slate-700 bg-slate-700 animate-pulse" />
+          <div class="mt-4 h-9 w-56 bg-slate-700 rounded animate-pulse mx-auto" />
+          <div class="mt-2 h-6 w-36 bg-slate-700 rounded animate-pulse mx-auto" />
+        </div>
+      </div>
+      <div class="container mx-auto px-4 py-12 max-w-4xl">
+        <div class="h-10 w-72 bg-slate-700 rounded animate-pulse mx-auto mb-12" />
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-5 max-w-4xl mx-auto">
+          <div
+            v-for="i in 6"
+            :key="i"
+            class="bg-slate-800 rounded-lg px-4 py-3 min-h-[120px] flex flex-col items-center justify-center border border-slate-700 animate-pulse"
+          >
+            <div class="w-12 h-12 bg-slate-700 rounded-full mb-3" />
+            <div class="h-4 w-24 bg-slate-700 rounded mb-2" />
+            <div class="h-3 w-32 bg-slate-700 rounded" />
+          </div>
+        </div>
+      </div>
+    </div>
+
     <TheFooter v-if="shouldShowFooter" />
 
     <AuthModal />
@@ -37,6 +66,11 @@
   const isDashboardRoute = computed(() => {
     return route.name === "Dashboard" || route.name === "CompanyPublic" || route.name === "FinalizeRegistration" || route.name === "SelectAccount" || route.name === "PaymentProcessing" || route.name === "PaymentClose";
   });
+
+  // Overlay skeleton pendant le lazy-load du Dashboard (évite le "menu bleu" vide)
+  const showDashboardChunkSkeleton = computed(
+    () => route.name === "Dashboard" && !loadingStore.dashboardViewMounted
+  );
 
   // Vérifie si on est sur une route utilisateur connecté où le footer doit être caché
   const isAuthenticatedUserRoute = computed(() => {
@@ -125,6 +159,10 @@
         // Réinitialiser quand on quitte une page avec loader
         loadingStore.setHomePageLoading(false);
         isPageLoading.value = false;
+      }
+      // Réinitialiser pour l’overlay skeleton Dashboard (lazy-load)
+      if (newRouteName === "Dashboard") {
+        loadingStore.setDashboardViewMounted(false);
       }
     }
   );

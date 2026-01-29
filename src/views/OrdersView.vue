@@ -36,10 +36,84 @@
         </button>
       </div>
 
-      <!-- État de chargement -->
-      <div v-if="isLoading" class="text-center text-slate-400 py-10">
-        <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-sky-500"></div>
-        <p class="mt-4">Chargement...</p>
+      <!-- Skeleton Screen pour la liste des commandes -->
+      <div v-if="isLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Skeleton Card 1 -->
+        <div class="bg-slate-800 rounded-xl p-6 border border-slate-700 animate-pulse">
+          <div class="flex justify-between items-start mb-4">
+            <div class="space-y-2">
+              <div class="h-4 w-20 bg-slate-700 rounded"></div>
+              <div class="h-6 w-32 bg-slate-700 rounded"></div>
+            </div>
+            <div class="h-6 w-24 bg-slate-700 rounded-full"></div>
+          </div>
+          <div class="space-y-3 mb-4">
+            <div class="h-4 w-full bg-slate-700 rounded"></div>
+            <div class="h-4 w-3/4 bg-slate-700 rounded"></div>
+            <div class="h-4 w-1/2 bg-slate-700 rounded"></div>
+          </div>
+          <div class="flex gap-2">
+            <div class="h-10 flex-1 bg-slate-700 rounded"></div>
+            <div class="h-10 flex-1 bg-slate-700 rounded"></div>
+          </div>
+        </div>
+        <!-- Skeleton Card 2 -->
+        <div class="bg-slate-800 rounded-xl p-6 border border-slate-700 animate-pulse">
+          <div class="flex justify-between items-start mb-4">
+            <div class="space-y-2">
+              <div class="h-4 w-20 bg-slate-700 rounded"></div>
+              <div class="h-6 w-32 bg-slate-700 rounded"></div>
+            </div>
+            <div class="h-6 w-24 bg-slate-700 rounded-full"></div>
+          </div>
+          <div class="space-y-3 mb-4">
+            <div class="h-4 w-full bg-slate-700 rounded"></div>
+            <div class="h-4 w-3/4 bg-slate-700 rounded"></div>
+            <div class="h-4 w-1/2 bg-slate-700 rounded"></div>
+          </div>
+          <div class="flex gap-2">
+            <div class="h-10 flex-1 bg-slate-700 rounded"></div>
+            <div class="h-10 flex-1 bg-slate-700 rounded"></div>
+          </div>
+        </div>
+        <!-- Skeleton Card 3 -->
+        <div class="bg-slate-800 rounded-xl p-6 border border-slate-700 animate-pulse">
+          <div class="flex justify-between items-start mb-4">
+            <div class="space-y-2">
+              <div class="h-4 w-20 bg-slate-700 rounded"></div>
+              <div class="h-6 w-32 bg-slate-700 rounded"></div>
+            </div>
+            <div class="h-6 w-24 bg-slate-700 rounded-full"></div>
+          </div>
+          <div class="space-y-3 mb-4">
+            <div class="h-4 w-full bg-slate-700 rounded"></div>
+            <div class="h-4 w-3/4 bg-slate-700 rounded"></div>
+            <div class="h-4 w-1/2 bg-slate-700 rounded"></div>
+          </div>
+          <div class="flex gap-2">
+            <div class="h-10 flex-1 bg-slate-700 rounded"></div>
+            <div class="h-10 flex-1 bg-slate-700 rounded"></div>
+          </div>
+        </div>
+        <!-- Skeleton Card 4 -->
+        <div class="bg-slate-800 rounded-xl p-6 border border-slate-700 animate-pulse">
+          <div class="flex justify-between items-start mb-4">
+            <div class="space-y-2">
+              <div class="h-4 w-20 bg-slate-700 rounded"></div>
+              <div class="h-6 w-32 bg-slate-700 rounded"></div>
+            </div>
+            <div class="h-6 w-24 bg-slate-700 rounded-full"></div>
+          </div>
+          <div class="space-y-3 mb-4">
+            <div class="h-4 w-full bg-slate-700 rounded"></div>
+            <div class="h-4 w-3/4 bg-slate-700 rounded"></div>
+            <div class="h-4 w-1/2 bg-slate-700 rounded"></div>
+          </div>
+          <div class="flex gap-2">
+            <div class="h-10 flex-1 bg-slate-700 rounded"></div>
+            <div class="h-10 flex-1 bg-slate-700 rounded"></div>
+          </div>
+        </div>
       </div>
 
       <!-- Erreur -->
@@ -1424,13 +1498,59 @@
     selectedOrder.value = order;
     additionalCardsQuantity.value = 1;
     addCardsError.value = "";
-    showAddCardsModal.value = true;
-
+    
     // Vérifier si c'est une commande business
     isBusinessOrder.value = order.order_type === 'business' || order.order_type === 'entreprise';
     
+    // Afficher immédiatement le modal avec les données disponibles de l'ordre
+    if (isBusinessOrder.value && order.order_employees && Array.isArray(order.order_employees)) {
+      // Utiliser les données déjà disponibles dans l'ordre
+      let allEmployees = order.order_employees;
+      
+      // Séparer le business admin des autres employés
+      const adminEmployee = allEmployees.find(emp => {
+        const empId = emp.employee_id || emp.id;
+        const isSameUser = empId === user.value.id;
+        const isBusinessAdmin = emp.employee && emp.employee.role === 'business_admin';
+        return isSameUser || (isSameUser && isBusinessAdmin);
+      });
+      
+      const otherEmployees = allEmployees.filter(emp => {
+        const empId = emp.employee_id || emp.id;
+        const isNotAdmin = empId !== user.value.id;
+        const isNotBusinessAdminRole = !emp.employee || emp.employee.role !== 'business_admin';
+        return isNotAdmin && isNotBusinessAdminRole;
+      });
+      
+      businessAdminInOrder.value = !!adminEmployee;
+      if (adminEmployee) {
+        businessAdminName.value = adminEmployee.employee_name || adminEmployee.employee?.name || user.value.name || "Vous";
+        businessAdminCurrentCards.value = adminEmployee.card_quantity || 0;
+      }
+      
+      orderEmployees.value = otherEmployees.map(emp => ({
+        id: emp.employee_id || emp.id,
+        name: emp.employee_name || emp.employee?.name || 'Employé',
+        current_cards: emp.card_quantity || 0,
+        additional_cards: 0
+      }));
+      
+      // Initialiser la distribution avec les données disponibles
+      businessDistribution.value = {
+        admin: 0,
+        employees: {},
+      };
+      otherEmployees.forEach(emp => {
+        const empId = emp.employee_id || emp.id;
+        businessDistribution.value.employees[empId] = 0;
+      });
+    }
+    
+    // Afficher le modal immédiatement
+    showAddCardsModal.value = true;
+    
+    // Charger les données complètes en arrière-plan pour les commandes business
     if (isBusinessOrder.value) {
-      // Charger les employés de la commande
       try {
         const response = await apiClient.get(`/api/orders/${order.id}`);
         const orderData = response.data;

@@ -22,8 +22,132 @@
 
       <h1 class="text-4xl font-bold mb-8 text-center">Choisissez le profil à afficher</h1>
 
-      <!-- État de chargement -->
-      <LoadingSpinner v-if="isLoading" :is-loading="isLoading" />
+      <!-- Skeleton Screen pour la liste des profils -->
+      <div v-if="isLoading" class="max-w-4xl mx-auto">
+        <div class="h-5 w-80 bg-slate-700 rounded mx-auto mb-8 animate-pulse"></div>
+        <div class="grid grid-cols-1 gap-6">
+          <!-- Skeleton Card 1 -->
+          <div class="bg-slate-800 rounded-xl p-4 sm:p-6 border border-slate-700 animate-pulse">
+            <div class="flex items-start gap-3 sm:gap-4">
+              <!-- Skeleton Avatar -->
+              <div class="flex-shrink-0">
+                <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-slate-700 border-4 border-slate-600"></div>
+              </div>
+              <!-- Skeleton Informations -->
+              <div class="flex-1 min-w-0">
+                <div class="flex items-start justify-between mb-3 gap-2">
+                  <div class="flex-1 min-w-0 space-y-2">
+                    <div class="h-3 w-24 bg-slate-700 rounded"></div>
+                    <div class="h-5 w-40 bg-slate-700 rounded"></div>
+                    <div class="h-4 w-32 bg-slate-700 rounded"></div>
+                  </div>
+                  <div class="flex flex-col items-end gap-2">
+                    <div class="h-6 w-20 bg-slate-700 rounded-full"></div>
+                  </div>
+                </div>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                  <div class="h-4 w-24 bg-slate-700 rounded"></div>
+                  <div class="h-4 w-32 bg-slate-700 rounded"></div>
+                </div>
+              </div>
+              <!-- Skeleton Icône -->
+              <div class="hidden sm:flex flex-shrink-0 self-center">
+                <div class="w-6 h-6 bg-slate-700 rounded"></div>
+              </div>
+            </div>
+          </div>
+          <!-- Skeleton Card 2 -->
+          <div class="bg-slate-800 rounded-xl p-4 sm:p-6 border border-slate-700 animate-pulse">
+            <div class="flex items-start gap-3 sm:gap-4">
+              <!-- Skeleton Avatar -->
+              <div class="flex-shrink-0">
+                <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-slate-700 border-4 border-slate-600"></div>
+              </div>
+              <!-- Skeleton Informations -->
+              <div class="flex-1 min-w-0">
+                <div class="flex items-start justify-between mb-3 gap-2">
+                  <div class="flex-1 min-w-0 space-y-2">
+                    <div class="h-3 w-24 bg-slate-700 rounded"></div>
+                    <div class="h-5 w-40 bg-slate-700 rounded"></div>
+                    <div class="h-4 w-32 bg-slate-700 rounded"></div>
+                  </div>
+                  <div class="flex flex-col items-end gap-2">
+                    <div class="h-6 w-20 bg-slate-700 rounded-full"></div>
+                  </div>
+                </div>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                  <div class="h-4 w-24 bg-slate-700 rounded"></div>
+                  <div class="h-4 w-32 bg-slate-700 rounded"></div>
+                </div>
+              </div>
+              <!-- Skeleton Icône -->
+              <div class="hidden sm:flex flex-shrink-0 self-center">
+                <div class="w-6 h-6 bg-slate-700 rounded"></div>
+              </div>
+            </div>
+          </div>
+          <!-- Skeleton Card 3 -->
+          <div class="bg-slate-800 rounded-xl p-4 sm:p-6 border border-slate-700 animate-pulse">
+            <div class="flex items-start gap-3 sm:gap-4">
+              <!-- Skeleton Avatar -->
+              <div class="flex-shrink-0">
+                <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-slate-700 border-4 border-slate-600"></div>
+              </div>
+              <!-- Skeleton Informations -->
+              <div class="flex-1 min-w-0">
+                <div class="flex items-start justify-between mb-3 gap-2">
+                  <div class="flex-1 min-w-0 space-y-2">
+                    <div class="h-3 w-24 bg-slate-700 rounded"></div>
+                    <div class="h-5 w-40 bg-slate-700 rounded"></div>
+                    <div class="h-4 w-32 bg-slate-700 rounded"></div>
+                  </div>
+                  <div class="flex flex-col items-end gap-2">
+                    <div class="h-6 w-20 bg-slate-700 rounded-full"></div>
+                  </div>
+                </div>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                  <div class="h-4 w-24 bg-slate-700 rounded"></div>
+                  <div class="h-4 w-32 bg-slate-700 rounded"></div>
+                </div>
+              </div>
+              <!-- Skeleton Icône -->
+              <div class="hidden sm:flex flex-shrink-0 self-center">
+                <div class="w-6 h-6 bg-slate-700 rounded"></div>
+              </div>
+            </div>
+          </div>
+          <!-- Skeleton Card 4 -->
+          <div class="bg-slate-800 rounded-xl p-4 sm:p-6 border border-slate-700 animate-pulse">
+            <div class="flex items-start gap-3 sm:gap-4">
+              <!-- Skeleton Avatar -->
+              <div class="flex-shrink-0">
+                <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-slate-700 border-4 border-slate-600"></div>
+              </div>
+              <!-- Skeleton Informations -->
+              <div class="flex-1 min-w-0">
+                <div class="flex items-start justify-between mb-3 gap-2">
+                  <div class="flex-1 min-w-0 space-y-2">
+                    <div class="h-3 w-24 bg-slate-700 rounded"></div>
+                    <div class="h-5 w-40 bg-slate-700 rounded"></div>
+                    <div class="h-4 w-32 bg-slate-700 rounded"></div>
+                  </div>
+                  <div class="flex flex-col items-end gap-2">
+                    <div class="h-6 w-20 bg-slate-700 rounded-full"></div>
+                  </div>
+                </div>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                  <div class="h-4 w-24 bg-slate-700 rounded"></div>
+                  <div class="h-4 w-32 bg-slate-700 rounded"></div>
+                </div>
+              </div>
+              <!-- Skeleton Icône -->
+              <div class="hidden sm:flex flex-shrink-0 self-center">
+                <div class="w-6 h-6 bg-slate-700 rounded"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- Erreur -->
       <div v-else-if="loadingError" class="text-center text-red-400 py-10">

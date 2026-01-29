@@ -22,15 +22,54 @@
 
       <h1 class="text-3xl sm:text-4xl font-bold text-center mb-8">Paramétrer votre Carte</h1>
 
-      <!-- Sélection de commande (affichée en premier si aucune commande n'est sélectionnée) -->
-      <div v-if="showOrderSelection">
-        <!-- Indicateur de chargement -->
-        <LoadingSpinner v-if="isLoading" :is-loading="isLoading" />
-        <div v-else-if="loadingError" class="text-center text-red-400 py-10">{{ loadingError }}</div>
+      <!-- Skeleton Screen "Paramétrer votre Carte" : liste des commandes (avant chargement) -->
+      <div v-if="isLoading && !selectedOrderId" class="max-w-4xl mx-auto">
+        <p class="text-slate-400 text-center mb-8">
+          <span class="inline-block h-5 w-80 max-w-full bg-slate-700/80 rounded animate-pulse" />
+        </p>
+        <div class="grid grid-cols-1 gap-6">
+          <div
+            v-for="i in 3"
+            :key="i"
+            class="bg-slate-800 rounded-xl p-4 sm:p-6 border border-slate-700 animate-pulse"
+          >
+            <div class="flex items-start gap-3 sm:gap-4">
+              <div class="flex-shrink-0">
+                <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-slate-700 border-4 border-slate-600" />
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-start justify-between mb-3 gap-2">
+                  <div class="flex-1 min-w-0 space-y-2">
+                    <div class="h-3 w-28 bg-slate-700 rounded" />
+                    <div class="h-5 w-44 bg-slate-700 rounded" />
+                    <div class="h-4 w-24 bg-slate-700 rounded" />
+                  </div>
+                  <div class="flex flex-col items-end gap-2 flex-shrink-0">
+                    <div class="h-6 w-24 bg-slate-700 rounded-full" />
+                    <div class="h-6 w-20 bg-slate-700 rounded-full" />
+                  </div>
+                </div>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                  <div class="h-4 w-20 bg-slate-700 rounded" />
+                  <div class="h-4 w-16 bg-slate-700 rounded" />
+                </div>
+              </div>
+              <div class="hidden sm:block flex-shrink-0 self-center">
+                <div class="w-6 h-6 bg-slate-700 rounded" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
+      <!-- Erreur de chargement -->
+      <div v-else-if="loadingError && !selectedOrderId" class="text-center text-red-400 py-10">{{ loadingError }}</div>
+
+      <!-- Sélection de commande (affichée en premier si aucune commande n'est sélectionnée) -->
+      <div v-else-if="showOrderSelection">
         <!-- Aucune commande -->
         <div
-          v-else-if="orders.filter((o) => o.status !== 'cancelled').length === 0"
+          v-if="orders.filter((o) => o.status !== 'cancelled').length === 0"
           class="max-w-2xl mx-auto"
         >
           <div class="bg-slate-800 rounded-lg p-8 text-center border border-slate-700">
@@ -296,9 +335,79 @@
 
         <!-- Contenu de l'onglet "Ma Carte" (par défaut) -->
         <div v-if="activeTab === 'card'">
-          <!-- ✅ OPTIMISATION: Ne pas afficher le spinner si les données sont déjà disponibles -->
-          <!-- Afficher le spinner SEULEMENT si on n'a aucune donnée (premier chargement absolu) -->
-          <LoadingSpinner v-if="isLoading && !loadedOrderData && !selectedOrderId" :is-loading="isLoading" />
+          <!-- Skeleton Screen pour le formulaire de paramétrage -->
+          <div
+            v-if="isLoadingOrderData && !loadedOrderData"
+            class="relative max-w-3xl mx-auto space-y-10 pb-20 overflow-x-hidden"
+          >
+            <!-- Skeleton Section 1 : Profil Public & Personnalisation -->
+            <fieldset class="border border-slate-700 rounded-lg px-3 sm:px-6 pt-8 pb-6 space-y-5 relative mt-5 animate-pulse">
+              <legend class="text-lg font-semibold text-sky-400 px-2 absolute -top-3 left-4 bg-slate-900">
+                <div class="h-6 w-64 bg-slate-700 rounded"></div>
+              </legend>
+              <!-- Skeleton Avatar -->
+              <div class="flex flex-col items-center space-y-4">
+                <div class="w-32 h-32 rounded-full bg-slate-700"></div>
+                <div class="h-10 w-48 bg-slate-700 rounded"></div>
+              </div>
+              <!-- Skeleton Champs -->
+              <div class="space-y-4">
+                <div class="space-y-2">
+                  <div class="h-4 w-24 bg-slate-700 rounded"></div>
+                  <div class="h-10 w-full bg-slate-700 rounded"></div>
+                </div>
+                <div class="space-y-2">
+                  <div class="h-4 w-32 bg-slate-700 rounded"></div>
+                  <div class="h-10 w-full bg-slate-700 rounded"></div>
+                </div>
+                <div class="space-y-2">
+                  <div class="h-4 w-28 bg-slate-700 rounded"></div>
+                  <div class="h-24 w-full bg-slate-700 rounded"></div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div class="space-y-2">
+                    <div class="h-4 w-20 bg-slate-700 rounded"></div>
+                    <div class="h-10 w-full bg-slate-700 rounded"></div>
+                  </div>
+                  <div class="space-y-2">
+                    <div class="h-4 w-24 bg-slate-700 rounded"></div>
+                    <div class="h-10 w-full bg-slate-700 rounded"></div>
+                  </div>
+                </div>
+              </div>
+            </fieldset>
+            
+            <!-- Skeleton Section 2 : Réseaux Sociaux -->
+            <fieldset class="border border-slate-700 rounded-lg px-3 sm:px-6 pt-8 pb-6 space-y-5 relative mt-5 animate-pulse">
+              <legend class="text-lg font-semibold text-sky-400 px-2 absolute -top-3 left-4 bg-slate-900">
+                <div class="h-6 w-48 bg-slate-700 rounded"></div>
+              </legend>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="space-y-2">
+                  <div class="h-4 w-32 bg-slate-700 rounded"></div>
+                  <div class="h-10 w-full bg-slate-700 rounded"></div>
+                </div>
+                <div class="space-y-2">
+                  <div class="h-4 w-28 bg-slate-700 rounded"></div>
+                  <div class="h-10 w-full bg-slate-700 rounded"></div>
+                </div>
+                <div class="space-y-2">
+                  <div class="h-4 w-36 bg-slate-700 rounded"></div>
+                  <div class="h-10 w-full bg-slate-700 rounded"></div>
+                </div>
+                <div class="space-y-2">
+                  <div class="h-4 w-30 bg-slate-700 rounded"></div>
+                  <div class="h-10 w-full bg-slate-700 rounded"></div>
+                </div>
+              </div>
+            </fieldset>
+            
+            <!-- Skeleton Bouton Sauvegarder -->
+            <div class="flex justify-center">
+              <div class="h-12 w-48 bg-slate-700 rounded-lg"></div>
+            </div>
+          </div>
+          
           <div v-else-if="loadingError" class="text-center text-red-400 py-10">{{ loadingError }}</div>
 
           <!-- Formulaire de paramétrage -->
@@ -315,17 +424,6 @@
             <!-- Spinner de chargement uniquement -->
             <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-sky-500"></div>
             <p class="mt-4 text-white font-medium">{{ savingMessage }}</p>
-          </div>
-
-          <!-- ✅ OPTIMISATION: Ne JAMAIS afficher le spinner si on a déjà des données en cache -->
-          <!-- Afficher le spinner SEULEMENT si on n'a aucune donnée (premier chargement absolu) -->
-          <!-- Vérifier aussi orderAvatarPreview pour l'avatar, et form.name pour les données du formulaire -->
-          <div
-            v-if="isLoadingOrderData && !loadedOrderData && !orderAvatarPreview && !form.name"
-            class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex flex-col items-center justify-center z-50"
-          >
-            <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-sky-500"></div>
-            <p class="mt-4 text-white font-medium">Chargement des données...</p>
           </div>
 
           <!-- ========== SECTION 1 : PROFIL PUBLIC & PERSONNALISATION ========== -->
@@ -627,31 +725,26 @@
     }
   };
 
-  // 'isLoading' de useOrderManagement contrôle le spinner.
-  // 'isLoadingOrderData' de useCardSettings contrôle le spinner.
-  // Nous devons informer useCardSettings quand le chargement initial est terminé.
+  // 'isLoading' de useOrderManagement contrôle le skeleton de la liste "Paramétrer votre Carte".
+  // Ne jamais forcer isLoading = false quand !selectedOrderId : useOrderManagement s'en charge
+  // après le délai, sinon le skeleton ne s'affiche pas.
   onMounted(async () => {
-    // ✅ OPTIMISATION: Si les données sont déjà disponibles, ne pas afficher le spinner
-    // Les données seront utilisées immédiatement depuis le cache
     if (selectedOrderId.value) {
-      // Si les données sont déjà chargées, ne pas mettre isLoading à true
       const hasExistingData = loadedOrderData.value && loadedOrderData.value.id === parseInt(selectedOrderId.value);
       if (!hasExistingData) {
         isLoading.value = true;
+        isLoadingOrderData.value = true;
       }
-      
       try {
         await loadOrderData(selectedOrderId.value);
-        console.log("SettingsView: Order data loaded after mount");
       } catch (error) {
         console.error("SettingsView: Error loading order data on mount", error);
+        isLoadingOrderData.value = false;
       } finally {
         isLoading.value = false;
       }
-    } else {
-      // Si aucune commande n'est sélectionnée, ne pas afficher le spinner
-      isLoading.value = false;
     }
+    // Si !selectedOrderId (liste de commandes) : laisser useOrderManagement gérer isLoading.
   });
 
   // ✅ CORRECTION: Watcher pour mettre à jour l'avatar dès que les commandes sont chargées
