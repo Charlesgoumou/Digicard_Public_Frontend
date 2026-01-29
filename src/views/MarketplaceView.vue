@@ -1306,68 +1306,21 @@
       <div class="p-6">
         <div v-if="imageToCrop" class="space-y-4">
           <div class="bg-slate-900 rounded-lg p-4">
-            <VueCropper
+            <Cropper
               ref="cropper"
+              class="marketplace-cropper"
               :src="imageToCrop.preview"
-              :aspect-ratio="16 / 9"
-              :guides="true"
-              :view-mode="1"
-              :background="false"
-              :auto-crop-area="0.8"
-              :min-container-width="300"
-              :min-container-height="300"
-              :zoomable="true"
-              :scalable="true"
-              :rotatable="false"
-              :movable="true"
-              :crop-box-movable="true"
-              :crop-box-resizable="true"
-              :toggle-drag-mode-on-dblclick="false"
-              :zoom-on-touch="true"
-              :zoom-on-wheel="true"
-              :wheel-zoom-ratio="0.1"
-              :min-canvas-height="200"
-              :min-canvas-width="200"
-              :min-crop-box-width="100"
-              :min-crop-box-height="100"
-              class="w-full"
-              style="max-height: 500px;"
-            ></VueCropper>
+              :stencil-props="{ aspectRatio: 1 }"
+              :resize-image="{ touch: true, wheel: { ratio: 0.1 }, adjustStencil: false }"
+              :move-image="{ touch: true, mouse: true }"
+              :canvas="{ width: 1200, height: 1200, imageSmoothingEnabled: true, imageSmoothingQuality: 'high' }"
+            />
           </div>
 
           <div class="space-y-4">
-            <!-- Contrôles de zoom -->
-            <div class="flex items-center justify-center gap-4 bg-slate-700/50 rounded-lg p-3">
-              <span class="text-slate-300 text-sm font-medium">Zoom:</span>
-              <button
-                type="button"
-                @click="zoomOut"
-                class="bg-slate-600 hover:bg-slate-500 text-white rounded-lg px-4 py-2 transition-colors"
-                title="Dézoomer"
-              >
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                @click="zoomIn"
-                class="bg-slate-600 hover:bg-slate-500 text-white rounded-lg px-4 py-2 transition-colors"
-                title="Zoomer"
-              >
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                @click="resetZoom"
-                class="bg-slate-600 hover:bg-slate-500 text-white rounded-lg px-3 py-2 text-sm transition-colors"
-                title="Réinitialiser le zoom"
-              >
-                Réinitialiser
-              </button>
-            </div>
+            <p class="text-slate-400 text-sm text-center">
+              Molette ou pinch pour zoomer · Glisser pour déplacer · Cadre carré 1:1 (avatars/logos)
+            </p>
 
             <!-- Boutons d'action -->
             <div class="flex gap-4">
@@ -1398,8 +1351,8 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuth } from '@/composables/useAuth';
 import apiClient from '@/api';
-import VueCropper from 'vue-cropperjs';
-import 'cropperjs/dist/cropper.css';
+import { Cropper } from 'vue-advanced-cropper';
+import 'vue-advanced-cropper/dist/style.css';
 import Cookies from 'js-cookie';
 
 const router = useRouter();
@@ -1664,70 +1617,40 @@ const closeCropModal = () => {
   cropImageIndex.value = -1;
 };
 
-const zoomIn = () => {
-  if (cropper.value && cropper.value.cropper) {
-    cropper.value.cropper.zoom(0.1);
-  }
-};
-
-const zoomOut = () => {
-  if (cropper.value && cropper.value.cropper) {
-    cropper.value.cropper.zoom(-0.1);
-  }
-};
-
-const resetZoom = () => {
-  if (cropper.value && cropper.value.cropper) {
-    cropper.value.cropper.reset();
-  }
-};
-
 const applyCrop = () => {
   if (!cropper.value || cropImageIndex.value < 0) return;
 
   try {
-    // Obtenir l'image rognée en canvas
-    const canvas = cropper.value.getCroppedCanvas({
-      width: 1200,
-      height: 675,
-      imageSmoothingEnabled: true,
-      imageSmoothingQuality: 'high'
-    });
+    const result = cropper.value.getResult();
+    const canvas = result.canvas;
 
     if (!canvas) {
       showNotification('Erreur lors du rognage de l\'image', 'error');
       return;
     }
 
-    // Convertir le canvas en blob
     canvas.toBlob((blob) => {
       if (!blob) {
         showNotification('Erreur lors de la conversion de l\'image', 'error');
         return;
       }
 
-      // Créer un nouveau fichier à partir du blob
       const croppedFile = new File([blob], selectedImages.value[cropImageIndex.value].name, {
         type: blob.type || 'image/jpeg',
         lastModified: Date.now()
       });
 
-      // Créer une preview de l'image rognée
       const reader = new FileReader();
       reader.onload = (e) => {
-        // Mettre à jour l'image dans selectedImages
-        // On garde l'originalFile pour l'envoyer au backend
-        // Le preview rogné est utilisé pour l'aperçu dans la liste
         const originalFile = selectedImages.value[cropImageIndex.value].originalFile || selectedImages.value[cropImageIndex.value].file;
         selectedImages.value[cropImageIndex.value] = {
-          file: originalFile, // On garde l'originale pour l'envoi au backend
-          croppedFile: croppedFile, // On garde la version rognée pour l'aperçu
-          preview: e.target.result, // Preview de la version rognée pour l'affichage dans la liste
+          file: originalFile,
+          croppedFile,
+          preview: e.target.result,
           croppedPreview: e.target.result,
           name: originalFile.name,
-          originalFile: originalFile // Toujours garder l'originale
+          originalFile
         };
-        
         showNotification('Image rognée avec succès', 'success');
         closeCropModal();
       };
@@ -2350,6 +2273,13 @@ onUnmounted(() => {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Zone de crop vue-advanced-cropper (avatars/logos 1:1) */
+.marketplace-cropper {
+  height: 400px;
+  width: 100%;
+  background: #0f172a;
 }
 
 /* Animations pour les notifications toast */
