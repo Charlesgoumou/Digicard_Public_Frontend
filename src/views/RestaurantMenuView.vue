@@ -1,5 +1,8 @@
 <template>
-  <div class="min-h-screen bg-slate-900 pt-20 sm:pt-32 text-white">
+  <div
+    class="menu-du-jour-page min-h-screen pt-20 sm:pt-32 text-white"
+    :style="{ '--bg-restaurant': `url(${bgImage})` }"
+  >
     <div class="container mx-auto px-4 py-12">
       <!-- Bouton Retour -->
       <div class="mb-6">
@@ -37,7 +40,15 @@
         <!-- En-tête -->
         <div class="text-center mb-12">
           <h1 class="text-4xl font-bold mb-4">{{ portfolio?.hero_headline || portfolio?.name || 'Menu du jour' }}</h1>
-          <p v-if="portfolio?.bio" class="text-slate-300 text-lg">{{ portfolio.bio }}</p>
+          <p v-if="portfolio?.bio" class="text-slate-300 text-lg mb-6" v-html="portfolio.bio"></p>
+          <a
+            v-if="portfolio?.phone"
+            :href="'tel:' + portfolio.phone.replace(/\s/g, '')"
+            class="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold rounded-xl transition-all hover:scale-105 shadow-lg shadow-orange-500/30"
+          >
+            <i class="fas fa-phone-alt"></i>
+            <span>Appelez pour commander</span>
+          </a>
         </div>
 
         <!-- Section Plats -->
@@ -171,6 +182,8 @@
   import { useAuth } from "@/composables/useAuth";
   import apiClient from "@/api";
 
+  import bgImage from "@/assets/images/ArrierePlanRestaurrant.jpg";
+
   const router = useRouter();
   const { user } = useAuth();
 
@@ -183,7 +196,7 @@
     if (!price || price === 0) return "Gratuit";
     return new Intl.NumberFormat("fr-FR", {
       style: "currency",
-      currency: "XOF",
+      currency: "GNF",
       minimumFractionDigits: 0,
     }).format(price);
   };
@@ -234,5 +247,30 @@
 </script>
 
 <style scoped>
-  /* Styles personnalisés si nécessaire */
+  .menu-du-jour-page {
+    background-color: rgb(15 23 42);
+    background-image: var(--bg-restaurant);
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+  }
+
+  .menu-du-jour-page::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(
+      to bottom,
+      rgba(15, 23, 42, 0.4) 0%,
+      rgba(15, 23, 42, 0.35) 50%,
+      rgba(15, 23, 42, 0.5) 100%
+    );
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .menu-du-jour-page .container {
+    position: relative;
+    z-index: 1;
+  }
 </style>

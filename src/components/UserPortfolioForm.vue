@@ -731,7 +731,7 @@
               />
             </div>
 
-            <div>
+            <div v-if="form.profile_type !== 'restaurant'">
               <label class="block text-slate-300 font-medium mb-2">LinkedIn (optionnel)</label>
               <input
                 v-model="form.linkedin_url"
@@ -741,7 +741,7 @@
               />
             </div>
 
-            <div>
+            <div v-if="form.profile_type !== 'restaurant'">
               <label class="block text-slate-300 font-medium mb-2">GitHub (optionnel)</label>
               <input
                 v-model="form.github_url"
@@ -799,47 +799,54 @@
       </div>
     </div>
 
-    <!-- Modal de rognage d'image -->
+    <!-- Modal de rognage d'image (responsive, même logique que Marketplace) -->
     <div
       v-if="cropModalOpen"
-      class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4"
       @click.self="closeCropModal"
     >
-      <div class="bg-slate-800 rounded-xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <h3 class="text-xl font-bold text-white mb-4">Rogner l'image</h3>
-        <div v-if="cropImage" class="mb-4">
-          <div class="w-full" style="max-height: 500px;">
-            <vue-cropper
-              ref="cropper"
-              :src="cropImage"
-              :aspect-ratio="1"
-              :guides="true"
-              :view-mode="2"
-              :background="false"
-              :min-crop-box-resize="true"
-              :auto-crop-area="0.8"
-              :check-orientation="false"
-              :zoomable="true"
-              :movable="true"
-              :scalable="true"
-              class="w-full"
-              @ready="onCropReady"
-            ></vue-cropper>
-          </div>
-        </div>
-        <div class="flex justify-end gap-4">
+      <div class="bg-slate-800 rounded-xl shadow-2xl w-full max-w-4xl max-h-[95dvh] sm:max-h-[90vh] overflow-y-auto flex flex-col">
+        <div class="sticky top-0 bg-slate-800 border-b border-slate-700 p-4 sm:p-6 flex items-center justify-between shrink-0">
+          <h3 class="text-lg sm:text-xl font-bold text-white">Rogner l'image</h3>
           <button
             @click="closeCropModal"
-            class="px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg transition-colors"
+            class="text-slate-400 hover:text-white transition-colors p-1"
+            aria-label="Fermer"
           >
-            Annuler
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
-          <button
-            @click="getCroppedImage"
-            class="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition-colors"
-          >
-            Appliquer
-          </button>
+        </div>
+        <div v-if="cropImage" class="p-4 sm:p-6 flex-1 min-h-0">
+          <div class="menu-crop-container bg-slate-900 rounded-lg overflow-hidden">
+            <Cropper
+              ref="cropper"
+              class="menu-cropper"
+              :src="cropImage"
+              :stencil-props="{ aspectRatio: 1 }"
+              :resize-image="{ touch: true, wheel: { ratio: 0.1 }, adjustStencil: false }"
+              :move-image="{ touch: true, mouse: true }"
+              :canvas="{ width: 800, height: 800, imageSmoothingEnabled: true, imageSmoothingQuality: 'high' }"
+            />
+          </div>
+          <p class="text-slate-400 text-xs sm:text-sm text-center mt-3">
+            Molette ou pinch pour zoomer · Glisser pour déplacer · Cadre carré 1:1
+          </p>
+          <div class="flex flex-col-reverse sm:flex-row gap-3 mt-6">
+            <button
+              @click="closeCropModal"
+              class="flex-1 px-4 py-3 bg-slate-600 hover:bg-slate-500 text-white rounded-lg transition-colors font-medium"
+            >
+              Annuler
+            </button>
+            <button
+              @click="getCroppedImage"
+              class="flex-1 px-4 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition-colors font-medium"
+            >
+              Appliquer le rognage
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -852,8 +859,8 @@
   import Cookies from "js-cookie";
   import { useAuth } from "@/composables/useAuth";
   import { useRouter } from "vue-router";
-  import VueCropper from "vue-cropperjs";
-  import "cropperjs/dist/cropper.css";
+  import { Cropper } from "vue-advanced-cropper";
+  import "vue-advanced-cropper/dist/style.css";
 
   // Options de profil
   const profileOptions = [
@@ -1809,14 +1816,17 @@
     croppedImage.value = null;
   };
 
-  const onCropReady = () => {
-    // Le cropper est prêt
-  };
-
   const getCroppedImage = () => {
-    if (cropper.value) {
-      croppedImage.value = cropper.value.getCroppedCanvas().toDataURL();
-      applyCrop();
+    if (!cropper.value) return;
+    try {
+      const result = cropper.value.getResult();
+      const canvas = result.canvas;
+      if (canvas) {
+        croppedImage.value = canvas.toDataURL('image/jpeg', 0.9);
+        applyCrop();
+      }
+    } catch (error) {
+      console.error('Erreur lors du rognage:', error);
     }
   };
 
@@ -1937,5 +1947,31 @@
   /* Styles similaires à CompanyServicesForm */
   .space-y-6 > * + * {
     margin-top: 1.5rem;
+  }
+
+  /* Zone de crop menu (responsive) */
+  .menu-crop-container {
+    min-height: 250px;
+    height: min(50vh, 400px);
+  }
+
+  @media (min-width: 640px) {
+    .menu-crop-container {
+      min-height: 300px;
+      height: min(55vh, 450px);
+    }
+  }
+
+  @media (min-width: 768px) {
+    .menu-crop-container {
+      min-height: 350px;
+      height: min(60vh, 500px);
+    }
+  }
+
+  .menu-cropper {
+    height: 100%;
+    width: 100%;
+    background: #0f172a;
   }
 </style>
