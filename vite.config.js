@@ -5,6 +5,8 @@ import vue from '@vitejs/plugin-vue'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // Base relative pour Capacitor : les assets chargent correctement dans le WebView natif
+  base: './',
   plugins: [
     vue(),
   ],

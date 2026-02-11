@@ -274,7 +274,12 @@ const selectAccountAndLogin = async (accountId) => {
       
       const redirectTo = response.data.redirect_to || "/dashboard";
       console.log(`[SelectAccount] Redirecting to: ${redirectTo}`);
-      router.push(redirectTo);
+      // ✅ Utiliser le nom de route pour une navigation fiable et éviter un flash vers Home
+      const routeTarget = redirectTo === "/" || redirectTo === "/dashboard"
+        ? { name: "Dashboard" }
+        : redirectTo;
+      // ✅ Attendre que la navigation soit complète avant de désactiver le spinner
+      await router.push(routeTarget);
       
       // ✅ OPTIMISATION: Charger les données utilisateur en arrière-plan après la redirection
       // Ne pas bloquer la redirection

@@ -192,19 +192,16 @@ export function useAuth() {
       // ✅ NOUVEAU : Gérer le 2FA obligatoire à chaque connexion
       if (response.data.two_factor_required || response.data.verification_required) {
         // L'utilisateur doit entrer le code 2FA qui a été envoyé par email
-        // ✅ MODIFICATION: Ne pas fermer le modal immédiatement, laisser le chargement visible
-        // Le modal sera fermé automatiquement lors de la navigation vers la page de vérification
-        router.push({
+        // ✅ Attendre que la navigation soit complète avant de fermer le modal
+        // pour éviter que le spinner s'arrête avant l'affichage de la page de vérification
+        await router.push({
           name: "Verification",
           query: {
             email: credentials.email,
             account_type: credentials.account_type || response.data.account_type,
           },
         });
-        // Fermer le modal après un court délai pour laisser le temps à la navigation
-        setTimeout(() => {
-          closeAuthModal();
-        }, 100);
+        closeAuthModal();
       } else if (response.data.token && response.data.user) {
         // ✅ NOUVEAU : Cas où la 2FA est désactivée et la connexion est directe
         // Le backend a déjà établi la session avec Auth::login(), donc on peut récupérer l'utilisateur

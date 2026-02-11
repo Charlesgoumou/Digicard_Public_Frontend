@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">DigiCard</string>
+    <string name="title_activity_main">DigiCard</string>
+    <string name="package_name">com.arccenciel.digicard</string>
+    <string name="custom_url_scheme">com.arccenciel.digicard</string>
+</resources>

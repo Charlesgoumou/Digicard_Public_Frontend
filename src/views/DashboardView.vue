@@ -96,7 +96,7 @@
         <div 
           v-if="!isDashboardReady"
           class="grid gap-4 md:gap-5 max-w-4xl mx-auto"
-          :class="hasAppointmentsEnabled ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 max-w-7xl' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-5 max-w-6xl'"
+          :class="showAppointmentsCard ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 max-w-7xl' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-5 max-w-6xl'"
         >
           <!-- Skeleton Card 1 -->
           <div class="bg-slate-800 rounded-lg px-4 py-3 min-h-[120px] flex flex-col items-center justify-center border border-slate-700 animate-pulse">
@@ -130,7 +130,7 @@
           </div>
           <!-- Skeleton Card 6 (si appointments enabled) -->
           <div 
-            v-if="hasAppointmentsEnabled"
+            v-if="showAppointmentsCard"
             class="bg-slate-800 rounded-lg px-4 py-3 min-h-[120px] flex flex-col items-center justify-center border border-slate-700 animate-pulse"
           >
             <div class="w-12 h-12 bg-slate-700 rounded-full mb-3"></div>
@@ -142,7 +142,7 @@
         <div 
           v-else
           class="grid gap-4 md:gap-5 max-w-4xl mx-auto"
-          :class="hasAppointmentsEnabled ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 max-w-7xl' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-5 max-w-6xl'"
+          :class="showAppointmentsCard ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 max-w-7xl' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-5 max-w-6xl'"
         >
           <button
             @click="goToSettings"
@@ -170,7 +170,7 @@
           </button>
           <!-- Carte "Mes Rendez-vous" -->
           <button
-            v-if="hasAppointmentsEnabled"
+            v-if="showAppointmentsCard"
             @click="showAppointmentsModal = true"
             class="bg-slate-800 rounded-lg px-4 py-3 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center justify-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 min-h-[120px]"
           >
@@ -213,13 +213,13 @@
         <div
           v-if="!isDashboardReady"
           class="grid gap-4 md:gap-5 mb-16"
-          :class="hasBusinessOrder 
-            ? (hasAppointmentsEnabled ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 max-w-8xl mx-auto' : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 max-w-7xl mx-auto')
-            : (hasAppointmentsEnabled ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 max-w-7xl mx-auto' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-5 max-w-6xl mx-auto')"
+          :class="showDashboardCard 
+            ? (showAppointmentsCard ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 max-w-8xl mx-auto' : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 max-w-7xl mx-auto')
+            : (showAppointmentsCard ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 max-w-7xl mx-auto' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-5 max-w-6xl mx-auto')"
         >
-          <!-- Skeleton Card 1 (Tableau de bord si hasBusinessOrder) -->
+          <!-- Skeleton Card 1 (Tableau de bord si showDashboardCard) -->
           <div 
-            v-if="hasBusinessOrder"
+            v-if="showDashboardCard"
             class="bg-slate-800 rounded-lg px-4 py-3 min-h-[120px] flex flex-col items-center justify-center border border-slate-700 animate-pulse"
           >
             <div class="w-12 h-12 bg-slate-700 rounded-full mb-3"></div>
@@ -252,7 +252,7 @@
           </div>
           <!-- Skeleton Card 6 (si appointments enabled) -->
           <div 
-            v-if="hasAppointmentsEnabled"
+            v-if="showAppointmentsCard"
             class="bg-slate-800 rounded-lg px-4 py-3 min-h-[120px] flex flex-col items-center justify-center border border-slate-700 animate-pulse"
           >
             <div class="w-12 h-12 bg-slate-700 rounded-full mb-3"></div>
@@ -270,12 +270,12 @@
         <div
           v-else
           class="grid gap-4 md:gap-5 mb-16"
-          :class="hasBusinessOrder 
-            ? (hasAppointmentsEnabled ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 max-w-8xl mx-auto' : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 max-w-7xl mx-auto')
-            : (hasAppointmentsEnabled ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 max-w-7xl mx-auto' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-5 max-w-6xl mx-auto')"
+          :class="showDashboardCard 
+            ? (showAppointmentsCard ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 max-w-8xl mx-auto' : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 max-w-7xl mx-auto')
+            : (showAppointmentsCard ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 max-w-7xl mx-auto' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-5 max-w-6xl mx-auto')"
         >
           <button
-            v-if="hasBusinessOrder"
+            v-if="showDashboardCard"
             @click="scrollToEmployeeSection"
             class="bg-slate-800 rounded-lg px-4 py-3 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center justify-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 min-h-[120px]"
           >
@@ -309,7 +309,7 @@
           </button>
           <!-- Carte "Mes Rendez-vous" pour les business_admin -->
           <button
-            v-if="hasAppointmentsEnabled"
+            v-if="showAppointmentsCard"
             @click="showAppointmentsModal = true"
             class="bg-slate-800 rounded-lg px-4 py-3 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center justify-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 min-h-[120px]"
           >
@@ -825,15 +825,15 @@
         </div>
       </div>
 
-      <div v-else-if="user?.role === 'employee'">
-        <div v-if="!isDashboardReady" class="h-12 w-96 max-w-full bg-slate-700 rounded animate-pulse mx-auto mb-4" />
+      <div v-else-if="user?.role === 'employee'" class="flex flex-col items-center w-full">
+        <div v-if="!isDashboardReady" class="h-12 w-96 max-w-full bg-slate-700 rounded animate-pulse mb-4" />
         <h1 v-else class="text-4xl font-bold text-center mb-4">Bienvenue, {{ user.name }} !</h1>
 
         <!-- Skeleton Screen pour les cartes employé -->
         <div 
           v-if="!isDashboardReady"
-          class="grid gap-4 md:gap-5 max-w-4xl mx-auto"
-          :class="hasAppointmentsEnabled ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 max-w-7xl' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-5 max-w-6xl'"
+          class="grid gap-4 md:gap-5 w-full max-w-4xl"
+          :class="showAppointmentsCard ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 max-w-7xl' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-5 max-w-6xl'"
         >
           <!-- Skeleton Card 1 -->
           <div class="bg-slate-800 rounded-lg px-4 py-3 min-h-[120px] flex flex-col items-center justify-center border border-slate-700 animate-pulse">
@@ -861,7 +861,7 @@
           </div>
           <!-- Skeleton Card 5 (si appointments enabled) -->
           <div 
-            v-if="hasAppointmentsEnabled"
+            v-if="showAppointmentsCard"
             class="bg-slate-800 rounded-lg px-4 py-3 min-h-[120px] flex flex-col items-center justify-center border border-slate-700 animate-pulse"
           >
             <div class="w-12 h-12 bg-slate-700 rounded-full mb-3"></div>
@@ -943,7 +943,7 @@
           <!-- Boutons d'action -->
           <div 
             class="grid gap-4 md:gap-5 max-w-3xl mx-auto"
-            :class="hasAppointmentsEnabled ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 max-w-6xl' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4 max-w-5xl'"
+            :class="showAppointmentsCard ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 max-w-6xl' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4 max-w-5xl'"
           >
             <button
               @click="goToSettings"
@@ -963,7 +963,7 @@
             </button>
             <!-- Carte "Mes Rendez-vous" pour les employés -->
             <button
-              v-if="hasAppointmentsEnabled"
+              v-if="showAppointmentsCard"
               @click="showAppointmentsModal = true"
               class="bg-slate-800 rounded-lg px-4 py-3 text-center hover:bg-slate-700/50 transition-colors group flex flex-col items-center justify-center shadow-lg border border-slate-700 hover:border-sky-500 hover:-translate-y-1 duration-300 min-h-[120px]"
             >
@@ -1122,7 +1122,18 @@
 
   // Portfolio pour vérifier le type de profil
   const userPortfolio = ref(null);
-  const isRestaurantProfile = computed(() => userPortfolio.value?.profile_type === 'restaurant');
+  // Pour les Particuliers : toujours "Afficher mon Profil". "Menu du jour" uniquement pour business_admin/employé avec profil restaurant.
+  const isRestaurantProfile = computed(() => user.value?.role !== 'individual' && userPortfolio.value?.profile_type === 'restaurant');
+
+  const loadUserPortfolio = async () => {
+    try {
+      const response = await apiClient.get("/api/user-portfolio");
+      userPortfolio.value = response.data;
+    } catch (error) {
+      console.error("Erreur lors du chargement du portfolio:", error);
+      userPortfolio.value = null;
+    }
+  };
 
   const isCropperOpen = ref(false);
   const selectedImageUrl = ref(null);
@@ -1136,10 +1147,7 @@
   const isEmployeeError = ref(false);
   const isLoadingEmployees = ref(false);
   const isRemovingEmployee = ref(null);
-  // ✅ OPTIMISATION: Initialiser à true pour business_admin pour affichage instantané (affichage optimiste)
-  // La vérification en arrière-plan mettra à jour cette valeur si nécessaire
-  // Pour les autres rôles, on garde false par défaut
-  const hasBusinessOrder = ref(user.value?.role === 'business_admin' ? true : false);
+  const hasBusinessOrder = ref(false);
   const isLoadingBusinessOrders = ref(false); // ✅ Variable d'état pour le chargement des commandes business
 
   // --- Variables pour le système de slots ---
@@ -1164,9 +1172,6 @@
   const isNavigatingToSettings = ref(false);
 
   // --- Variables pour les rendez-vous ---
-  // ✅ OPTIMISATION: Initialiser à true pour affichage instantané (affichage optimiste)
-  // La vérification en arrière-plan mettra à jour cette valeur si nécessaire
-  const hasAppointmentsEnabled = ref(true);
   const hasAppointments = ref(false);
   const appointmentsCount = ref(0);
   const isCheckingAppointments = ref(false); // Pour éviter les appels multiples simultanés
@@ -1188,6 +1193,20 @@
   const appointmentsOrderId = ref(null); // OrderId utilisé pour charger les rendez-vous (peut différer de selectedOrderId)
   const isLoadingDashboard = ref(true); // État de chargement global du dashboard
   const isDashboardReady = ref(false); // Dashboard prêt à afficher (TOUT est chargé)
+
+  // --- Cartes du dashboard (Option A : calcul côté serveur pour éviter le flash) ---
+  const dashboardCards = ref(null);
+  const loadDashboardCards = async () => {
+    try {
+      const response = await apiClient.get('/api/dashboard/cards');
+      dashboardCards.value = response.data?.dashboard_cards || {};
+    } catch (error) {
+      console.error('Erreur lors du chargement des cartes du dashboard:', error);
+      dashboardCards.value = {};
+    }
+  };
+  const showAppointmentsCard = computed(() => dashboardCards.value?.mes_rendez_vous ?? false);
+  const showDashboardCard = computed(() => dashboardCards.value?.tableau_de_bord ?? false);
 
   // --- Helper to set CSRF header ---
   const setCsrfHeader = () => {
@@ -1831,13 +1850,14 @@
         appointmentsOrderId.value = orderIdToCheck; // Filtrer par commande pour employee uniquement
       }
 
-      // La carte s'affiche si la prise de rendez-vous est activée
-      // (même s'il n'y a pas encore de rendez-vous pris)
-      hasAppointmentsEnabled.value = hasEnabledSettings;
+      // Mettre à jour dashboardCards pour la réactivité (ex. après changement de commande)
+      if (dashboardCards.value) {
+        dashboardCards.value = { ...dashboardCards.value, mes_rendez_vous: hasEnabledSettings };
+      }
 
       console.log('[Dashboard] ✅ checkAppointmentsEnabled result:', {
         hasEnabledSettings,
-        hasAppointmentsEnabled: hasAppointmentsEnabled.value,
+        showAppointmentsCard: showAppointmentsCard.value,
         orderIdToCheck,
         appointmentsOrderId: appointmentsOrderId.value,
         userRole: user.value.role,
@@ -1853,7 +1873,9 @@
       // Le chargement des compteurs est maintenant géré dans onMounted pour tous les rôles
     } catch (error) {
       console.error('❌ Erreur lors de la vérification des rendez-vous:', error);
-      hasAppointmentsEnabled.value = false;
+      if (dashboardCards.value) {
+        dashboardCards.value = { ...dashboardCards.value, mes_rendez_vous: false };
+      }
     } finally {
       // Ne désactiver le flag et le spinner que si on les a activés nous-mêmes
       if (manageCheckingFlag) {
@@ -1940,120 +1962,58 @@
     // Écouter l'événement de mise à jour de l'avatar employé
     window.addEventListener('employee-avatar-updated', handleEmployeeAvatarUpdate);
 
-    // ✅ OPTIMISATION: Afficher le dashboard immédiatement avec un état de chargement
-    // Les données se chargeront en arrière-plan
-    isDashboardReady.value = true;
-
     // Charger le portfolio pour vérifier le type de profil
     if (user.value?.role === 'individual') {
       loadUserPortfolio();
     }
 
-    // ✅ OPTIMISATION: Initialiser hasBusinessOrder à true pour business_admin pour affichage instantané
-    // La vérification en arrière-plan mettra à jour cette valeur si nécessaire
+    // Charger les cartes du dashboard EN PREMIER (Option A : calcul serveur pour éviter le flash)
+    // puis les autres données. isDashboardReady = true seulement quand tout est chargé.
     if (user.value?.role === "business_admin") {
-      hasBusinessOrder.value = true;
-    }
-
-    // Charger les données en arrière-plan
-    if (user.value?.role === "business_admin") {
-      // ✅ Activer le spinner une seule fois pour toute la séquence
       isLoadingBusinessOrders.value = true;
       
-      // Charger les données en arrière-plan (ne pas bloquer l'affichage)
       (async () => {
         try {
-          // Vérifier les settings EN PREMIER (sans gérer le spinner, on le fait manuellement)
-          isCheckingAppointments.value = true;
-          await checkAppointmentsEnabled();
-          
-          // Puis charger les commandes business (sans gérer le spinner, on le fait ici)
-          await checkBusinessOrders(false); // false = ne pas gérer le spinner
-          
-          // ✅ NOUVEAU: Charger les compteurs AVANT d'afficher le dashboard
-          console.log('[Dashboard] 📊 Chargement des compteurs pour business_admin...');
+          await loadDashboardCards();
+          await checkBusinessOrders(false);
           await Promise.all([
             loadContactsCount(),
             loadAppointmentsCount()
           ]);
-          console.log('[Dashboard] ✅ Compteurs chargés:', {
-            contactsCount: newContactsCount.value,
-            appointmentsCount: appointmentsCount.value,
-          });
         } finally {
-          // Désactiver le spinner à la fin de toute la séquence
           isLoadingBusinessOrders.value = false;
-          isCheckingAppointments.value = false;
-          
-          console.log('[Dashboard] ✅ Chargement terminé pour business_admin:', {
-            isLoadingBusinessOrders: isLoadingBusinessOrders.value,
-            hasAppointmentsEnabled: hasAppointmentsEnabled.value,
-            hasBusinessOrder: hasBusinessOrder.value,
-            isDashboardReady: isDashboardReady.value,
-            newContactsCount: newContactsCount.value,
-            appointmentsCount: appointmentsCount.value,
-          });
+          isDashboardReady.value = true;
         }
       })();
     } else if (user.value?.role === "employee") {
-      // Pour les employés, charger les commandes et vérifier les settings
       isLoadingEmployeeOrder.value = true;
-      isCheckingAppointments.value = true;
       
-      // Charger les données en arrière-plan
       (async () => {
         try {
+          await loadDashboardCards();
           await loadEmployeeOrder();
-          await checkAppointmentsEnabled();
-          
-          // Charger les compteurs pour les employés
-          console.log('[Dashboard] 📊 Chargement des compteurs pour employee...');
           await Promise.all([
             loadContactsCount(),
             loadAppointmentsCount()
           ]);
-          console.log('[Dashboard] ✅ Compteurs chargés pour employee:', {
-            contactsCount: newContactsCount.value,
-            appointmentsCount: appointmentsCount.value,
-          });
         } finally {
           isLoadingEmployeeOrder.value = false;
-          isCheckingAppointments.value = false;
-          
-          console.log('[Dashboard] ✅ Chargement terminé pour employee:', {
-            hasAppointmentsEnabled: hasAppointmentsEnabled.value,
-            isDashboardReady: isDashboardReady.value,
-          });
+          isDashboardReady.value = true;
         }
       })();
     } else {
-      // Pour les autres rôles (individual), vérifier directement les settings
       isLoadingDashboard.value = true;
-      isCheckingAppointments.value = true;
       
-      // Charger les données en arrière-plan
       (async () => {
         try {
-          await checkAppointmentsEnabled();
-          
-          // Charger les compteurs pour les utilisateurs individuels
-          console.log('[Dashboard] 📊 Chargement des compteurs pour individual...');
+          await loadDashboardCards();
           await Promise.all([
             loadContactsCount(),
             loadAppointmentsCount()
           ]);
-          console.log('[Dashboard] ✅ Compteurs chargés pour individual:', {
-            contactsCount: newContactsCount.value,
-            appointmentsCount: appointmentsCount.value,
-          });
         } finally {
           isLoadingDashboard.value = false;
-          isCheckingAppointments.value = false;
-          
-          console.log('[Dashboard] ✅ Chargement terminé pour individual:', {
-            hasAppointmentsEnabled: hasAppointmentsEnabled.value,
-            isDashboardReady: isDashboardReady.value,
-          });
+          isDashboardReady.value = true;
         }
       })();
     }

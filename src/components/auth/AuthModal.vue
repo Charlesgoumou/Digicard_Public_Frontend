@@ -1021,22 +1021,21 @@
   let loadingTimeout = null;
 
   // ✅ NOUVEAU: Watcher pour détecter quand on arrive sur la page de vérification
-  // et désactiver le chargement
+  // et fermer le modal + désactiver le chargement
   watch(
     () => router.currentRoute.value.name,
     (routeName) => {
-      // Si on arrive sur la page de vérification, désactiver le chargement
-      if (routeName === "Verification" && isSubmitting.value) {
-        // Nettoyer le timeout de sécurité si présent
+      // Si on arrive sur la page de vérification, fermer le modal et désactiver le chargement
+      if (routeName === "Verification") {
+        closeAuthModal();
         if (loadingTimeout) {
           clearTimeout(loadingTimeout);
           loadingTimeout = null;
         }
-        // Délai court pour s'assurer que la page est bien chargée
         setTimeout(() => {
           isSubmitting.value = false;
           loadingMessage.value = "";
-        }, 300);
+        }, 50);
       }
     },
     { immediate: true }
