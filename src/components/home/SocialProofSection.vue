@@ -126,15 +126,34 @@
     event.target.src = LogoIconValley;
   };
 
-  // Fonction pour charger les entreprises
-  async function loadSocialProof() {
+  // Données par défaut (identiques au backend) pour affichage quand l'API échoue
+  const defaultCompanies = [
+    { name: "IconValley", logo_url: "/images/LogoIconValley.png" },
+    { name: "Gnalenmady Consulting", logo_url: "/images/LogoGnalenmady.png" },
+    { name: "Byte Securitas", logo_url: "/images/LogoByteSecuritas.png" },
+    { name: "Bally Multi Expertise", logo_url: "/images/LogoBMEX.png" },
+    { name: "AGEP Events", logo_url: "/images/LogoAGEP.png" },
+  ];
+
+  // Fonction pour charger les entreprises avec retry (3 tentatives)
+  async function loadSocialProof(retryCount = 0) {
+    const maxRetries = 3;
+    const retryDelay = 1000;
+
     try {
-      const res = await apiClient.get("/api/homepage");
+      const res = await apiClient.get("/api/homepage", { timeout: 10000 });
       const homepageSocialProof = res.data?.homepage?.social_proof || [];
       companies.value = homepageSocialProof.length > 0 ? homepageSocialProof : props.socialProof;
-    } catch {
-      // Fallback vers les props si l'API échoue
-      companies.value = props.socialProof;
+      if (companies.value.length === 0) {
+        companies.value = defaultCompanies;
+      }
+    } catch (err) {
+      if (retryCount < maxRetries) {
+        setTimeout(() => loadSocialProof(retryCount + 1), retryDelay);
+      } else {
+        // Fallback : props puis données par défaut
+        companies.value = props.socialProof?.length > 0 ? props.socialProof : defaultCompanies;
+      }
     }
   }
 

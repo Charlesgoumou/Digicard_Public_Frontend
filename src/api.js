@@ -9,6 +9,7 @@ axios.defaults.withCredentials = true;
 // Pour tester sur réseau local : http://192.168.1.126:8000
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_APP_URL_BACKEND || "http://localhost:8000",
+  timeout: 15000, // 15 secondes - évite les requêtes bloquées sur réseaux lents
   withCredentials: true, // Crucial pour les cookies (redondant mais explicite)
 
   // Configuration CSRF explicite pour forcer Axios à fonctionner correctement

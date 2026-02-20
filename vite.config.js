@@ -5,8 +5,10 @@ import vue from '@vitejs/plugin-vue'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  // Base relative pour Capacitor : les assets chargent correctement dans le WebView natif
-  base: './',
+  // Base absolue '/' pour le web : évite les erreurs MIME sur /entreprise/:username (base relative
+  // résolvait ./assets en /entreprise/assets/ au lieu de /assets/). Pour Capacitor : builder avec
+  // --base ./ ou une config dédiée si nécessaire.
+  base: '/',
   plugins: [
     vue(),
   ],
