@@ -1,0 +1,45 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+.DS_Store
+dist
+dist-ssr
+coverage
+*.local
+.env.production
+/.env.production 
+
+/cypress/videos/
+/cypress/screenshots/
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+*.tsbuildinfo
+
+AUDIT_API_REFACTORING.md
+ENDPOINT_ACCOUNT_API.md
+RESOLUTION_ERREUR_401.md
+IMPLEMENTATION_FLUX_ENTREPRISE.md
+# Fichiers d'environnement
+.env
+.env.local
+.env.production
+.env.development
+# Fichiers texte et markdown
+*.md
+*.txt
