@@ -245,15 +245,10 @@
                   <input
                     type="time"
                     v-model="newSlots[`rule-${getRuleKey(rule)}`].customTime"
-                    @input="handleCustomTimeInput(`rule-${getRuleKey(rule)}`)"
-                    @change="handleCustomTimeInput(`rule-${getRuleKey(rule)}`)"
-                    min="06:00"
-                    max="22:00"
-                    step="900"
                     required
                     class="w-full bg-slate-700 border border-slate-600 rounded-lg py-2 px-2 sm:px-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
                   />
-                  <p class="text-xs text-slate-500 mt-1">Format: HH:MM (entre 06:00 et 22:00, par intervalles de 15 min)</p>
+                  <p class="text-xs text-slate-500 mt-1">Format: HH:MM (de 00:00 à 23:59, votre choix libre)</p>
                 </div>
                 <div class="col-span-1 sm:flex-1 sm:min-w-[140px]">
                   <label class="block text-xs font-medium text-slate-400 mb-1">Durée</label>
@@ -955,28 +950,8 @@ const handleTimeSelectChange = (ruleKey) => {
 
 // Gérer la saisie manuelle de l'heure
 const handleCustomTimeInput = (ruleKey) => {
-  const slot = newSlots[ruleKey];
-  if (!slot || !slot.customTime) return;
-  
-  // Valider le format HH:MM
-  const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/;
-  if (!timeRegex.test(slot.customTime)) {
-    return; // La validation se fera lors de l'ajout
-  }
-  
-  // Vérifier que l'heure est entre 06:00 et 22:00
-  const [hours, minutes] = slot.customTime.split(':').map(Number);
-  if (hours < 6 || hours > 22 || (hours === 22 && minutes > 0)) {
-    return; // La validation se fera lors de l'ajout
-  }
-  
-  // Arrondir à l'intervalle de 15 minutes le plus proche
-  const roundedMinutes = Math.round(minutes / 15) * 15;
-  if (roundedMinutes >= 60) {
-    slot.customTime = `${String(hours + 1).padStart(2, '0')}:00`;
-  } else {
-    slot.customTime = `${String(hours).padStart(2, '0')}:${String(roundedMinutes).padStart(2, '0')}`;
-  }
+  // Plus de restrictions - l'utilisateur peut saisir n'importe quelle heure de 00:00 à 23:59
+  // La validation de format se fera uniquement lors de l'ajout du créneau
 };
 
 // Gérer le changement de sélection dans le select de durée
@@ -1058,30 +1033,15 @@ const addSlotToRule = (dayId, ruleId) => {
       return;
     }
     
-    // Valider le format HH:MM
+    // Valider uniquement le format HH:MM (00:00 à 23:59)
     const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/;
     if (!timeRegex.test(newSlot.customTime)) {
-      showToast('Format d\'heure invalide. Utilisez HH:MM (ex: 09:30)', 'error');
+      showToast('Format d\'heure invalide. Utilisez HH:MM (ex: 09:30 ou 23:45)', 'error');
       return;
     }
     
-    // Vérifier que l'heure est entre 06:00 et 22:00
-    const [hours, minutes] = newSlot.customTime.split(':').map(Number);
-    if (hours < 6 || hours > 22 || (hours === 22 && minutes > 0)) {
-      showToast('L\'heure doit être entre 06:00 et 22:00', 'error');
-      return;
-    }
-    
-    // Arrondir à l'intervalle de 15 minutes le plus proche
-    const roundedMinutes = Math.round(minutes / 15) * 15;
-    if (roundedMinutes >= 60) {
-      slotStart = `${String(hours + 1).padStart(2, '0')}:00`;
-    } else {
-      slotStart = `${String(hours).padStart(2, '0')}:${String(roundedMinutes).padStart(2, '0')}`;
-    }
-    
-    // Mettre à jour customTime avec la valeur arrondie
-    newSlot.customTime = slotStart;
+    // Utiliser la valeur exacte saisie par l'utilisateur (pas d'arrondi, pas de restriction)
+    slotStart = newSlot.customTime;
   }
   
   if (!slotStart || slotStart === 'custom') return;
