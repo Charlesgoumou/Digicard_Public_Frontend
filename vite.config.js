@@ -18,6 +18,7 @@ export default defineConfig({
     }
   },
   server: {
+    port: 5173, // Port pour Frontend Public
     // ✅ CORRECTION: Configuration pour éviter l'erreur 431 (Request Header Fields Too Large)
     // Vite utilise le serveur HTTP de Node.js qui a une limite par défaut de 8KB pour les en-têtes
     // Cette configuration sera appliquée via les variables d'environnement Node.js
