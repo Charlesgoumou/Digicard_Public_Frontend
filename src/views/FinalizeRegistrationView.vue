@@ -577,7 +577,7 @@ onMounted(async () => {
               // ✅ Vérifier si le profil est déjà complété après le fetch
               if (user.value.is_profile_complete === true) {
                 console.log("[FinalizeRegistration] Profile already complete (after background fetch). Redirecting to Dashboard.");
-                router.push({ name: "Dashboard" });
+                router.replace({ name: "Dashboard" });
               }
             }
           } catch (error) {
@@ -601,7 +601,7 @@ onMounted(async () => {
       // L'utilisateur n'a pas besoin de finaliser son inscription s'il l'a déjà fait
       if (user.value.is_profile_complete === true) {
         console.log("[FinalizeRegistration] Profile already complete. Redirecting to Dashboard.");
-        router.push({ name: "Dashboard" });
+        router.replace({ name: "Dashboard" });
         return; // Sortir de la fonction pour éviter de pré-remplir le formulaire
       }
       
@@ -681,7 +681,7 @@ watch(
   (isComplete) => {
     if (isComplete === true && user.value) {
       console.log("[FinalizeRegistration] Profile completed detected via watcher. Redirecting to Dashboard.");
-      router.push({ name: "Dashboard" });
+      router.replace({ name: "Dashboard" });
     }
   },
   { immediate: false } // Ne pas exécuter immédiatement, seulement sur changement
@@ -754,7 +754,7 @@ const handleSubmit = async () => {
 
     // Rediriger vers le dashboard
     console.log("[FinalizeRegistration] Redirecting to dashboard...");
-    router.push({ name: "Dashboard" });
+    router.replace({ name: "Dashboard" });
   } catch (error) {
     console.error("Erreur lors de la finalisation du profil:", error);
     errorMessage.value =

@@ -138,6 +138,33 @@ router.beforeEach(async (to, from, next) => {
   const { user, fetchUser } = useAuth();
   const requiresAuth = to.matched.some((record) => record.meta.requiresAuth);
   
+  // ✅ CRITIQUE: Après un choix de compte, ne jamais afficher la landing (même si une nav vers "/" est déclenchée)
+  if (from.name === "SelectAccount" && (to.name === "Home" || to.path === "/")) {
+    console.log("[Guard] From SelectAccount toward Home. Redirecting to Dashboard (no landing).");
+    return next({ name: "Dashboard" });
+  }
+
+  // ✅ CRITIQUE: Ne jamais afficher la landing (Home) si l'utilisateur est déjà authentifié
+  // Connexion, inscription, 2FA, choix de compte → l'utilisateur doit aller directement au Dashboard
+  const isNavigatingToHome = to.name === "Home" || to.path === "/";
+  if (isNavigatingToHome) {
+    if (user.value && user.value.is_profile_complete !== false) {
+      console.log("[Guard] User authenticated on Home. Redirecting to Dashboard (no landing).");
+      return next({ name: "Dashboard" });
+    }
+    if (!user.value) {
+      try {
+        await fetchUser();
+        if (user.value && user.value.is_profile_complete !== false) {
+          console.log("[Guard] User fetched on Home. Redirecting to Dashboard (no landing).");
+          return next({ name: "Dashboard" });
+        }
+      } catch (e) {
+        // Pas de session, on affiche la landing
+      }
+    }
+  }
+  
   // ✅ Détecter les cas spéciaux
   const finalizeRoute = to.name === "FinalizeRegistration";
   const isGoogleOAuthRedirect = to.query.google_oauth === '1' || to.query.google_oauth === 1;
@@ -252,6 +279,24 @@ router.beforeEach(async (to, from, next) => {
   
   // ✅ 2. Ensuite, on vérifie les droits normalement
   if (requiresAuth && !user.value) {
+    // ✅ Ne jamais afficher la landing après un choix de compte : autoriser la navigation vers la route protégée
+    // Le backend a confirmé la sélection, la session sera établie ; le composant cible gérera le chargement
+    const fromSelectAccount = from.name === "SelectAccount";
+    if (fromSelectAccount) {
+      console.log("[Guard] From SelectAccount without user yet. Allowing navigation (no redirect to Home).");
+      return next();
+    }
+    // Autres flux d'auth : une dernière tentative fetchUser avant de rediriger
+    const fromAuthFlow = from.name === "Verification" || from.name === "FinalizeRegistration";
+    if (fromAuthFlow) {
+      try {
+        await fetchUser();
+        if (user.value) {
+          console.log("[Guard] User found after auth flow. Allowing navigation.");
+          return next();
+        }
+      } catch (e) {}
+    }
     console.log("[Guard] Route requires auth but user is null. Redirecting to Home.");
     return next({ name: "Home" });
   }

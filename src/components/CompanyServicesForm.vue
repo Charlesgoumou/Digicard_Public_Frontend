@@ -201,14 +201,15 @@
         </h2>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- Couleur principale -->
+          <!-- Couleur principale (type=color exige #rrggbb, jamais vide) -->
           <div>
             <label class="block text-slate-300 font-medium mb-2">Couleur principale</label>
             <div class="flex items-center gap-2">
               <input
-                v-model="form.primary_color"
+                :value="normalizedPrimaryColor"
                 type="color"
                 class="h-12 w-20 bg-slate-700 border border-slate-600 rounded-lg cursor-pointer"
+                @input="form.primary_color = ($event.target.value || '#3b82f6')"
               />
               <input
                 v-model="form.primary_color"
@@ -220,14 +221,15 @@
             <p class="text-xs text-slate-400 mt-1">Auto-rempli depuis le logo, mais modifiable</p>
           </div>
 
-          <!-- Couleur secondaire -->
+          <!-- Couleur secondaire (type=color exige #rrggbb, jamais vide) -->
           <div>
             <label class="block text-slate-300 font-medium mb-2">Couleur secondaire (optionnel)</label>
             <div class="flex items-center gap-2">
               <input
-                v-model="form.secondary_color"
+                :value="normalizedSecondaryColor"
                 type="color"
                 class="h-12 w-20 bg-slate-700 border border-slate-600 rounded-lg cursor-pointer"
+                @input="form.secondary_color = ($event.target.value || '#ffffff')"
               />
               <input
                 v-model="form.secondary_color"
@@ -508,6 +510,17 @@
   const username = ref(user.value?.username || "");
   const publicPageUrl = computed(() => `${window.location.origin}/entreprise/${username.value}`);
 
+  // Pour type="color", le navigateur exige #rrggbb (jamais vide)
+  const hexColorRe = /^#[0-9A-Fa-f]{6}$/;
+  const normalizedPrimaryColor = computed(() => {
+    const v = form.value.primary_color;
+    return (v && hexColorRe.test(String(v).trim())) ? String(v).trim() : "#3b82f6";
+  });
+  const normalizedSecondaryColor = computed(() => {
+    const v = form.value.secondary_color;
+    return (v && hexColorRe.test(String(v).trim())) ? String(v).trim() : "#ffffff";
+  });
+
   const isLoading = ref(true);
   const isSaving = ref(false);
   const saveMessage = ref("");
@@ -579,6 +592,18 @@
         if (form.value.website_featured_in_services_button === undefined) {
           form.value.website_featured_in_services_button = currentForm.website_featured_in_services_button || false;
         }
+        // Couleurs : type="color" exige #rrggbb (jamais vide)
+        const hexRe = /^#[0-9A-Fa-f]{6}$/;
+        if (!form.value.primary_color || !hexRe.test(String(form.value.primary_color).trim())) {
+          form.value.primary_color = "#3b82f6";
+        } else {
+          form.value.primary_color = String(form.value.primary_color).trim();
+        }
+        if (!form.value.secondary_color || !hexRe.test(String(form.value.secondary_color).trim())) {
+          form.value.secondary_color = "#ffffff";
+        } else {
+          form.value.secondary_color = String(form.value.secondary_color).trim();
+        }
       }
     } catch (error) {
       console.error("Erreur lors du chargement:", error);
@@ -623,8 +648,10 @@
 
       form.value.logo_url = response.data.logo_url;
       if (response.data.colors) {
-        form.value.primary_color = response.data.colors.primary;
-        form.value.secondary_color = response.data.colors.secondary;
+        const p = response.data.colors.primary;
+        const s = response.data.colors.secondary;
+        form.value.primary_color = (p && /^#[0-9A-Fa-f]{6}$/.test(String(p).trim())) ? String(p).trim() : "#3b82f6";
+        form.value.secondary_color = (s && /^#[0-9A-Fa-f]{6}$/.test(String(s).trim())) ? String(s).trim() : "#ffffff";
       }
 
       logoUploadMessage.value = "Logo uploadé et couleurs extraites avec succès !";
@@ -667,7 +694,9 @@
         formData.append("order_id", props.orderId);
       }
 
+      // Timeout 2 min : l'extraction Gemini peut être longue (PDF, images)
       const response = await apiClient.post("/api/company-page/extract-presentation", formData, {
+        timeout: 120000,
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -708,8 +737,11 @@
     } catch (error) {
       console.error("Erreur lors de l'extraction:", error);
 
-      // Messages d'erreur personnalisés selon le code de statut
-      if (error.response?.status === 503) {
+      // Timeout (extraction Gemini trop longue)
+      if (error.code === "ECONNABORTED" || error.message?.includes("timeout")) {
+        extractionMessage.value =
+          "L'extraction a pris trop de temps (fichier lourd ou service occupé). Réessayez avec un fichier plus petit ou dans quelques instants.";
+      } else if (error.response?.status === 503) {
         extractionMessage.value =
           error.response?.data?.message ||
           "Le service d'IA est temporairement surchargé. Veuillez réessayer dans quelques instants.";
@@ -782,7 +814,10 @@
       if (props.orderId) {
         payload.order_id = props.orderId;
       }
-      const response = await apiClient.post("/api/company-page/generate-content", payload);
+      // Timeout 2 min : la génération IA (Gemini) peut prendre 1 à 2 minutes
+      const response = await apiClient.post("/api/company-page/generate-content", payload, {
+        timeout: 120000,
+      });
 
       // Mettre à jour le formulaire avec le contenu généré
       if (response.data.companyPage) {
@@ -798,7 +833,11 @@
       }, 5000);
     } catch (error) {
       console.error("Erreur lors de la génération:", error);
-      generateMessage.value = error.response?.data?.message || "Erreur lors de la génération du contenu.";
+      if (error.code === "ECONNABORTED" || error.message?.includes("timeout")) {
+        generateMessage.value = "La génération a pris trop de temps. Réessayez dans quelques instants (l'IA peut être chargée).";
+      } else {
+        generateMessage.value = error.response?.data?.message || "Erreur lors de la génération du contenu.";
+      }
       generateError.value = true;
     } finally {
       isGenerating.value = false;
