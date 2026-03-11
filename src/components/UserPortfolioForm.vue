@@ -827,22 +827,24 @@
               :stencil-props="{ aspectRatio: 1 }"
               :resize-image="{ touch: true, wheel: { ratio: 0.1 }, adjustStencil: false }"
               :move-image="{ touch: true, mouse: true }"
-              :canvas="{ width: 800, height: 800, imageSmoothingEnabled: true, imageSmoothingQuality: 'high' }"
+              :canvas="{ width: 1200, height: 1200, imageSmoothingEnabled: true, imageSmoothingQuality: 'high' }"
             />
           </div>
-          <p class="text-slate-400 text-xs sm:text-sm text-center mt-3">
-            Molette ou pinch pour zoomer · Glisser pour déplacer · Cadre carré 1:1
+          <p class="text-slate-400 text-sm text-center mt-3">
+            Molette ou pinch pour zoomer · Glisser pour déplacer · Cadre carré 1:1 (avatars/logos)
           </p>
-          <div class="flex flex-col-reverse sm:flex-row gap-3 mt-6">
+          <div class="flex flex-col-reverse sm:flex-row gap-4 mt-6">
             <button
+              type="button"
               @click="closeCropModal"
-              class="flex-1 px-4 py-3 bg-slate-600 hover:bg-slate-500 text-white rounded-lg transition-colors font-medium"
+              class="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-3 px-6 rounded-lg transition-colors font-medium"
             >
               Annuler
             </button>
             <button
+              type="button"
               @click="getCroppedImage"
-              class="flex-1 px-4 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition-colors font-medium"
+              class="flex-1 bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 text-white py-3 px-6 rounded-lg transition-all font-semibold shadow-lg"
             >
               Appliquer le rognage
             </button>

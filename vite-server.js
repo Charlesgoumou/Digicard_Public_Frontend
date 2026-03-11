@@ -40,7 +40,7 @@ async function createServer() {
 }
 
 createServer().then(({ server }) => {
-  const port = process.env.PORT || 5173
+  const port = process.env.PORT || 5173 // Port pour Frontend Public
   // ✅ CORRECTION: Détecter si on veut écouter sur toutes les interfaces
   // Sur Windows, utiliser '0.0.0.0' pour permettre l'accès depuis le réseau
   const host = process.env.HOST || process.argv.includes('--host') ? '0.0.0.0' : 'localhost'

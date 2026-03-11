@@ -219,7 +219,7 @@ export function useAuth() {
             console.warn("Erreur lors de la synchronisation des préférences:", error);
           }
           closeAuthModal();
-          router.push({ name: "Dashboard" });
+          router.replace({ name: "Dashboard" });
         } else {
           throw new Error("Échec de la récupération des données utilisateur après connexion.");
         }
@@ -227,7 +227,7 @@ export function useAuth() {
         // Cas 2: L'employé doit changer son mot de passe (après validation 2FA)
         await _fetchUser(); // S'assure que user.value est défini
         closeAuthModal();
-        router.push({ name: "EmployeeSetPassword" }); // Redirige vers la page de mdp
+        router.replace({ name: "EmployeeSetPassword" });
       } else {
         // Cas 3: Connexion normale (fallback)
         await _fetchUser();
@@ -242,7 +242,7 @@ export function useAuth() {
             console.warn("Erreur lors de la synchronisation des préférences:", error);
           }
           closeAuthModal();
-          router.push({ name: "Dashboard" });
+          router.replace({ name: "Dashboard" });
         } else {
           throw new Error("Échec de la récupération des données utilisateur après connexion.");
         }
@@ -315,7 +315,7 @@ export function useAuth() {
       if (response.data.password_reset_required) {
         // Cas 1: Vérifié, mais doit changer le mot de passe
         console.log("Vérification réussie, réinitialisation du mot de passe requise.");
-        router.push({ name: "EmployeeSetPassword" });
+        router.replace({ name: "EmployeeSetPassword" });
       } else if (user.value) {
         // Cas 2: Vérifié et prêt pour le Dashboard
         console.log("Vérification réussie, redirection vers le Dashboard.", {
@@ -331,7 +331,7 @@ export function useAuth() {
         } catch (error) {
           console.warn("Erreur lors de la synchronisation des préférences:", error);
         }
-        router.push({ name: "Dashboard" });
+        router.replace({ name: "Dashboard" });
       } else {
         throw new Error("Données utilisateur manquantes après vérification.");
       }
