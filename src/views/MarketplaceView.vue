@@ -89,6 +89,43 @@
       </div>
     </div>
 
+    <!-- Barre de recherche -->
+    <div class="bg-slate-800/30 border-b border-slate-700">
+      <div class="container mx-auto px-4 py-4">
+        <div class="relative">
+          <input
+            v-model="searchQuery"
+            @input="onSearchInput"
+            type="text"
+            placeholder="Rechercher une offre, un service, un produit..."
+            class="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-3 pl-12 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-all"
+          />
+          <svg
+            class="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+          <button
+            v-if="searchQuery"
+            @click="clearSearch"
+            class="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Contenu principal -->
     <div class="container mx-auto px-4 py-8 flex-1">
       <!-- Skeleton Screen pour la grille d'offres -->
@@ -307,7 +344,7 @@
     >
       <div class="bg-slate-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         <!-- Header du modal -->
-        <div class="sticky top-0 bg-slate-800 border-b border-slate-700 p-6 flex items-center justify-between">
+        <div class="sticky top-0 bg-slate-800 border-b border-slate-700 p-6 flex items-center justify-between" style="z-index: 100; position: sticky;">
           <h2 class="text-2xl font-bold text-white">{{ selectedOffer.title }}</h2>
           <button
             @click="selectedOffer = null"
@@ -320,33 +357,66 @@
         </div>
 
         <!-- Contenu du modal -->
-        <div class="p-6">
-          <!-- Image (cliquable pour ouvrir la galerie) -->
-          <div class="mb-6">
-            <div v-if="selectedOffer.image_url || (selectedOffer.images && selectedOffer.images.length > 0)" class="relative">
-              <img
-                :src="selectedOffer.image_url || (selectedOffer.images && selectedOffer.images.length > 0 ? selectedOffer.images[0].url : '')"
-                :alt="selectedOffer.title"
-                @click="openImageGallery(0)"
-                class="w-full max-w-md mx-auto h-64 object-contain rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-              />
-              <div v-if="getTotalImageCount(selectedOffer) > 1" class="absolute bottom-2 right-2 bg-black/60 text-white px-3 py-1 rounded-full text-sm">
-                {{ getTotalImageCount(selectedOffer) }} images
+        <div class="p-6 relative">
+          <!-- Image avec navigation (cliquable pour ouvrir la galerie) -->
+          <div class="mb-6 relative" style="z-index: 1;">
+            <div v-if="getAllOfferImages(selectedOffer).length > 0" class="relative">
+              <!-- Conteneur de l'image avec boutons de navigation -->
+              <div class="relative w-full max-w-md mx-auto">
+                <img
+                  :src="getAllOfferImages(selectedOffer)[detailModalImageIndex]"
+                  :alt="`${selectedOffer.title} - Image ${detailModalImageIndex + 1}`"
+                  @click="openImageGallery(detailModalImageIndex)"
+                  class="w-full h-64 object-contain rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                  style="position: relative; z-index: 1; display: block;"
+                />
+                
+                <!-- Boutons de navigation (affichés seulement s'il y a plusieurs images) -->
+                <div v-if="getAllOfferImages(selectedOffer).length > 1" class="absolute inset-0 flex items-center justify-between px-2 pointer-events-none">
+                  <!-- Bouton précédent -->
+                  <button
+                    @click.stop="previousDetailImage"
+                    class="bg-black/60 hover:bg-black/80 text-white rounded-full p-2 transition-all pointer-events-auto"
+                    :disabled="getAllOfferImages(selectedOffer).length <= 1"
+                    :class="{ 'opacity-50 cursor-not-allowed': getAllOfferImages(selectedOffer).length <= 1 }"
+                  >
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  
+                  <!-- Bouton suivant -->
+                  <button
+                    @click.stop="nextDetailImage"
+                    class="bg-black/60 hover:bg-black/80 text-white rounded-full p-2 transition-all pointer-events-auto"
+                    :disabled="getAllOfferImages(selectedOffer).length <= 1"
+                    :class="{ 'opacity-50 cursor-not-allowed': getAllOfferImages(selectedOffer).length <= 1 }"
+                  >
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+                
+                <!-- Indicateur d'image actuelle (affiché seulement s'il y a plusieurs images) -->
+                <div v-if="getAllOfferImages(selectedOffer).length > 1" class="absolute bottom-2 left-1/2 transform -translate-x-1/2 bg-black/60 text-white px-3 py-1 rounded-full text-sm" style="z-index: 2;">
+                  {{ detailModalImageIndex + 1 }} / {{ getAllOfferImages(selectedOffer).length }}
+                </div>
               </div>
             </div>
-            <div v-else class="w-full max-w-md mx-auto h-64 bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg flex items-center justify-center">
+            <div v-else class="w-full max-w-md mx-auto h-64 bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg flex items-center justify-center" style="position: relative; z-index: 1;">
               <span class="text-8xl text-slate-500">{{ selectedOffer.type === 'service' ? '🔧' : selectedOffer.type === 'product' ? '📦' : '🎯' }}</span>
             </div>
           </div>
 
           <!-- Description dans un cadre -->
-          <div class="bg-slate-700/50 rounded-lg p-4 mb-6">
+          <div class="bg-slate-700 rounded-lg p-4 mb-6" style="z-index: 10; background-color: rgb(51 65 85); position: relative; isolation: isolate; transform: translateZ(0);">
             <h3 class="text-lg font-semibold text-slate-300 mb-3">Description</h3>
             <p class="text-slate-300 leading-relaxed">{{ selectedOffer.description }}</p>
           </div>
 
           <!-- Informations dans un autre cadre -->
-          <div class="bg-slate-700/50 rounded-lg p-4 mb-6">
+          <div class="bg-slate-700 rounded-lg p-4 mb-6" style="z-index: 10; background-color: rgb(51 65 85); position: relative; isolation: isolate; transform: translateZ(0);">
             <h3 class="text-lg font-semibold text-slate-300 mb-3">Informations</h3>
             <div class="space-y-3">
               <div class="flex justify-between items-center">
@@ -365,9 +435,9 @@
           </div>
 
           <!-- Section pour le vendeur : Dernier avis et dernier message -->
-          <div v-if="selectedOffer.is_seller" class="mb-6 space-y-4">
+          <div v-if="selectedOffer.is_seller" class="mb-6 space-y-4 relative" style="z-index: 10;">
             <!-- Dernier avis -->
-            <div v-if="selectedOffer.latest_review" class="bg-slate-700/50 rounded-lg p-4">
+            <div v-if="selectedOffer.latest_review" class="bg-slate-700 rounded-lg p-4 relative" style="z-index: 10; background-color: rgb(51 65 85);">
               <div class="flex items-center justify-between mb-3">
                 <h3 class="text-lg font-semibold text-slate-300">Dernier avis</h3>
                 <button
@@ -377,7 +447,7 @@
                   Voir tous les avis →
                 </button>
               </div>
-              <div class="bg-slate-800/50 rounded-lg p-3">
+              <div class="bg-slate-800 rounded-lg p-3" style="background-color: rgb(30 41 55);">
                 <div class="flex items-start justify-between mb-2">
                   <div>
                     <div class="font-semibold text-white">{{ selectedOffer.latest_review.user_name }}</div>
@@ -400,7 +470,7 @@
                 <p class="text-slate-300 text-sm">{{ selectedOffer.latest_review.comment }}</p>
               </div>
             </div>
-            <div v-else class="bg-slate-700/50 rounded-lg p-4">
+            <div v-else class="bg-slate-700 rounded-lg p-4" style="background-color: rgb(51 65 85); z-index: 10; position: relative;">
               <div class="flex items-center justify-between">
                 <h3 class="text-lg font-semibold text-slate-300">Dernier avis</h3>
                 <button
@@ -414,7 +484,7 @@
             </div>
 
             <!-- Dernier message -->
-            <div v-if="selectedOffer.latest_message" class="bg-slate-700/50 rounded-lg p-4">
+            <div v-if="selectedOffer.latest_message" class="bg-slate-700 rounded-lg p-4" style="background-color: rgb(51 65 85); z-index: 10; position: relative;">
               <div class="flex items-center justify-between mb-3">
                 <h3 class="text-lg font-semibold text-slate-300">Dernier message</h3>
                 <button
@@ -424,7 +494,7 @@
                   Voir tous les messages →
                 </button>
               </div>
-              <div class="bg-slate-800/50 rounded-lg p-3">
+              <div class="bg-slate-800 rounded-lg p-3" style="background-color: rgb(30 41 55);">
                 <div class="flex items-start justify-between mb-2">
                   <div>
                     <div class="font-semibold text-white">{{ selectedOffer.latest_message.sender_name }}</div>
@@ -435,7 +505,7 @@
                 <p class="text-slate-300 text-sm">{{ selectedOffer.latest_message.message }}</p>
               </div>
             </div>
-            <div v-else class="bg-slate-700/50 rounded-lg p-4">
+            <div v-else class="bg-slate-700 rounded-lg p-4" style="background-color: rgb(51 65 85); z-index: 10; position: relative;">
               <div class="flex items-center justify-between">
                 <h3 class="text-lg font-semibold text-slate-300">Dernier message</h3>
                 <button
@@ -450,11 +520,11 @@
           </div>
 
           <!-- Section Avis (pour les non-vendeurs) -->
-          <div v-if="!selectedOffer.is_seller" class="mb-6">
+          <div v-if="!selectedOffer.is_seller" class="mb-6 relative" style="z-index: 10;">
             <h3 class="text-lg font-semibold text-slate-300 mb-4">Avis ({{ selectedOffer.reviews?.length || 0 }})</h3>
             
             <!-- Formulaire d'avis (masqué pour le vendeur) -->
-            <div class="bg-slate-700/50 rounded-lg p-4 mb-4">
+            <div class="bg-slate-700 rounded-lg p-4 mb-4" style="background-color: rgb(51 65 85);">
               <textarea
                 v-model="newReview.comment"
                 rows="3"
@@ -493,7 +563,8 @@
               <div
                 v-for="review in selectedOffer.reviews"
                 :key="review.id"
-                class="bg-slate-700/50 rounded-lg p-4"
+                class="bg-slate-700 rounded-lg p-4"
+                style="background-color: rgb(51 65 85);"
               >
                 <div class="flex items-start justify-between mb-2">
                   <div>
@@ -828,8 +899,10 @@
         <form @submit.prevent="updateOffer" class="p-6 space-y-4" enctype="multipart/form-data">
           <!-- Upload d'images multiples -->
           <div>
-            <label class="block text-slate-300 font-medium mb-2">Ajouter des images (optionnel)</label>
-            <div class="space-y-3">
+            <label class="block text-slate-300 font-medium mb-3">Images de l'offre</label>
+            
+            <!-- Zone d'upload principale -->
+            <div class="space-y-4">
               <input
                 ref="imageInput"
                 type="file"
@@ -839,28 +912,88 @@
                 class="hidden"
                 id="edit-offer-images-input"
               />
-              <label
-                for="edit-offer-images-input"
-                class="flex-1 cursor-pointer bg-slate-700 border-2 border-dashed border-slate-600 rounded-lg px-4 py-8 text-center hover:border-sky-500 transition-colors"
-              >
-                <div v-if="selectedImages.length === 0" class="space-y-2">
-                  <svg class="w-12 h-12 mx-auto text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <p class="text-slate-400 text-sm">Cliquez pour ajouter des images</p>
-                </div>
-                <div v-else class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                  <div v-for="(image, index) in selectedImages" :key="index" class="relative">
-                    <img :src="image.preview" :alt="image.file.name" class="w-full h-24 object-cover rounded-lg" />
-                    <button
-                      type="button"
-                      @click.stop="removeImage(index)"
-                      class="absolute top-1 right-1 bg-red-500/80 hover:bg-red-600 rounded-full p-1 text-white text-xs"
-                    >
-                      <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
+              
+              <!-- Affichage des images existantes et nouvelles -->
+              <div v-if="selectedImages.length > 0" class="space-y-4">
+                <!-- Grille des images -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  <div 
+                    v-for="(image, index) in selectedImages" 
+                    :key="index" 
+                    class="relative group"
+                    :class="image.isExisting ? 'cursor-pointer' : ''"
+                    @click="image.isExisting && $refs.imageInput.click()"
+                  >
+                    <!-- Conteneur de l'image -->
+                    <div class="relative overflow-hidden rounded-lg border-2 transition-all duration-200"
+                         :class="image.isExisting 
+                           ? 'border-blue-500/50 hover:border-blue-500 hover:shadow-lg hover:shadow-blue-500/20' 
+                           : 'border-slate-600 hover:border-slate-500'">
+                      <img 
+                        :src="image.preview" 
+                        :alt="image.file?.name || 'Image existante'" 
+                        class="w-full h-32 object-cover transition-transform duration-200 group-hover:scale-105"
+                      />
+                      
+                      <!-- Overlay pour les images existantes -->
+                      <div v-if="image.isExisting" class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                        <div class="bg-white/90 text-slate-800 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2">
+                          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                          </svg>
+                          Remplacer
+                        </div>
+                      </div>
+                      
+                      <!-- Badge pour les images existantes -->
+                      <div v-if="image.isExisting" class="absolute top-2 left-2 bg-blue-500 text-white text-xs font-medium px-2 py-1 rounded-md shadow-lg flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                        </svg>
+                        Existant
+                      </div>
+                      
+                      <!-- Bouton de suppression -->
+                      <button
+                        type="button"
+                        @click.stop="removeImage(index)"
+                        class="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-200 transform hover:scale-110"
+                        :title="image.isExisting ? 'Supprimer cette image' : 'Retirer cette image'"
+                      >
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                 </div>
+                
+                <!-- Bouton pour ajouter plus d'images -->
+                <div class="flex justify-center">
+                  <button
+                    type="button"
+                    @click="$refs.imageInput.click()"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition-colors text-sm font-medium border border-slate-600 hover:border-sky-500"
+                  >
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Ajouter d'autres images
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Zone d'upload vide (quand aucune image) -->
+              <label
+                v-else
+                for="edit-offer-images-input"
+                class="flex flex-col items-center justify-center cursor-pointer bg-slate-700/50 border-2 border-dashed border-slate-600 rounded-lg px-6 py-12 text-center hover:border-sky-500 hover:bg-slate-700 transition-all duration-200"
+              >
+                <svg class="w-16 h-16 mx-auto text-slate-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <p class="text-slate-300 font-medium mb-1">Cliquez pour ajouter des images</p>
+                <p class="text-slate-400 text-xs">Formats acceptés : JPG, PNG, GIF, WEBP (max 5MB par image)</p>
               </label>
             </div>
           </div>
@@ -1362,6 +1495,8 @@ const { logout, user } = useAuth();
 const isLoading = ref(false);
 const activeTab = ref('all');
 const offers = ref([]);
+const searchQuery = ref('');
+const searchTimeout = ref(null);
 const selectedOffer = ref(null);
 const showCreateOfferModal = ref(false);
 const isCreatingOffer = ref(false);
@@ -1412,11 +1547,13 @@ const loadOffers = async () => {
         created_at: msg.created_at,
       }));
     } else {
-      // Envoyer le filtre actif au backend
+      // Envoyer le filtre actif et la recherche au backend
       const filter = activeTab.value === 'all' ? 'all' : activeTab.value;
-      const response = await apiClient.get('/api/marketplace/offers', {
-        params: { filter }
-      });
+      const params = { filter };
+      if (searchQuery.value.trim()) {
+        params.search = searchQuery.value.trim();
+      }
+      const response = await apiClient.get('/api/marketplace/offers', { params });
       offers.value = response.data;
     }
   } catch (error) {
@@ -1427,7 +1564,29 @@ const loadOffers = async () => {
   }
 };
 
+// Recherche en temps réel (dès la première lettre)
+const onSearchInput = () => {
+  // Annuler le timeout précédent
+  if (searchTimeout.value) {
+    clearTimeout(searchTimeout.value);
+  }
+  
+  // Débounce : attendre 300ms après la dernière frappe avant de rechercher
+  searchTimeout.value = setTimeout(() => {
+    loadOffers();
+  }, 300);
+};
+
+// Effacer la recherche
+const clearSearch = () => {
+  searchQuery.value = '';
+  loadOffers();
+};
+
 const viewOfferDetails = async (offerId) => {
+  // Réinitialiser l'index de l'image
+  detailModalImageIndex.value = 0;
+  
   // Afficher immédiatement le modal avec les données déjà disponibles pour une réactivité instantanée
   const existingOffer = offers.value.find(o => o.id === offerId);
   if (existingOffer) {
@@ -1496,6 +1655,8 @@ const isSendingReply = ref(false);
 const showImageGallery = ref(false);
 const galleryImages = ref([]);
 const currentImageIndex = ref(0);
+// Index de l'image actuelle dans la modal de détails
+const detailModalImageIndex = ref(0);
 const touchStartX = ref(0);
 const touchStartY = ref(0);
 const touchEndX = ref(0);
@@ -1883,14 +2044,37 @@ const editOffer = async (offerId) => {
       currency: editingOffer.value.currency || 'EUR',
       image_url: editingOffer.value.image_url
     };
-    // Charger les images si disponibles
-    if (editingOffer.value.images && editingOffer.value.images.length > 0) {
-      selectedImages.value = editingOffer.value.images.map(img => ({
+    // ✅ Charger les images existantes (images multiples + image principale)
+    selectedImages.value = [];
+    
+    // Ajouter l'image principale si elle existe
+    if (editingOffer.value.image_url) {
+      selectedImages.value.push({
         file: null,
-        preview: img.url || img.image_url || img,
+        preview: editingOffer.value.image_url,
         name: 'image',
-        originalFile: null
-      }));
+        originalFile: null,
+        isExisting: true,
+        existingUrl: editingOffer.value.image_url
+      });
+    }
+    
+    // Ajouter les autres images si disponibles
+    if (editingOffer.value.images && editingOffer.value.images.length > 0) {
+      editingOffer.value.images.forEach(img => {
+        const imageUrl = img.url || img.image_url || img;
+        // Éviter les doublons avec l'image principale
+        if (imageUrl !== editingOffer.value.image_url) {
+          selectedImages.value.push({
+            file: null,
+            preview: imageUrl,
+            name: 'image',
+            originalFile: null,
+            isExisting: true,
+            existingUrl: imageUrl
+          });
+        }
+      });
     }
   } catch (error) {
     console.error('Erreur lors du chargement de l\'offre:', error);
@@ -1937,11 +2121,18 @@ const updateOffer = async () => {
     formData.append('price', newOffer.value.price);
     formData.append('currency', newOffer.value.currency);
     
+    // ✅ Envoyer uniquement les nouvelles images (pas les images existantes non modifiées)
     if (selectedImages.value.length > 0) {
-      selectedImages.value.forEach((image, index) => {
-        // Envoyer l'image originale au backend pour qu'elle soit disponible dans la galerie
+      let newImageIndex = 0;
+      selectedImages.value.forEach((image) => {
+        // Envoyer uniquement les images qui ont un fichier (nouvelles images ou images remplacées)
         const imageToSend = image.originalFile || image.file;
-        formData.append(`images[${index}]`, imageToSend);
+        if (imageToSend) {
+          formData.append(`images[${newImageIndex}]`, imageToSend);
+          newImageIndex++;
+        }
+        // Les images existantes (isExisting: true sans file) ne sont pas envoyées
+        // Elles restent sur le serveur
       });
     }
     
@@ -2234,24 +2425,69 @@ const handleKeyPress = (event) => {
 };
 
 
+// Fonction helper pour obtenir toutes les images d'une offre (sans doublons)
+const getAllOfferImages = (offer) => {
+  if (!offer) return [];
+  
+  const imageUrls = [];
+  const seenUrls = new Set();
+  
+  // Ajouter l'image principale en premier si elle existe
+  if (offer.image_url && !seenUrls.has(offer.image_url)) {
+    imageUrls.push(offer.image_url);
+    seenUrls.add(offer.image_url);
+  }
+  
+  // Ajouter les autres images
+  if (offer.images && offer.images.length > 0) {
+    offer.images.forEach(img => {
+      const url = img.url || img.image_url || img;
+      if (url && !seenUrls.has(url)) {
+        imageUrls.push(url);
+        seenUrls.add(url);
+      }
+    });
+  }
+  
+  return imageUrls;
+};
+
 // Fonction helper pour compter le total d'images
 const getTotalImageCount = (offer) => {
-  if (!offer) return 0;
-  let count = 0;
-  if (offer.image_url) count++;
-  if (offer.images && offer.images.length > 0) {
-    count += offer.images.length;
-    // Si l'image principale est dans les images, ne pas la compter deux fois
-    if (offer.image_url && offer.images.some(img => (img.url || img.image_url || img) === offer.image_url)) {
-      count--;
-    }
+  return getAllOfferImages(offer).length;
+};
+
+// Navigation dans la modal de détails
+const nextDetailImage = () => {
+  if (!selectedOffer.value) return;
+  const images = getAllOfferImages(selectedOffer.value);
+  if (images.length > 0) {
+    detailModalImageIndex.value = (detailModalImageIndex.value + 1) % images.length;
   }
-  return count;
+};
+
+const previousDetailImage = () => {
+  if (!selectedOffer.value) return;
+  const images = getAllOfferImages(selectedOffer.value);
+  if (images.length > 0) {
+    detailModalImageIndex.value = detailModalImageIndex.value === 0 
+      ? images.length - 1 
+      : detailModalImageIndex.value - 1;
+  }
 };
 
 // Watcher pour recharger les offres quand l'onglet change
 watch(activeTab, () => {
+  // Réinitialiser la recherche lors du changement d'onglet
+  searchQuery.value = '';
   loadOffers();
+});
+
+// Nettoyer le timeout lors du démontage
+onUnmounted(() => {
+  if (searchTimeout.value) {
+    clearTimeout(searchTimeout.value);
+  }
 });
 
 // Lifecycle

@@ -222,6 +222,7 @@
                   <label class="block text-xs font-medium text-slate-400 mb-1">Heure</label>
                   <select
                     v-model="newSlots[`rule-${getRuleKey(rule)}`].start"
+                    @change="handleTimeSelectChange(`rule-${getRuleKey(rule)}`)"
                     class="w-full bg-slate-700 border border-slate-600 rounded-lg py-2 px-2 sm:px-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
                   >
                     <option value="">Heure</option>
@@ -232,12 +233,27 @@
                     >
                       {{ timeOption.label }}
                     </option>
+                    <option value="custom">Autre (saisie manuelle)</option>
                   </select>
+                </div>
+                <div
+                  v-if="newSlots[`rule-${getRuleKey(rule)}`]?.start === 'custom'"
+                  class="col-span-1 sm:flex-1 sm:min-w-[120px]"
+                >
+                  <label class="block text-xs font-medium text-slate-400 mb-1">Heure personnalisée</label>
+                  <input
+                    type="time"
+                    v-model="newSlots[`rule-${getRuleKey(rule)}`].customTime"
+                    required
+                    class="w-full bg-slate-700 border border-slate-600 rounded-lg py-2 px-2 sm:px-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  />
+                  <p class="text-xs text-slate-500 mt-1">Format: HH:MM (de 00:00 à 23:59, votre choix libre)</p>
                 </div>
                 <div class="col-span-1 sm:flex-1 sm:min-w-[140px]">
                   <label class="block text-xs font-medium text-slate-400 mb-1">Durée</label>
                   <select
-                    v-model.number="newSlots[`rule-${getRuleKey(rule)}`].duration"
+                    v-model="newSlots[`rule-${getRuleKey(rule)}`].duration"
+                    @change="handleDurationSelectChange(`rule-${getRuleKey(rule)}`)"
                     class="w-full bg-slate-700 border border-slate-600 rounded-lg py-2 px-2 sm:px-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
                   >
                     <option :value="15">15 min</option>
@@ -246,12 +262,31 @@
                     <option :value="60">1h</option>
                     <option :value="90">1h30</option>
                     <option :value="120">2h</option>
+                    <option value="custom">Autre (saisie manuelle)</option>
                   </select>
+                </div>
+                <div
+                  v-if="newSlots[`rule-${getRuleKey(rule)}`]?.duration === 'custom'"
+                  class="col-span-1 sm:flex-1 sm:min-w-[140px]"
+                >
+                  <label class="block text-xs font-medium text-slate-400 mb-1">Durée personnalisée (minutes)</label>
+                  <input
+                    type="number"
+                    v-model.number="newSlots[`rule-${getRuleKey(rule)}`].customDuration"
+                    @input="handleCustomDurationInput(`rule-${getRuleKey(rule)}`)"
+                    min="1"
+                    max="480"
+                    step="1"
+                    required
+                    class="w-full bg-slate-700 border border-slate-600 rounded-lg py-2 px-2 sm:px-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    placeholder="Ex: 25"
+                  />
+                  <p class="text-xs text-slate-500 mt-1">Entre 1 et 480 minutes (votre choix)</p>
                 </div>
                 <button
                   type="button"
                   @click="addSlotToRule(day.id, getRuleKey(rule))"
-                  :disabled="!newSlots[`rule-${getRuleKey(rule)}`]?.start"
+                  :disabled="!isSlotValid(`rule-${getRuleKey(rule)}`)"
                   class="col-span-2 sm:col-span-1 bg-sky-500 hover:bg-sky-600 disabled:bg-slate-600 disabled:cursor-not-allowed text-white px-3 sm:px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2"
                 >
                   <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -805,7 +840,7 @@ const addRule = (dayId, type) => {
   
   // Initialiser les nouveaux slots pour cette règle
   const ruleKey = `rule-${ruleId}`;
-  newSlots[ruleKey] = { start: '', duration: 30 };
+  newSlots[ruleKey] = { start: '', customTime: '', duration: 30, customDuration: null };
   if (type === 'specific') {
     newDates[ruleKey] = '';
   }
@@ -895,6 +930,63 @@ const isSlotPassedForToday = (slotStart, rule) => {
   return slotTime <= now;
 };
 
+// Gérer le changement de sélection dans le select d'heure
+const handleTimeSelectChange = (ruleKey) => {
+  const slot = newSlots[ruleKey];
+  if (!slot) return;
+  if (slot.start !== 'custom') {
+    slot.customTime = '';
+  } else {
+    if (!slot.customTime) {
+      slot.customTime = '09:00';
+    }
+  }
+};
+
+const handleDurationSelectChange = (ruleKey) => {
+  const slot = newSlots[ruleKey];
+  if (!slot) return;
+  if (slot.duration !== 'custom' && typeof slot.duration === 'string') {
+    slot.duration = parseInt(slot.duration, 10);
+  }
+  if (slot.duration !== 'custom') {
+    slot.customDuration = null;
+  } else {
+    if (slot.customDuration === null || slot.customDuration === undefined) {
+      slot.customDuration = 30;
+    }
+  }
+};
+
+const handleCustomDurationInput = (ruleKey) => {
+  const slot = newSlots[ruleKey];
+  if (!slot || slot.customDuration === null || slot.customDuration === undefined) return;
+  if (slot.customDuration < 1) {
+    slot.customDuration = 1;
+  } else if (slot.customDuration > 480) {
+    slot.customDuration = 480;
+  }
+};
+
+const isSlotValid = (ruleKey) => {
+  const slot = newSlots[ruleKey];
+  if (!slot) return false;
+  let hourValid = false;
+  if (slot.start === 'custom') {
+    hourValid = !!slot.customTime && slot.customTime.trim() !== '';
+  } else {
+    hourValid = !!slot.start && slot.start.trim() !== '';
+  }
+  let durationValid = false;
+  if (slot.duration === 'custom') {
+    durationValid = slot.customDuration !== null && slot.customDuration !== undefined && slot.customDuration >= 1 && slot.customDuration <= 480;
+  } else {
+    const durationValue = typeof slot.duration === 'string' ? parseInt(slot.duration, 10) : slot.duration;
+    durationValid = !!durationValue && durationValue > 0 && durationValue <= 480;
+  }
+  return hourValid && durationValid;
+};
+
 // Ajouter un créneau à une règle
 const addSlotToRule = (dayId, ruleId) => {
   const rule = dateRules.value.find(r => (r.id || r._id) == ruleId);
@@ -903,22 +995,52 @@ const addSlotToRule = (dayId, ruleId) => {
   const ruleKey = `rule-${ruleId}`;
   const newSlot = newSlots[ruleKey];
 
-  if (!newSlot || !newSlot.start) return;
+  if (!newSlot) return;
 
-  // Vérifier si le créneau est passé pour aujourd'hui
-  if (isSlotPassedForToday(newSlot.start, rule)) {
+  let slotStart = newSlot.start;
+  if (slotStart === 'custom') {
+    if (!newSlot.customTime || newSlot.customTime.trim() === '') {
+      showToast('Veuillez saisir une heure personnalisée', 'error');
+      return;
+    }
+    const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/;
+    if (!timeRegex.test(newSlot.customTime)) {
+      showToast('Format d\'heure invalide. Utilisez HH:MM (ex: 09:30 ou 23:45)', 'error');
+      return;
+    }
+    slotStart = newSlot.customTime;
+  }
+  
+  if (!slotStart || slotStart === 'custom') return;
+
+  let slotDuration = newSlot.duration;
+  if (slotDuration === 'custom') {
+    if (!newSlot.customDuration || newSlot.customDuration < 1 || newSlot.customDuration > 480) {
+      showToast('Veuillez saisir une durée valide (entre 1 et 480 minutes)', 'error');
+      return;
+    }
+    slotDuration = newSlot.customDuration;
+  } else {
+    slotDuration = typeof slotDuration === 'string' ? parseInt(slotDuration, 10) : slotDuration;
+  }
+  
+  if (!slotDuration || slotDuration < 1 || slotDuration > 480) {
+    showToast('La durée doit être entre 1 et 480 minutes', 'error');
+    return;
+  }
+
+  if (isSlotPassedForToday(slotStart, rule)) {
     showToast('⚠️ Cette heure est déjà passée pour aujourd\'hui. Le créneau sera disponible uniquement pour les dates futures.', 'error');
     // On continue quand même l'ajout car le créneau peut être valide pour d'autres dates
   }
 
-  // Vérifier si le créneau existe déjà (même heure de début)
-  if (rule.slots && rule.slots.some(slot => slot.start === newSlot.start && slot.duration === newSlot.duration)) {
+  if (rule.slots && rule.slots.some(slot => slot.start === slotStart && slot.duration === slotDuration)) {
     showToast('Ce créneau existe déjà !', 'error');
     return;
   }
 
-  // Vérifier les chevauchements avec les créneaux existants
-  if (rule.slots && rule.slots.some(existingSlot => slotsOverlap(newSlot, existingSlot))) {
+  const slotToAdd = { start: slotStart, duration: slotDuration };
+  if (rule.slots && rule.slots.some(existingSlot => slotsOverlap(slotToAdd, existingSlot))) {
     showToast('Ce créneau chevauche avec un créneau existant !', 'error');
     return;
   }
@@ -927,8 +1049,8 @@ const addSlotToRule = (dayId, ruleId) => {
     rule.slots = [];
   }
   rule.slots.push({
-    start: newSlot.start,
-    duration: newSlot.duration,
+    start: slotStart,
+    duration: slotDuration,
   });
 
   // Trier par heure de début
@@ -937,7 +1059,9 @@ const addSlotToRule = (dayId, ruleId) => {
   // Réinitialiser le formulaire
   if (newSlots[ruleKey]) {
     newSlots[ruleKey].start = '';
+    newSlots[ruleKey].customTime = '';
     newSlots[ruleKey].duration = 30;
+    newSlots[ruleKey].customDuration = null;
   }
 };
 
@@ -992,7 +1116,7 @@ const loadSettings = async () => {
           
           // Initialiser newSlots et newDates pour chaque règle
           const ruleKey = `rule-${rule.id}`;
-          newSlots[ruleKey] = { start: '', duration: 30 };
+          newSlots[ruleKey] = { start: '', customTime: '', duration: 30, customDuration: null };
           if (rule.type === 'specific') {
             newDates[ruleKey] = '';
           }

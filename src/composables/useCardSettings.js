@@ -603,6 +603,8 @@ export function useCardSettings(
           // Obtenir la valeur de noDesignYet depuis le callback si fourni, sinon utiliser form
           const noDesignYetValue = onNoDesignYet ? onNoDesignYet() : form.no_design_yet;
 
+          // Valeur null pour les champs URL vides (évite erreur 422/500 côté backend)
+          const emptyToNull = (v) => (v && String(v).trim() !== "" ? v : null);
           // Construire le payload avec seulement les champs définis
           const payload = {
             profile_name: form.name,
@@ -614,20 +616,20 @@ export function useCardSettings(
             emails: cleanedEmails.length ? cleanedEmails : null,
             birth_day: form.birth_day,
             birth_month: form.birth_month,
-            website_url: form.website_url,
-            address_neighborhood: form.address_neighborhood,
-            address_commune: form.address_commune,
-            address_city: form.address_city,
-            address_country: form.address_country,
-            whatsapp_url: form.whatsapp_url,
-            linkedin_url: form.linkedin_url,
-            facebook_url: form.facebook_url,
-            twitter_url: form.twitter_url,
-            youtube_url: form.youtube_url,
-            deezer_url: form.deezer_url,
-            spotify_url: form.spotify_url,
-            tiktok_url: form.tiktok_url,
-            threads_url: form.threads_url,
+            website_url: emptyToNull(form.website_url),
+            address_neighborhood: form.address_neighborhood || null,
+            address_commune: form.address_commune || null,
+            address_city: form.address_city || null,
+            address_country: form.address_country || null,
+            whatsapp_url: emptyToNull(form.whatsapp_url),
+            linkedin_url: emptyToNull(form.linkedin_url),
+            facebook_url: emptyToNull(form.facebook_url),
+            twitter_url: emptyToNull(form.twitter_url),
+            youtube_url: emptyToNull(form.youtube_url),
+            deezer_url: emptyToNull(form.deezer_url),
+            spotify_url: emptyToNull(form.spotify_url),
+            tiktok_url: emptyToNull(form.tiktok_url),
+            threads_url: emptyToNull(form.threads_url),
           };
 
           // Ajouter les champs de design de la carte

@@ -40,6 +40,8 @@ IMPLEMENTATION_FLUX_ENTREPRISE.md
 .env.local
 .env.production
 .env.development
+*.sh
+*.example
 # Fichiers texte et markdown
 *.md
 *.txt
