@@ -89,6 +89,43 @@
       </div>
     </div>
 
+    <!-- Barre de recherche -->
+    <div class="bg-slate-800/30 border-b border-slate-700">
+      <div class="container mx-auto px-4 py-4">
+        <div class="relative">
+          <input
+            v-model="searchQuery"
+            @input="onSearchInput"
+            type="text"
+            placeholder="Rechercher une offre, un service, un produit..."
+            class="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-3 pl-12 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-all"
+          />
+          <svg
+            class="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+          <button
+            v-if="searchQuery"
+            @click="clearSearch"
+            class="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Contenu principal -->
     <div class="container mx-auto px-4 py-8 flex-1">
       <!-- Skeleton Screen pour la grille d'offres -->
@@ -1458,6 +1495,8 @@ const { logout, user } = useAuth();
 const isLoading = ref(false);
 const activeTab = ref('all');
 const offers = ref([]);
+const searchQuery = ref('');
+const searchTimeout = ref(null);
 const selectedOffer = ref(null);
 const showCreateOfferModal = ref(false);
 const isCreatingOffer = ref(false);
@@ -1508,11 +1547,13 @@ const loadOffers = async () => {
         created_at: msg.created_at,
       }));
     } else {
-      // Envoyer le filtre actif au backend
+      // Envoyer le filtre actif et la recherche au backend
       const filter = activeTab.value === 'all' ? 'all' : activeTab.value;
-      const response = await apiClient.get('/api/marketplace/offers', {
-        params: { filter }
-      });
+      const params = { filter };
+      if (searchQuery.value.trim()) {
+        params.search = searchQuery.value.trim();
+      }
+      const response = await apiClient.get('/api/marketplace/offers', { params });
       offers.value = response.data;
     }
   } catch (error) {
@@ -1521,6 +1562,25 @@ const loadOffers = async () => {
   } finally {
     isLoading.value = false;
   }
+};
+
+// Recherche en temps réel (dès la première lettre)
+const onSearchInput = () => {
+  // Annuler le timeout précédent
+  if (searchTimeout.value) {
+    clearTimeout(searchTimeout.value);
+  }
+  
+  // Débounce : attendre 300ms après la dernière frappe avant de rechercher
+  searchTimeout.value = setTimeout(() => {
+    loadOffers();
+  }, 300);
+};
+
+// Effacer la recherche
+const clearSearch = () => {
+  searchQuery.value = '';
+  loadOffers();
 };
 
 const viewOfferDetails = async (offerId) => {
@@ -2418,7 +2478,16 @@ const previousDetailImage = () => {
 
 // Watcher pour recharger les offres quand l'onglet change
 watch(activeTab, () => {
+  // Réinitialiser la recherche lors du changement d'onglet
+  searchQuery.value = '';
   loadOffers();
+});
+
+// Nettoyer le timeout lors du démontage
+onUnmounted(() => {
+  if (searchTimeout.value) {
+    clearTimeout(searchTimeout.value);
+  }
 });
 
 // Lifecycle
