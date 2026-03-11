@@ -1505,13 +1505,15 @@
       const formData = new FormData();
       formData.append("document", file);
 
+      // Timeout long : l'extraction + structuration IA peut prendre 30–60 s (backend 180 s max)
       const response = await apiClient.post("/api/user-portfolio/extract-document", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
         params: {
           profile_type: selectedProfile.value
-        }
+        },
+        timeout: 120000, // 2 minutes (évite l'annulation avant la réponse du backend)
       });
 
       if (response.data.extractedData) {
@@ -1603,7 +1605,10 @@
       }
     } catch (error) {
       console.error("Erreur lors de l'extraction:", error);
-      extractionMessage.value = error.response?.data?.message || "Erreur lors de l'extraction du document.";
+      const isTimeout = error.code === "ECONNABORTED" || error.message?.includes("timeout");
+      extractionMessage.value =
+        error.response?.data?.message ||
+        (isTimeout ? "L'extraction a pris trop de temps. Veuillez réessayer (le document peut être analysé en arrière-plan)." : "Erreur lors de l'extraction du document.");
       extractionError.value = true;
     } finally {
       isExtractingDocument.value = false;
