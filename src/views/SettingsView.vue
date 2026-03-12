@@ -434,6 +434,7 @@
             <ProfileSettingsForm
               :form="form"
               :username="user.username"
+              :public-short-code="selectedOrderShortCode"
               :month-names="monthNames"
               :selected-order-id="selectedOrderId"
               :user="user"
@@ -697,6 +698,14 @@
     () => (isLoading.value = false),
     null, // ✅ IMPORTANT: Ne pas passer fetchUser - l'avatar du Dashboard doit rester celui de l'utilisateur
   );
+
+  // URL publique courte (arccenciel.com/p/XXX) pour tous les rôles : business, particuliers, employés
+  const selectedOrderShortCode = computed(() => {
+    if (!selectedOrderId.value || !orders.value) return null;
+    const id = parseInt(selectedOrderId.value);
+    const order = orders.value.find((o) => parseInt(o.id) === id);
+    return order?.short_code || order?.shortCode || null;
+  });
 
   // ✅ CORRECTION : Fonction pour recharger les données de la commande après un upload d'avatar
   const handleReloadOrderData = async () => {

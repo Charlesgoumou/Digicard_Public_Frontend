@@ -104,7 +104,14 @@
     <div class="min-w-0 w-full">
       <label class="block text-sm font-medium text-slate-300 mb-1">Nom d'utilisateur (URL Publique)</label>
       <div
-        class="flex items-center bg-slate-800/50 border border-slate-700 rounded-lg px-2 sm:px-4 py-3 w-full max-w-full overflow-hidden"
+        role="button"
+        tabindex="0"
+        :aria-label="copyFeedback ? 'URL copiée' : 'Cliquer pour copier l\'URL du profil'"
+        :title="copyFeedback ? 'URL copiée !' : 'Cliquer pour copier l\'URL'"
+        class="flex items-center bg-slate-800/50 border border-slate-700 rounded-lg px-2 sm:px-4 py-3 w-full max-w-full overflow-hidden cursor-pointer select-none transition-colors hover:bg-slate-700/50 hover:border-slate-600 active:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+        @click="copyPublicUrl"
+        @keydown.enter.prevent="copyPublicUrl"
+        @keydown.space.prevent="copyPublicUrl"
       >
         <svg
           class="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 mr-1.5 sm:mr-3 flex-shrink-0"
@@ -121,15 +128,16 @@
         </svg>
         <span
           class="text-slate-400 text-[10px] sm:text-xs md:text-sm mr-1 sm:mr-2 whitespace-nowrap flex-shrink-0 hidden sm:inline"
-          >arccenciel.com/profil/</span
+          >{{ publicUrlPrefix }}</span
         >
         <span class="text-slate-400 text-[10px] sm:text-xs mr-1 sm:mr-2 whitespace-nowrap flex-shrink-0 sm:hidden"
           >arccenciel.com/...</span
         >
         <span class="text-white font-medium text-xs sm:text-sm truncate min-w-0 flex-1 overflow-hidden">{{
-          username
+          publicUrlValue
         }}</span>
         <svg
+          v-if="!copyFeedback"
           class="w-3 h-3 sm:w-4 sm:h-4 text-slate-500 ml-1 sm:ml-2 flex-shrink-0"
           fill="none"
           viewBox="0 0 24 24"
@@ -142,9 +150,10 @@
             d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
           />
         </svg>
+        <span v-else class="text-green-400 text-xs sm:text-sm ml-1 sm:ml-2 flex-shrink-0">✓ Copié</span>
       </div>
       <p class="text-xs text-slate-500 mt-1">
-        🔒 Ce nom d'utilisateur a été généré automatiquement et ne peut pas être modifié.
+        🔒 Ce nom d'utilisateur a été généré automatiquement et ne peut pas être modifié. Cliquez sur le champ pour copier l'URL.
       </p>
     </div>
 
@@ -361,6 +370,10 @@
       type: String,
       required: true,
     },
+    publicShortCode: {
+      type: String,
+      default: null,
+    },
     monthNames: {
       type: Array,
       required: true,
@@ -378,6 +391,39 @@
       default: null,
     },
   });
+
+  const publicUrlPrefix = computed(() => (props.publicShortCode ? "arccenciel.com/p/" : "arccenciel.com/profil/"));
+  const publicUrlValue = computed(() => (props.publicShortCode ? props.publicShortCode : props.username));
+
+  // URL complète du profil public (pour copie dans le presse-papiers)
+  const fullPublicUrl = computed(() => {
+    const base = import.meta.env.VITE_APP_URL_BACKEND || "http://localhost:8000";
+    const baseClean = base.replace(/\/$/, "");
+    if (props.publicShortCode) {
+      return `${baseClean}/p/${props.publicShortCode}`;
+    }
+    return `${baseClean}/profil/${props.username}`;
+  });
+
+  const copyFeedback = ref("");
+  let copyFeedbackTimer = null;
+  const copyPublicUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(fullPublicUrl.value);
+      copyFeedback.value = "Copié !";
+      if (copyFeedbackTimer) clearTimeout(copyFeedbackTimer);
+      copyFeedbackTimer = setTimeout(() => {
+        copyFeedback.value = "";
+      }, 2000);
+    } catch (err) {
+      console.error("Copy failed:", err);
+      copyFeedback.value = "Erreur";
+      if (copyFeedbackTimer) clearTimeout(copyFeedbackTimer);
+      copyFeedbackTimer = setTimeout(() => {
+        copyFeedback.value = "";
+      }, 2000);
+    }
+  };
 
   const emit = defineEmits(["addPhone", "removePhone", "addEmail", "removeEmail", "update:avatar", "reload-order-data"]);
 

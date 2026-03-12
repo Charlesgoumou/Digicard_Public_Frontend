@@ -433,18 +433,29 @@
     return null;
   };
 
-  // Afficher le profil d'une commande
+  const getOrderShortCode = (order) => {
+    if (!order) return null;
+    if (order.short_code) return order.short_code;
+    if (order.shortCode) return order.shortCode;
+    return null;
+  };
+
+  // Afficher le profil d'une commande (business, employés, particuliers : même nomenclature /p/{code})
   const viewProfile = (order) => {
-    // ✅ CORRECTION : Pour les business admin, utiliser le username depuis différentes sources
-    // 1. employee_username si c'est une commande d'employé
-    // 2. profile_username si disponible (retourné par le backend pour les business admin inclus)
-    // 3. employee_profile.username si disponible
-    // 4. user.value.username en dernier recours
+    // Username : employee_username (commande d'employé), profile_username, employee_profile?.username, ou user.value?.username
     const username =
       order.employee_username || order.profile_username || order.employee_profile?.username || user.value?.username;
 
     if (username) {
       const backendUrl = import.meta.env.VITE_APP_URL_BACKEND || "http://localhost:8000";
+
+      // ✅ Préférer l'URL courte /p/{short_code} pour tous les types de comptes (employés inclus)
+      const shortCode = getOrderShortCode(order);
+      if (shortCode) {
+        const profileUrl = `${backendUrl}/p/${shortCode}`;
+        window.open(profileUrl, "_blank");
+        return;
+      }
 
       // Essayer d'obtenir le token d'accès (sécurisé)
       const accessToken = getOrderAccessToken(order);

@@ -2430,10 +2430,20 @@
     // Si c'est un profil restaurant, rediriger vers le menu
     if (isRestaurantProfile.value) {
       router.push({ name: "RestaurantMenu" });
-    } else {
-      // Sinon, rediriger vers la page de sélection de profil
-      router.push({ name: "ProfileSelection" });
+      return;
     }
+    // ✅ Comptes employés (même nomenclature que particuliers) : si une seule commande avec short_code, ouvrir directement /p/{code}
+    if (user.value?.role === "employee" && employeeOrders.value.length === 1) {
+      const order = employeeOrders.value[0];
+      const shortCode = getOrderShortCode(order);
+      if (shortCode) {
+        const backendUrl = import.meta.env.VITE_APP_URL_BACKEND || "http://localhost:8000";
+        window.open(`${backendUrl}/p/${shortCode}`, "_blank");
+        return;
+      }
+    }
+    // Sinon, rediriger vers la page de sélection de profil
+    router.push({ name: "ProfileSelection" });
   };
   const goToOrders = () => {
     router.push({ name: "Orders" });
@@ -2456,14 +2466,27 @@
     return null;
   };
 
-  // Obtenir l'URL du profil d'un employé avec le token sécurisé
+  // Fonction utilitaire pour obtenir le short_code d'une commande
+  const getOrderShortCode = (order) => {
+    if (!order) return null;
+    if (order.short_code) return order.short_code;
+    if (order.shortCode) return order.shortCode;
+    return null;
+  };
+
+  // Obtenir l'URL du profil d'un employé (nomenclature courte /p/{code} comme pour particuliers et business)
   const getEmployeeProfileUrl = (employee) => {
     if (!employee?.username) return "";
 
     const backendUrl = import.meta.env.VITE_APP_URL_BACKEND || "http://localhost:8000";
 
-    // Trouver la commande correspondante pour obtenir le token
     const order = businessOrders.value.find((o) => o.id === selectedOrderId.value);
+
+    // ✅ Préférer l'URL courte /p/{short_code} pour tous les comptes (employés inclus)
+    const shortCode = order ? getOrderShortCode(order) : null;
+    if (shortCode) {
+      return `${backendUrl}/p/${shortCode}`;
+    }
 
     // Essayer d'obtenir le token d'accès (sécurisé)
     const accessToken = order ? getOrderAccessToken(order) : null;
