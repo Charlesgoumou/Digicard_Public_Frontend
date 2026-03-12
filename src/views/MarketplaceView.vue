@@ -884,7 +884,7 @@
       @click.self="showEditOfferModal = false; editingOffer = null"
     >
       <div class="bg-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div class="sticky top-0 bg-slate-800 border-b border-slate-700 p-6 flex items-center justify-between">
+        <div class="sticky top-0 bg-slate-800 border-b border-slate-700 p-6 flex items-center justify-between z-100" style="z-index: 100;">
           <h2 class="text-2xl font-bold text-white">Modifier l'offre</h2>
           <button
             @click="showEditOfferModal = false; editingOffer = null"
@@ -898,11 +898,11 @@
 
         <form @submit.prevent="updateOffer" class="p-6 space-y-4" enctype="multipart/form-data">
           <!-- Upload d'images multiples -->
-          <div>
+          <div style="position: relative; z-index: 1;">
             <label class="block text-slate-300 font-medium mb-3">Images de l'offre</label>
             
             <!-- Zone d'upload principale -->
-            <div class="space-y-4">
+            <div class="space-y-4" style="position: relative; z-index: 1;">
               <input
                 ref="imageInput"
                 type="file"
@@ -998,7 +998,7 @@
             </div>
           </div>
 
-          <div>
+          <div style="position: relative; z-index: 10; background-color: rgb(51 65 85);">
             <label class="block text-slate-300 font-medium mb-2">Titre *</label>
             <input
               v-model="newOffer.title"
@@ -1009,7 +1009,7 @@
             />
           </div>
 
-          <div>
+          <div style="position: relative; z-index: 10; background-color: rgb(51 65 85);">
             <label class="block text-slate-300 font-medium mb-2">Description *</label>
             <textarea
               v-model="newOffer.description"
@@ -1020,7 +1020,7 @@
             ></textarea>
           </div>
 
-          <div class="grid md:grid-cols-2 gap-4">
+          <div class="grid md:grid-cols-2 gap-4" style="position: relative; z-index: 10; background-color: rgb(51 65 85);">
             <div>
               <label class="block text-slate-300 font-medium mb-2">Type *</label>
               <select
@@ -1049,7 +1049,7 @@
             </div>
           </div>
 
-          <div>
+          <div style="position: relative; z-index: 10; background-color: rgb(51 65 85);">
             <label class="block text-slate-300 font-medium mb-2">Devise</label>
             <select
               v-model="newOffer.currency"
@@ -1062,11 +1062,11 @@
             </select>
           </div>
 
-          <div v-if="createError" class="bg-red-500/20 border border-red-500/50 rounded-lg p-4 text-red-400 text-sm">
+          <div v-if="createError" class="bg-red-500/20 border border-red-500/50 rounded-lg p-4 text-red-400 text-sm" style="position: relative; z-index: 10;">
             {{ createError }}
           </div>
 
-          <div class="flex gap-4">
+          <div class="flex gap-4" style="position: relative; z-index: 10;">
             <button
               type="button"
               @click="showEditOfferModal = false; editingOffer = null; resetCreateOfferForm()"

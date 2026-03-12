@@ -24,7 +24,7 @@
 </template>
 
 <script setup>
-  import { ref, onMounted } from "vue";
+  import { ref, onMounted, watch } from "vue";
   import { useRoute, useRouter } from "vue-router";
   import apiClient from "@/api";
   import PageTemplate from "../components/PageTemplate.vue";
@@ -42,16 +42,18 @@
       loading.value = true;
       error.value = false;
 
+      const code = route.params.code;
       const username = route.params.username;
-      // Récupérer le paramètre order depuis l'URL si disponible
-      const orderId = route.query.order;
-      
-      // Construire l'URL avec le paramètre order si disponible
-      let apiUrl = `/api/company/${username}`;
-      if (orderId) {
-        apiUrl += `?order=${orderId}`;
+
+      let apiUrl;
+      if (code) {
+        apiUrl = `/api/e/${code}`;
+      } else {
+        const orderId = route.query.order;
+        apiUrl = `/api/company/${username}`;
+        if (orderId) apiUrl += `?order=${orderId}`;
       }
-      
+
       const response = await apiClient.get(apiUrl);
 
       if (response.data && response.data.pageData) {
@@ -76,6 +78,13 @@
   onMounted(() => {
     loadCompanyPage();
   });
+
+  watch(
+    () => [route.params.code, route.params.username],
+    () => {
+      loadCompanyPage();
+    },
+  );
 </script>
 
 <style scoped>
