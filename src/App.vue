@@ -62,9 +62,9 @@
   // Vérifie si l'utilisateur est connecté
   const { isLoggedIn, logout } = useAuth();
 
-  // Crée une propriété calculée qui vérifie si on est sur une route spéciale (Dashboard, CompanyPublic, FinalizeRegistration, SelectAccount, PaymentProcessing, PaymentClose)
+  // Crée une propriété calculée qui vérifie si on est sur une route spéciale (Dashboard, page entreprise, FinalizeRegistration, etc.)
   const isDashboardRoute = computed(() => {
-    return route.name === "Dashboard" || route.name === "CompanyPublic" || route.name === "FinalizeRegistration" || route.name === "SelectAccount" || route.name === "PaymentProcessing" || route.name === "PaymentClose";
+    return route.name === "Dashboard" || route.name === "CompanyPublic" || route.name === "CompanyByCode" || route.name === "FinalizeRegistration" || route.name === "SelectAccount" || route.name === "PaymentProcessing" || route.name === "PaymentClose";
   });
 
   // Overlay skeleton pendant le lazy-load du Dashboard (évite le "menu bleu" vide)

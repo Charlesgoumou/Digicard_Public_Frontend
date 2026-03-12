@@ -24,7 +24,8 @@ const router = createRouter({
     },
     { path: "/verify-code", name: "Verification", component: () => import("../views/VerificationView.vue") },
     { path: "/reset-password", name: "ResetPassword", component: () => import("../views/ResetPasswordView.vue") },
-    { path: "/entreprise/:username", name: "CompanyPublic", component: () => import("../views/CompanyPublicView.vue") },
+    { path: "/entreprise/:username", name: "CompanyPublic", component: () => import("../views/CompanyPublicView.vue"), beforeEnter: (to, _from, next) => { if (to.query.code) { next({ path: `/e/${to.query.code}`, query: {} }); return; } next(); } },
+    { path: "/e/:code", name: "CompanyByCode", component: () => import("../views/CompanyPublicView.vue") },
     { path: "/selection-compte", name: "SelectAccount", component: () => import("../views/SelectAccountView.vue") },
     // ✅ NOUVEAU: Page publique de traitement du paiement (sas de reconnexion)
     // Cette route doit être PUBLIQUE pour permettre l'échange de token avant authentification
