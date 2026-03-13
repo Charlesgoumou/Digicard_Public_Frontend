@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white flex flex-col">
+  <div class="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white flex flex-col" @click="showMatchNotificationsModal = false">
     <!-- Header -->
     <div class="bg-slate-800/50 border-b border-slate-700 sticky top-0 z-40 backdrop-blur-sm">
       <div class="container mx-auto px-4 py-4">
@@ -7,12 +7,84 @@
           <h1 class="text-3xl font-bold bg-gradient-to-r from-sky-400 to-indigo-400 bg-clip-text text-transparent">
             🛍️ Marketplace
           </h1>
-          <button
-            @click="showCreateOfferModal = true"
-            class="bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 text-white px-6 py-2 rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl"
-          >
-            + Créer une offre
-          </button>
+          <div class="flex items-center gap-4">
+            <!-- ✅ NOUVEAU : Icône de notification pour les suggestions de matching -->
+            <div class="relative">
+              <button
+                @click.stop="showMatchNotificationsModal = !showMatchNotificationsModal"
+                class="relative p-2 text-slate-300 hover:text-white transition-colors"
+              >
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                <!-- Badge pour les notifications non lues -->
+                <span
+                  v-if="matchNotificationsUnreadCount > 0"
+                  class="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
+                >
+                  {{ matchNotificationsUnreadCount > 9 ? '9+' : matchNotificationsUnreadCount }}
+                </span>
+              </button>
+              
+              <!-- Modal des notifications de matching -->
+              <div
+                v-if="showMatchNotificationsModal"
+                class="absolute right-0 mt-2 w-80 bg-slate-800 rounded-lg shadow-xl border border-slate-700 z-50 max-h-96 overflow-y-auto"
+                @click.stop
+              >
+                <div class="p-4 border-b border-slate-700 sticky top-0 bg-slate-800">
+                  <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-bold text-white">Suggestions de matching</h3>
+                    <button
+                      @click="showMatchNotificationsModal = false"
+                      class="text-slate-400 hover:text-white"
+                    >
+                      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <div v-if="matchNotifications.length > 0" class="divide-y divide-slate-700">
+                  <div
+                    v-for="notification in matchNotifications"
+                    :key="notification.id"
+                    @click="openOfferFromNotification(notification)"
+                    :class="[
+                      'p-4 cursor-pointer hover:bg-slate-700/50 transition-colors',
+                      !notification.read_at ? 'bg-slate-700/30' : ''
+                    ]"
+                  >
+                    <div class="flex items-start gap-3">
+                      <div class="flex-shrink-0 mt-1">
+                        <div class="w-10 h-10 bg-gradient-to-r from-sky-500 to-indigo-500 rounded-full flex items-center justify-center">
+                          <span class="text-white font-bold text-sm">{{ Math.round(notification.match_score) }}</span>
+                        </div>
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold text-white line-clamp-1">{{ notification.offer_title }}</p>
+                        <p class="text-xs text-slate-400 mt-1">{{ notification.message }}</p>
+                        <p class="text-xs text-slate-500 mt-1">{{ formatDate(notification.created_at) }}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div v-else class="p-8 text-center text-slate-500">
+                  <svg class="w-12 h-12 mx-auto mb-2 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  <p class="text-sm">Aucune suggestion pour le moment</p>
+                </div>
+              </div>
+            </div>
+            
+            <button
+              @click="showCreateOfferModal = true"
+              class="bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 text-white px-6 py-2 rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl"
+            >
+              + Créer une offre
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -75,6 +147,9 @@
             ]"
           >
             Mes Messages
+            <span v-if="totalUnreadMessages > 0" class="ml-2 bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5">
+              {{ totalUnreadMessages }}
+            </span>
           </button>
           <button
             @click="goToDashboard"
@@ -250,6 +325,17 @@
             <h3 class="text-lg font-bold text-white mb-2 line-clamp-2">{{ offer.title }}</h3>
             <p class="text-sm text-slate-400 mb-3 line-clamp-2">{{ offer.description }}</p>
             
+            <!-- ✅ NOUVEAU : Badge pour les messages non lus dans l'onglet Messages -->
+            <div v-if="activeTab === 'messages' && offer.unread_count > 0" class="mb-2">
+              <span class="inline-flex items-center gap-1 bg-red-500/20 text-red-400 text-xs font-semibold px-2 py-1 rounded">
+                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                  <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                </svg>
+                {{ offer.unread_count }} nouveau{{ offer.unread_count > 1 ? 'x' : '' }} message{{ offer.unread_count > 1 ? 's' : '' }}
+              </span>
+            </div>
+            
             <!-- Prix et vendeur -->
             <div class="flex items-center justify-between mb-3 gap-4">
               <div class="flex items-baseline gap-2">
@@ -275,17 +361,26 @@
               <!-- Première ligne : Voir détails et Acheter -->
               <div class="flex gap-2">
                 <button
+                  v-if="activeTab !== 'messages'"
                   @click="viewOfferDetails(offer.id)"
                   class="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 px-2 sm:px-4 rounded-lg transition-colors text-xs sm:text-sm font-medium"
                 >
                   Voir détails
                 </button>
                 <button
-                  v-if="!offer.is_seller"
+                  v-if="!offer.is_seller && activeTab !== 'messages'"
                   @click="addToCart(offer.id)"
                   class="flex-1 bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 text-white py-2 px-2 sm:px-4 rounded-lg transition-all text-xs sm:text-sm font-medium shadow-lg"
                 >
                   Acheter
+                </button>
+                <!-- ✅ NOUVEAU : Bouton pour ouvrir la conversation dans l'onglet Messages -->
+                <button
+                  v-if="activeTab === 'messages'"
+                  @click="openConversation(offer.id)"
+                  class="flex-1 bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 text-white py-2 px-2 sm:px-4 rounded-lg transition-all text-xs sm:text-sm font-semibold shadow-lg"
+                >
+                  Ouvrir la conversation
                 </button>
               </div>
               
@@ -658,7 +753,7 @@
       @click.self="showCreateOfferModal = false"
     >
       <div class="bg-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div class="sticky top-0 bg-slate-800 border-b border-slate-700 p-6 flex items-center justify-between">
+        <div class="sticky top-0 bg-slate-800 border-b border-slate-700 p-6 flex items-center justify-between z-100" style="z-index: 100;">
           <h2 class="text-2xl font-bold text-white">Créer une offre</h2>
           <button
             @click="showCreateOfferModal = false"
@@ -696,14 +791,15 @@
               </label>
               
               <!-- Aperçu des images sélectionnées -->
-              <div v-if="selectedImages.length > 0" class="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
+              <div v-if="selectedImages.length > 0" class="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3 relative" style="z-index: 10; isolation: isolate;">
                 <div
                   v-for="(img, index) in selectedImages"
                   :key="index"
                   class="relative group"
+                  style="z-index: 10;"
                 >
-                  <img :src="img.preview" alt="Aperçu" class="w-full h-32 object-cover rounded-lg" />
-                  <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
+                  <img :src="img.preview" alt="Aperçu" class="w-full h-32 object-cover rounded-lg" style="position: relative; z-index: 1;" />
+                  <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2" style="z-index: 2;">
                     <button
                       type="button"
                       @click="openCropModal(index)"
@@ -1301,18 +1397,27 @@
       </div>
     </div>
 
-    <!-- Modal de tous les messages -->
+    <!-- ✅ AMÉLIORATION : Modal de conversation avec historique complet -->
     <div
-      v-if="showAllMessagesModal && selectedOffer"
-      class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
-      @click.self="showAllMessagesModal = false"
+      v-if="showAllMessagesModal"
+      class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-hidden"
+      @click.self="closeConversationModal"
     >
-      <div class="bg-slate-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div class="sticky top-0 bg-slate-800 border-b border-slate-700 p-6 flex items-center justify-between">
-          <h2 class="text-2xl font-bold text-white">Tous les messages</h2>
+      <div class="bg-slate-800 rounded-2xl shadow-2xl max-w-4xl w-full h-[90vh] flex flex-col">
+        <!-- Header avec informations de l'annonce -->
+        <div class="sticky top-0 bg-slate-800 border-b border-slate-700 p-4 sm:p-6 flex items-center justify-between z-10">
+          <div class="flex-1 min-w-0">
+            <h2 class="text-xl sm:text-2xl font-bold text-white truncate">Conversation</h2>
+            <div class="mt-1">
+              <p v-if="conversationOffer" class="text-sm text-slate-300 font-medium truncate">{{ conversationOffer.title }}</p>
+              <p v-if="conversationOtherUser" class="text-xs text-slate-400 mt-1">
+                Avec {{ conversationOtherUser.name }}
+              </p>
+            </div>
+          </div>
           <button
-            @click="showAllMessagesModal = false"
-            class="text-slate-400 hover:text-white transition-colors"
+            @click="closeConversationModal"
+            class="ml-4 text-slate-400 hover:text-white transition-colors flex-shrink-0"
           >
             <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -1320,66 +1425,88 @@
           </button>
         </div>
 
-        <div class="p-6">
-          <div v-if="offerMessages.length > 0" class="space-y-4">
+        <!-- Zone de messages avec scroll -->
+        <div ref="messagesContainer" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-slate-900/50">
+          <div v-if="offerMessages.length > 0">
             <div
               v-for="message in offerMessages"
               :key="message.id"
               :class="[
-                'rounded-lg p-4',
-                message.sender_id === user?.id ? 'bg-sky-600/30 ml-auto max-w-[80%]' : 'bg-slate-700/50 mr-auto max-w-[80%]'
+                'flex',
+                message.sender_id === user?.id ? 'justify-end' : 'justify-start'
               ]"
             >
-              <div class="flex items-start justify-between mb-2">
-                <div>
-                  <div class="font-semibold text-white">{{ message.sender_name }}</div>
-                  <div class="text-xs text-slate-400 mt-1">À {{ message.receiver_name }}</div>
+              <div
+                :class="[
+                  'rounded-2xl px-4 py-3 max-w-[75%] sm:max-w-[65%]',
+                  message.sender_id === user?.id 
+                    ? 'bg-gradient-to-r from-sky-500 to-indigo-500 text-white' 
+                    : 'bg-slate-700 text-slate-100'
+                ]"
+              >
+                <!-- En-tête du message -->
+                <div class="flex items-center gap-2 mb-1">
+                  <span :class="[
+                    'text-xs font-semibold',
+                    message.sender_id === user?.id ? 'text-white/90' : 'text-slate-300'
+                  ]">
+                    {{ message.sender_id === user?.id ? 'Vous' : message.sender_name }}
+                  </span>
+                  <span :class="[
+                    'text-xs',
+                    message.sender_id === user?.id ? 'text-white/70' : 'text-slate-400'
+                  ]">
+                    {{ formatMessageTime(message.created_at) }}
+                  </span>
                 </div>
-                <span class="text-xs text-slate-500">{{ formatDate(message.created_at) }}</span>
+                
+                <!-- Contenu du message -->
+                <p :class="[
+                  'text-sm whitespace-pre-wrap break-words',
+                  message.sender_id === user?.id ? 'text-white' : 'text-slate-200'
+                ]">
+                  {{ message.message }}
+                </p>
               </div>
-              <p class="text-slate-300 text-sm">{{ message.message }}</p>
-              
-              <!-- Bouton pour répondre (si on n'est pas l'expéditeur) -->
-              <button
-                v-if="message.sender_id !== user?.id"
-                @click="replyToMessage(message)"
-                class="mt-3 text-sky-400 hover:text-sky-300 text-sm font-medium"
-              >
-                Répondre →
-              </button>
             </div>
           </div>
-          <div v-else class="text-center py-12 text-slate-500">
-            Aucun message pour le moment
+          <div v-else class="flex items-center justify-center h-full">
+            <div class="text-center text-slate-500">
+              <svg class="w-16 h-16 mx-auto mb-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              <p class="text-lg font-medium">Aucun message pour le moment</p>
+              <p class="text-sm mt-2">Commencez la conversation en envoyant un message ci-dessous</p>
+            </div>
           </div>
+        </div>
 
-          <!-- Formulaire de réponse -->
-          <div v-if="replyingToMessage" class="mt-6 bg-slate-700/50 rounded-lg p-4">
-            <div class="mb-3">
-              <label class="block text-slate-300 font-medium mb-2">Répondre à {{ replyingToMessage.sender_name }}</label>
-              <textarea
-                v-model="replyMessage"
-                rows="3"
-                placeholder="Votre réponse..."
-                class="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
-              ></textarea>
-            </div>
-            <div class="flex gap-3">
-              <button
-                @click="cancelReply"
-                class="flex-1 bg-slate-600 hover:bg-slate-500 text-white py-2 px-4 rounded-lg transition-colors font-medium"
-              >
-                Annuler
-              </button>
-              <button
-                @click="sendReply"
-                :disabled="!replyMessage.trim() || isSendingReply"
-                class="flex-1 bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 px-4 rounded-lg transition-all font-semibold"
-              >
-                {{ isSendingReply ? 'Envoi...' : 'Envoyer la réponse' }}
-              </button>
-            </div>
+        <!-- Zone de saisie de message (toujours visible en bas) -->
+        <div class="sticky bottom-0 bg-slate-800 border-t border-slate-700 p-4 sm:p-6">
+          <div class="flex gap-3">
+            <textarea
+              v-model="newMessageText"
+              @keydown.enter.exact.prevent="sendNewMessage"
+              @keydown.enter.shift.exact="newMessageText += '\n'"
+              rows="2"
+              placeholder="Tapez votre message..."
+              class="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 resize-none"
+            ></textarea>
+            <button
+              @click="sendNewMessage"
+              :disabled="!newMessageText.trim() || isSendingMessage"
+              class="bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg transition-all font-semibold flex-shrink-0"
+            >
+              <svg v-if="!isSendingMessage" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              </svg>
+              <svg v-else class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </button>
           </div>
+          <p class="text-xs text-slate-500 mt-2 text-center">Appuyez sur Entrée pour envoyer, Shift+Entrée pour une nouvelle ligne</p>
         </div>
       </div>
     </div>
@@ -1443,10 +1570,30 @@
               ref="cropper"
               class="marketplace-cropper"
               :src="imageToCrop.preview"
-              :stencil-props="{ aspectRatio: 1 }"
-              :resize-image="{ touch: true, wheel: { ratio: 0.1 }, adjustStencil: false }"
+              :stencil-props="{ 
+                aspectRatio: 1,
+                movable: true,
+                resizable: true
+              }"
+              :default-boundaries="{
+                type: 'fit'
+              }"
+              :default-size="{
+                width: (minWidth, maxWidth) => Math.min(minWidth, maxWidth),
+                height: (minHeight, maxHeight) => Math.min(minHeight, maxHeight)
+              }"
+              :resize-image="{ 
+                touch: true, 
+                wheel: { ratio: 0.1 }, 
+                adjustStencil: false 
+              }"
               :move-image="{ touch: true, mouse: true }"
-              :canvas="{ width: 1200, height: 1200, imageSmoothingEnabled: true, imageSmoothingQuality: 'high' }"
+              :canvas="{ 
+                width: 1200, 
+                height: 1200, 
+                imageSmoothingEnabled: true, 
+                imageSmoothingQuality: 'high' 
+              }"
             />
           </div>
 
@@ -1529,22 +1676,24 @@ const filteredOffers = computed(() => {
 const loadOffers = async () => {
   isLoading.value = true;
   try {
-    // Si on est sur l'onglet "Mes Messages", charger les messages
+    // ✅ AMÉLIORATION : Si on est sur l'onglet "Mes Messages", charger les conversations groupées
     if (activeTab.value === 'messages') {
       const response = await apiClient.get('/api/marketplace/messages');
-      // Transformer les messages en format "offre" pour l'affichage
-      offers.value = response.data.map(msg => ({
-        id: msg.offer_id,
-        title: msg.offer_title,
-        description: `Message de ${msg.is_from_me ? msg.receiver_name : msg.sender_name}`,
+      // Transformer les conversations en format "offre" pour l'affichage
+      offers.value = response.data.map(conv => ({
+        id: conv.offer_id,
+        title: conv.offer_title,
+        description: conv.last_message,
         type: 'message',
         price: 0,
         currency: '',
-        image_url: null,
-        seller_name: msg.is_from_me ? msg.receiver_name : msg.sender_name,
+        image_url: conv.offer_image_url,
+        seller_name: conv.other_user_name,
         is_message: true,
-        message_data: msg,
-        created_at: msg.created_at,
+        message_data: conv,
+        unread_count: conv.unread_count,
+        last_message_created_at: conv.last_message_created_at,
+        created_at: conv.last_message_created_at,
       }));
     } else {
       // Envoyer le filtre actif et la recherche au backend
@@ -1650,6 +1799,17 @@ const offerMessages = ref([]);
 const replyingToMessage = ref(null);
 const replyMessage = ref('');
 const isSendingReply = ref(false);
+// ✅ FIX: badge + polling pour "Mes Messages"
+const totalUnreadMessages = ref(0);
+const messagesPollingInterval = ref(null);
+const conversationOffer = ref(null);
+const conversationOtherUser = ref(null);
+const newMessageText = ref('');
+const messagesContainer = ref(null);
+const showMatchNotificationsModal = ref(false);
+const matchNotifications = ref([]);
+const matchNotificationsUnreadCount = ref(0);
+const matchNotificationsPollingInterval = ref(null);
 
 // Galerie d'images
 const showImageGallery = ref(false);
@@ -1733,6 +1893,14 @@ const sendMessageToSeller = async () => {
     contactMessage.value = '';
     showContactSellerModal.value = false;
     contactSellerOffer.value = null;
+    
+    // ✅ NOUVEAU : Recharger les conversations si on est sur l'onglet messages
+    if (activeTab.value === 'messages') {
+      await loadOffers();
+    }
+    
+    // ✅ NOUVEAU : Recharger le nombre de messages non lus
+    await loadUnreadMessagesCount();
   } catch (error) {
     console.error('Erreur lors de l\'envoi du message:', error);
     showNotification(error.response?.data?.message || 'Erreur lors de l\'envoi du message', 'error');
@@ -1887,11 +2055,35 @@ const createOffer = async () => {
     formData.append('price', newOffer.value.price);
     formData.append('currency', newOffer.value.currency || 'EUR');
     
-    // Ajouter toutes les images (toujours envoyer l'image originale, pas la rognée)
+    // ✅ CORRECTION : Ajouter toutes les images avec validation
     selectedImages.value.forEach((img, index) => {
-      // Envoyer l'image originale au backend pour qu'elle soit disponible dans la galerie
-      const imageToSend = img.originalFile || img.file;
-      formData.append(`images[${index}]`, imageToSend);
+      // Priorité : originalFile > file > croppedFile
+      let imageToSend = img.originalFile || img.file || img.croppedFile;
+      
+      // ✅ CORRECTION : S'assurer que c'est un File object valide
+      if (!imageToSend) {
+        console.error(`Image ${index} n'est pas disponible:`, img);
+        createError.value = `L'image ${index + 1} n'est pas valide. Veuillez la retéléverser.`;
+        throw new Error(`Image ${index} invalide`);
+      }
+      
+      // Si c'est un Blob, le convertir en File
+      if (imageToSend instanceof Blob && !(imageToSend instanceof File)) {
+        imageToSend = new File([imageToSend], img.name || `image-${index}.jpg`, {
+          type: imageToSend.type || 'image/jpeg',
+          lastModified: Date.now()
+        });
+      }
+      
+      // Vérifier que c'est bien un File
+      if (!(imageToSend instanceof File)) {
+        console.error(`Image ${index} n'est pas un File object:`, imageToSend);
+        createError.value = `L'image ${index + 1} n'est pas un fichier valide. Veuillez la retéléverser.`;
+        throw new Error(`Image ${index} n'est pas un File`);
+      }
+      
+      // ✅ CORRECTION : Utiliser la syntaxe Laravel pour les tableaux (images[] ou images.0)
+      formData.append('images[]', imageToSend);
     });
     
     const response = await apiClient.post('/api/marketplace/offers', formData, {
@@ -2121,17 +2313,29 @@ const updateOffer = async () => {
     formData.append('price', newOffer.value.price);
     formData.append('currency', newOffer.value.currency);
     
-    // ✅ Envoyer uniquement les nouvelles images (pas les images existantes non modifiées)
-    if (selectedImages.value.length > 0) {
-      let newImageIndex = 0;
-      selectedImages.value.forEach((image) => {
-        // Envoyer uniquement les images qui ont un fichier (nouvelles images ou images remplacées)
-        const imageToSend = image.originalFile || image.file;
-        if (imageToSend) {
-          formData.append(`images[${newImageIndex}]`, imageToSend);
-          newImageIndex++;
-        }
-        // Les images existantes (isExisting: true sans file) ne sont pas envoyées
+      // ✅ CORRECTION : Envoyer uniquement les nouvelles images avec validation
+      if (selectedImages.value.length > 0) {
+        let newImageIndex = 0;
+        selectedImages.value.forEach((image) => {
+          // Envoyer uniquement les images qui ont un fichier (nouvelles images ou images remplacées)
+          let imageToSend = image.originalFile || image.file || image.croppedFile;
+          
+          if (imageToSend) {
+            // Si c'est un Blob, le convertir en File
+            if (imageToSend instanceof Blob && !(imageToSend instanceof File)) {
+              imageToSend = new File([imageToSend], image.name || `image-${newImageIndex}.jpg`, {
+                type: imageToSend.type || 'image/jpeg',
+                lastModified: Date.now()
+              });
+            }
+            
+            // Vérifier que c'est bien un File
+            if (imageToSend instanceof File) {
+              formData.append('images[]', imageToSend);
+              newImageIndex++;
+            }
+          }
+          // Les images existantes (isExisting: true sans file) ne sont pas envoyées
         // Elles restent sur le serveur
       });
     }
@@ -2256,9 +2460,15 @@ const viewAllReviews = async (offerId) => {
   }
 };
 
+// ✅ NOUVEAU : Ouvrir la conversation depuis l'onglet Messages
+const openConversation = async (offerId) => {
+  await viewAllMessages(offerId);
+};
+
 const viewAllMessages = async (offerId) => {
   // Afficher immédiatement le modal avec une liste vide
   offerMessages.value = [];
+  newMessageText.value = '';
   showAllMessagesModal.value = true;
   
   // S'assurer que selectedOffer est défini
@@ -2267,14 +2477,155 @@ const viewAllMessages = async (offerId) => {
     selectedOffer.value = { ...existingOffer };
   }
   
+  // Charger les détails de l'offre
+  try {
+    const offerResponse = await apiClient.get(`/api/marketplace/offers/${offerId}`);
+    conversationOffer.value = offerResponse.data;
+    
+    // Déterminer l'autre utilisateur
+    if (offerResponse.data && user.value) {
+      const offer = offerResponse.data;
+      if (offer.user_id === user.value.id) {
+        // Si on est le vendeur, l'autre utilisateur sera déterminé depuis les messages
+        conversationOtherUser.value = null;
+      } else {
+        // Si on est l'acheteur, l'autre utilisateur est le vendeur
+        conversationOtherUser.value = {
+          id: offer.user_id,
+          name: offer.seller_name || 'Vendeur'
+        };
+      }
+    }
+  } catch (error) {
+    console.error('Erreur lors du chargement de l\'offre:', error);
+  }
+  
   // Charger les messages en arrière-plan
   try {
     const response = await apiClient.get(`/api/marketplace/offers/${offerId}/messages`);
     offerMessages.value = response.data || [];
+    
+    // Déterminer l'autre utilisateur depuis les messages si pas encore défini
+    if (!conversationOtherUser.value && offerMessages.value.length > 0 && user.value) {
+      const firstMessage = offerMessages.value[0];
+      if (firstMessage.sender_id === user.value.id) {
+        conversationOtherUser.value = {
+          id: firstMessage.receiver_id,
+          name: firstMessage.receiver_name
+        };
+      } else {
+        conversationOtherUser.value = {
+          id: firstMessage.sender_id,
+          name: firstMessage.sender_name
+        };
+      }
+    }
+    
+    // ✅ NOUVEAU : Scroller vers le bas pour voir les derniers messages
+    setTimeout(() => {
+      scrollToBottom();
+    }, 100);
+    
+    // ✅ NOUVEAU : Recharger le nombre de messages non lus après ouverture
+    await loadUnreadMessagesCount();
+    
+    // ✅ NOUVEAU : Recharger les conversations si on est sur l'onglet messages
+    if (activeTab.value === 'messages') {
+      await loadOffers();
+    }
   } catch (error) {
     console.error('Erreur lors du chargement des messages:', error);
     showNotification(error.response?.data?.message || 'Erreur lors du chargement des messages', 'error');
     // Ne pas fermer le modal, juste afficher une notification
+  }
+};
+
+// ✅ NOUVEAU : Fermer la modal de conversation
+const closeConversationModal = () => {
+  showAllMessagesModal.value = false;
+  offerMessages.value = [];
+  newMessageText.value = '';
+  conversationOffer.value = null;
+  conversationOtherUser.value = null;
+  replyingToMessage.value = null;
+  replyMessage.value = '';
+};
+
+// ✅ NOUVEAU : Scroller vers le bas de la zone de messages
+const scrollToBottom = () => {
+  if (messagesContainer.value) {
+    setTimeout(() => {
+      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+    }, 50);
+  }
+};
+
+// ✅ NOUVEAU : Envoyer un nouveau message depuis la modal de conversation
+const sendNewMessage = async () => {
+  if (!newMessageText.value.trim() || !conversationOffer.value) return;
+  
+  isSendingMessage.value = true;
+  try {
+    // Si c'est le premier message, utiliser sendMessage, sinon replyToMessage
+    if (offerMessages.value.length === 0) {
+      // Premier message
+      await apiClient.post('/api/marketplace/send-message', {
+        offer_id: conversationOffer.value.id,
+        seller_id: conversationOffer.value.seller_id || conversationOffer.value.user_id,
+        message: newMessageText.value
+      });
+    } else {
+      // Répondre au dernier message
+      const lastMessage = offerMessages.value[offerMessages.value.length - 1];
+      await apiClient.post(`/api/marketplace/messages/${lastMessage.id}/reply`, {
+        message: newMessageText.value
+      });
+    }
+    
+    // Recharger les messages pour avoir l'historique complet
+    await viewAllMessages(conversationOffer.value.id);
+    
+    // Vider le champ de saisie
+    newMessageText.value = '';
+    
+    // ✅ NOUVEAU : Scroller vers le bas après l'envoi
+    setTimeout(() => {
+      scrollToBottom();
+    }, 200);
+    
+    showNotification('Message envoyé avec succès !', 'success');
+  } catch (error) {
+    console.error('Erreur lors de l\'envoi du message:', error);
+    showNotification(error.response?.data?.message || 'Erreur lors de l\'envoi du message', 'error');
+  } finally {
+    isSendingMessage.value = false;
+  }
+};
+
+// ✅ NOUVEAU : Formater l'heure du message (aujourd'hui, hier, ou date complète)
+const formatMessageTime = (dateString) => {
+  if (!dateString) return '';
+  
+  const date = new Date(dateString);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const time = `${hours}:${minutes}`;
+  
+  if (messageDate.getTime() === today.getTime()) {
+    return `Aujourd'hui à ${time}`;
+  } else if (messageDate.getTime() === yesterday.getTime()) {
+    return `Hier à ${time}`;
+  } else {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year} à ${time}`;
   }
 };
 
@@ -2307,6 +2658,14 @@ const sendReply = async () => {
     // Recharger les messages pour mettre à jour
     if (selectedOffer.value) {
       await viewAllMessages(selectedOffer.value.id);
+    }
+    
+    // Recharger le nombre de messages non lus
+    await loadUnreadMessagesCount();
+    
+    // Recharger les conversations si on est sur l'onglet messages
+    if (activeTab.value === 'messages') {
+      await loadOffers();
     }
   } catch (error) {
     console.error('Erreur lors de l\'envoi de la réponse:', error);
@@ -2490,16 +2849,101 @@ onUnmounted(() => {
   }
 });
 
+// ✅ NOUVEAU : Charger les notifications de matching
+const loadMatchNotifications = async () => {
+  try {
+    const response = await apiClient.get('/api/marketplace/match-notifications');
+    matchNotifications.value = response.data.notifications || [];
+    matchNotificationsUnreadCount.value = response.data.unread_count || 0;
+  } catch (error) {
+    console.error('Erreur lors du chargement des notifications de matching:', error);
+  }
+};
+
+// ✅ FIX: Charger le nombre de messages non lus
+const loadUnreadMessagesCount = async () => {
+  try {
+    const response = await apiClient.get('/api/marketplace/messages/unread-count');
+    totalUnreadMessages.value = response.data?.unread_count || 0;
+  } catch (error) {
+    console.error('Erreur lors du chargement du nombre de messages non lus:', error);
+  }
+};
+
+// ✅ FIX: Polling messages (conversations + badge)
+const startMessagesPolling = () => {
+  if (messagesPollingInterval.value) {
+    clearInterval(messagesPollingInterval.value);
+  }
+  messagesPollingInterval.value = setInterval(async () => {
+    await loadUnreadMessagesCount();
+    if (activeTab.value === 'messages') {
+      await loadOffers();
+    }
+    // si la modal conversation est ouverte, recharger l'historique
+    if (showAllMessagesModal.value && conversationOffer.value?.id) {
+      await viewAllMessages(conversationOffer.value.id);
+    }
+  }, 30000);
+};
+
+const stopMessagesPolling = () => {
+  if (messagesPollingInterval.value) {
+    clearInterval(messagesPollingInterval.value);
+    messagesPollingInterval.value = null;
+  }
+};
+
+const startMatchNotificationsPolling = () => {
+  if (matchNotificationsPollingInterval.value) {
+    clearInterval(matchNotificationsPollingInterval.value);
+  }
+  matchNotificationsPollingInterval.value = setInterval(() => {
+    loadMatchNotifications();
+  }, 30000);
+};
+
+const stopMatchNotificationsPolling = () => {
+  if (matchNotificationsPollingInterval.value) {
+    clearInterval(matchNotificationsPollingInterval.value);
+    matchNotificationsPollingInterval.value = null;
+  }
+};
+
+// ✅ NOUVEAU : Ouvrir une offre depuis une notification
+const openOfferFromNotification = async (notification) => {
+  if (notification.offer_id) {
+    // Marquer la notification comme lue
+    try {
+      await apiClient.post(`/api/marketplace/notifications/${notification.id}/read`);
+      // Recharger les notifications
+      await loadMatchNotifications();
+    } catch (error) {
+      console.error('Erreur lors du marquage de la notification:', error);
+    }
+    
+    // Ouvrir l'offre
+    await viewOfferDetails(notification.offer_id);
+    showMatchNotificationsModal.value = false;
+  }
+};
+
 // Lifecycle
 onMounted(() => {
   loadOffers();
+  loadUnreadMessagesCount();
+  loadMatchNotifications();
+  startMessagesPolling();
   // Ajouter les écouteurs de clavier pour la galerie
   window.addEventListener('keydown', handleKeyPress);
+  startMatchNotificationsPolling();
 });
 
 // Nettoyer les écouteurs
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyPress);
+  stopMessagesPolling();
+  stopMatchNotificationsPolling();
 });
 </script>
 
