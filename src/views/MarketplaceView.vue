@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white flex flex-col">
+  <div class="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white flex flex-col" @click="showMatchNotificationsModal = false">
     <!-- Header -->
     <div class="bg-slate-800/50 border-b border-slate-700 sticky top-0 z-40 backdrop-blur-sm">
       <div class="container mx-auto px-4 py-4">
@@ -7,12 +7,109 @@
           <h1 class="text-3xl font-bold bg-gradient-to-r from-sky-400 to-indigo-400 bg-clip-text text-transparent">
             🛍️ Marketplace
           </h1>
-          <button
-            @click="showCreateOfferModal = true"
-            class="bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 text-white px-6 py-2 rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl"
-          >
-            + Créer une offre
-          </button>
+          <div class="flex items-center gap-4">
+            <!-- Solde visible (cliquable) -->
+            <button
+              @click="goToWallet"
+              class="flex items-center gap-2 bg-gradient-to-r from-amber-400/90 to-orange-500/90 hover:from-amber-400 hover:to-orange-500 border border-amber-300/40 rounded-lg px-3 py-2 transition-colors shadow-lg shadow-orange-500/10"
+              title="Voir Mon solde"
+            >
+              <span class="text-slate-900 text-sm font-extrabold">Solde</span>
+              <span v-if="isWalletBalanceLoading" class="text-slate-900/70 text-sm font-semibold">…</span>
+              <span v-else class="text-slate-900 text-sm font-extrabold">
+                {{ formatPrice(walletBalance) }} {{ walletCurrency }}
+              </span>
+            </button>
+
+            <!-- Icône de notifications Marketplace (matching + transactions) -->
+            <div class="relative">
+              <button
+                @click.stop="showMatchNotificationsModal = !showMatchNotificationsModal"
+                class="relative p-2 text-slate-300 hover:text-white transition-colors"
+              >
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                <!-- Badge pour les notifications non lues -->
+                <span
+                  v-if="marketplaceNotificationsUnreadCount > 0"
+                  class="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
+                >
+                  {{ marketplaceNotificationsUnreadCount > 9 ? '9+' : marketplaceNotificationsUnreadCount }}
+                </span>
+              </button>
+              
+              <!-- Modal des notifications Marketplace -->
+              <div
+                v-if="showMatchNotificationsModal"
+                class="absolute right-0 mt-2 w-80 bg-slate-800 rounded-lg shadow-xl border border-slate-700 z-50 max-h-96 overflow-y-auto"
+                @click.stop
+              >
+                <div class="p-4 border-b border-slate-700 sticky top-0 bg-slate-800">
+                  <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-bold text-white">Notifications</h3>
+                    <button
+                      @click="showMatchNotificationsModal = false"
+                      class="text-slate-400 hover:text-white"
+                    >
+                      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <div v-if="marketplaceNotifications.length > 0" class="divide-y divide-slate-700">
+                  <div
+                    v-for="notification in marketplaceNotifications"
+                    :key="notification.id"
+                    @click="openMarketplaceNotification(notification)"
+                    :class="[
+                      'p-4 cursor-pointer hover:bg-slate-700/50 transition-colors',
+                      !notification.read_at ? 'bg-slate-700/30' : ''
+                    ]"
+                  >
+                    <div class="flex items-start gap-3">
+                      <div class="flex-shrink-0 mt-1">
+                        <div
+                          v-if="notification.category === 'marketplace_match'"
+                          class="w-10 h-10 bg-gradient-to-r from-sky-500 to-indigo-500 rounded-full flex items-center justify-center"
+                        >
+                          <span class="text-white font-bold text-sm">{{ Math.round(notification.match_score || 0) }}</span>
+                        </div>
+                        <div
+                          v-else
+                          class="w-10 h-10 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full flex items-center justify-center"
+                        >
+                          <span class="text-white font-bold text-sm">₵</span>
+                        </div>
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold text-white line-clamp-1">
+                          <span v-if="notification.category === 'marketplace_match'">Suggestion</span>
+                          <span v-else>Transaction</span>
+                        </p>
+                        <p class="text-xs text-slate-400 mt-1">{{ notification.message }}</p>
+                        <p class="text-xs text-slate-500 mt-1">{{ formatDate(notification.created_at) }}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div v-else class="p-8 text-center text-slate-500">
+                  <svg class="w-12 h-12 mx-auto mb-2 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  <p class="text-sm">Aucune notification pour le moment</p>
+                </div>
+              </div>
+            </div>
+            
+            <button
+              @click="showCreateOfferModal = true"
+              class="bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 text-white px-6 py-2 rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl"
+            >
+              + Créer une offre
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -75,6 +172,9 @@
             ]"
           >
             Mes Messages
+            <span v-if="totalUnreadMessages > 0" class="ml-2 bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5">
+              {{ totalUnreadMessages }}
+            </span>
           </button>
           <button
             @click="goToDashboard"
@@ -94,10 +194,12 @@
       <div class="container mx-auto px-4 py-4">
         <div class="relative">
           <input
-            v-model="searchQuery"
+            v-model="activeSearchQuery"
             @input="onSearchInput"
             type="text"
-            placeholder="Rechercher une offre, un service, un produit..."
+            :placeholder="activeTab === 'messages'
+              ? 'Rechercher dans vos messages (offre, utilisateur, texte)…'
+              : 'Rechercher une offre, un service, un produit...'"
             class="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-3 pl-12 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-all"
           />
           <svg
@@ -114,7 +216,7 @@
             />
           </svg>
           <button
-            v-if="searchQuery"
+            v-if="activeSearchQuery"
             @click="clearSearch"
             class="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
           >
@@ -122,6 +224,12 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
+        </div>
+        <div v-if="activeTab === 'messages'" class="mt-3 flex justify-end">
+          <label class="inline-flex items-center gap-2 bg-slate-700/40 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 select-none">
+            <input v-model="messagesUnreadOnly" type="checkbox" class="accent-sky-500" />
+            Non lus seulement
+          </label>
         </div>
       </div>
     </div>
@@ -221,6 +329,28 @@
                 {{ offer.type === 'service' ? 'Service' : offer.type === 'product' ? 'Produit' : 'Offre' }}
               </span>
             </div>
+            <!-- Badge statut (vendu / indisponible) -->
+            <div v-if="offer.is_active === false" class="absolute bottom-2 right-2 z-10">
+              <span class="px-2 py-1 bg-slate-900/70 backdrop-blur-sm text-slate-200 text-xs font-semibold rounded border border-slate-500/40">
+                Indisponible
+              </span>
+            </div>
+            <!-- Badge contexte (Mes Achats / Mes Ventes) -->
+            <div v-if="activeTab === 'purchases'" class="absolute bottom-2 left-2 z-10">
+              <span class="px-2 py-1 bg-emerald-500/20 backdrop-blur-sm text-emerald-200 text-xs font-semibold rounded border border-emerald-500/30">
+                Acheté
+              </span>
+            </div>
+            <div v-else-if="activeTab === 'sales' && offer.is_seller" class="absolute bottom-2 left-2 z-10">
+              <span
+                class="px-2 py-1 backdrop-blur-sm text-xs font-semibold rounded border"
+                :class="offer.is_active === false
+                  ? 'bg-amber-500/20 text-amber-200 border-amber-500/30'
+                  : 'bg-sky-500/20 text-sky-200 border-sky-500/30'"
+              >
+                {{ offer.is_active === false ? 'Vendu' : 'En vente' }}
+              </span>
+            </div>
             <!-- Bouton favoris -->
             <button
               @click.stop="toggleFavorite(offer.id)"
@@ -250,6 +380,17 @@
             <h3 class="text-lg font-bold text-white mb-2 line-clamp-2">{{ offer.title }}</h3>
             <p class="text-sm text-slate-400 mb-3 line-clamp-2">{{ offer.description }}</p>
             
+            <!-- ✅ NOUVEAU : Badge pour les messages non lus dans l'onglet Messages -->
+            <div v-if="activeTab === 'messages' && offer.unread_count > 0" class="mb-2">
+              <span class="inline-flex items-center gap-1 bg-red-500/20 text-red-400 text-xs font-semibold px-2 py-1 rounded">
+                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                  <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                </svg>
+                {{ offer.unread_count }} nouveau{{ offer.unread_count > 1 ? 'x' : '' }} message{{ offer.unread_count > 1 ? 's' : '' }}
+              </span>
+            </div>
+            
             <!-- Prix et vendeur -->
             <div class="flex items-center justify-between mb-3 gap-4">
               <div class="flex items-baseline gap-2">
@@ -275,17 +416,46 @@
               <!-- Première ligne : Voir détails et Acheter -->
               <div class="flex gap-2">
                 <button
+                  v-if="activeTab !== 'messages'"
                   @click="viewOfferDetails(offer.id)"
                   class="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 px-2 sm:px-4 rounded-lg transition-colors text-xs sm:text-sm font-medium"
                 >
                   Voir détails
                 </button>
                 <button
-                  v-if="!offer.is_seller"
+                  v-if="!offer.is_seller && activeTab !== 'messages'"
                   @click="addToCart(offer.id)"
-                  class="flex-1 bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 text-white py-2 px-2 sm:px-4 rounded-lg transition-all text-xs sm:text-sm font-medium shadow-lg"
+                  :disabled="offer.is_active === false"
+                  :class="[
+                    'flex-1 py-2 px-2 sm:px-4 rounded-lg transition-all text-xs sm:text-sm font-medium shadow-lg',
+                    offer.is_active === false
+                      ? 'bg-slate-700 text-slate-300 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 text-white'
+                  ]"
                 >
                   Acheter
+                </button>
+                <button
+                  v-if="activeTab === 'purchases' && offer.purchase_id"
+                  @click="viewReceipt(offer.purchase_id)"
+                  class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-2 sm:px-4 rounded-lg transition-colors text-xs sm:text-sm font-semibold"
+                >
+                  Voir reçu
+                </button>
+                <button
+                  v-if="activeTab === 'sales' && offer.sale_purchase_id"
+                  @click="viewReceipt(offer.sale_purchase_id)"
+                  class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-2 sm:px-4 rounded-lg transition-colors text-xs sm:text-sm font-semibold"
+                >
+                  Reçu
+                </button>
+                <!-- ✅ NOUVEAU : Bouton pour ouvrir la conversation dans l'onglet Messages -->
+                <button
+                  v-if="activeTab === 'messages'"
+                  @click="openConversation(offer.id)"
+                  class="flex-1 bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 text-white py-2 px-2 sm:px-4 rounded-lg transition-all text-xs sm:text-sm font-semibold shadow-lg"
+                >
+                  Ouvrir la conversation
                 </button>
               </div>
               
@@ -598,7 +768,13 @@
             <button
               v-if="!selectedOffer.is_seller"
               @click="addToCart(selectedOffer.id)"
-              class="flex-1 bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 text-white py-3 px-4 sm:px-6 rounded-lg transition-all font-semibold shadow-lg text-center text-sm sm:text-base"
+              :disabled="selectedOffer.is_active === false"
+              :class="[
+                'flex-1 py-3 px-4 sm:px-6 rounded-lg transition-all font-semibold shadow-lg text-center text-sm sm:text-base',
+                selectedOffer.is_active === false
+                  ? 'bg-slate-700 text-slate-300 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 text-white'
+              ]"
             >
               Acheter
             </button>
@@ -658,7 +834,7 @@
       @click.self="showCreateOfferModal = false"
     >
       <div class="bg-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div class="sticky top-0 bg-slate-800 border-b border-slate-700 p-6 flex items-center justify-between">
+        <div class="sticky top-0 bg-slate-800 border-b border-slate-700 p-6 flex items-center justify-between z-100" style="z-index: 100;">
           <h2 class="text-2xl font-bold text-white">Créer une offre</h2>
           <button
             @click="showCreateOfferModal = false"
@@ -696,14 +872,15 @@
               </label>
               
               <!-- Aperçu des images sélectionnées -->
-              <div v-if="selectedImages.length > 0" class="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
+              <div v-if="selectedImages.length > 0" class="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3 relative" style="z-index: 10; isolation: isolate;">
                 <div
                   v-for="(img, index) in selectedImages"
                   :key="index"
                   class="relative group"
+                  style="z-index: 10;"
                 >
-                  <img :src="img.preview" alt="Aperçu" class="w-full h-32 object-cover rounded-lg" />
-                  <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
+                  <img :src="img.preview" alt="Aperçu" class="w-full h-32 object-cover rounded-lg" style="position: relative; z-index: 1;" />
+                  <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2" style="z-index: 2;">
                     <button
                       type="button"
                       @click="openCropModal(index)"
@@ -872,6 +1049,101 @@
             >
               {{ isSendingMessage ? 'Envoi...' : 'Envoyer le message' }}
             </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de reçu (achat/vente) -->
+    <div
+      v-if="showReceiptModal"
+      class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto"
+      @click.self="closeReceiptModal"
+    >
+      <div class="bg-slate-800 rounded-xl sm:rounded-2xl shadow-2xl max-w-lg w-full my-auto max-h-[95vh] overflow-y-auto border border-slate-700">
+        <div class="p-4 sm:p-6 border-b border-slate-700 flex items-center justify-between">
+          <div>
+            <h2 class="text-lg sm:text-2xl font-bold text-white">Reçu</h2>
+            <p v-if="receiptData?.reference" class="text-xs text-slate-400 mt-1">
+              Référence: <span class="font-mono text-slate-200">{{ receiptData.reference }}</span>
+            </p>
+          </div>
+          <button class="text-slate-400 hover:text-white" @click="closeReceiptModal">✕</button>
+        </div>
+
+        <div class="p-4 sm:p-6">
+          <div v-if="isLoadingReceipt" class="text-slate-400">Chargement…</div>
+          <div v-else-if="!receiptData" class="text-slate-400">Aucune donnée.</div>
+          <div v-else class="space-y-4">
+            <div class="flex flex-col sm:flex-row gap-2">
+              <button
+                class="sm:flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 px-4 rounded-lg transition-colors text-sm font-semibold"
+                @click="copyReceiptReference"
+              >
+                Copier la référence
+              </button>
+              <button
+                class="sm:flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-4 rounded-lg transition-colors text-sm font-semibold"
+                @click="printReceipt"
+              >
+                Imprimer / PDF
+              </button>
+            </div>
+
+            <div class="bg-slate-700/40 border border-slate-600 rounded-lg p-4">
+              <div class="text-slate-300 text-sm mb-1">Offre</div>
+              <div class="text-white font-semibold">{{ receiptData.offer?.title }}</div>
+              <div class="text-slate-400 text-xs mt-1">#{{ receiptData.offer?.id }} · {{ receiptData.offer?.type }}</div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div class="bg-slate-700/40 border border-slate-600 rounded-lg p-4">
+                <div class="text-slate-300 text-sm mb-1">Acheteur</div>
+                <div class="text-white font-semibold">{{ receiptData.buyer?.name }}</div>
+                <div class="text-slate-400 text-xs mt-1">#{{ receiptData.buyer?.id }}</div>
+              </div>
+              <div class="bg-slate-700/40 border border-slate-600 rounded-lg p-4">
+                <div class="text-slate-300 text-sm mb-1">Vendeur</div>
+                <div class="text-white font-semibold">{{ receiptData.seller?.name }}</div>
+                <div class="text-slate-400 text-xs mt-1">#{{ receiptData.seller?.id }}</div>
+              </div>
+            </div>
+
+            <div class="bg-slate-700/40 border border-slate-600 rounded-lg p-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-slate-300 text-sm">Montant</div>
+                  <div class="text-2xl font-bold text-emerald-300">
+                    {{ formatPrice(receiptData.purchase?.price) }} {{ receiptData.purchase?.currency }}
+                  </div>
+                </div>
+                <div class="text-right">
+                  <div class="text-slate-300 text-sm">Statut</div>
+                  <div class="text-white font-semibold">{{ receiptData.purchase?.status }}</div>
+                </div>
+              </div>
+              <div class="text-slate-400 text-xs mt-2">
+                Achat #{{ receiptData.purchase?.id }} · {{ formatDate(receiptData.purchase?.created_at) }}
+              </div>
+            </div>
+
+            <div class="bg-slate-900/30 border border-slate-700 rounded-lg p-4">
+              <div class="text-slate-300 text-sm mb-2 font-semibold">Détails transaction</div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div class="bg-slate-700/30 border border-slate-600 rounded-lg p-3">
+                  <div class="text-slate-400 mb-1">Tx wallet (acheteur)</div>
+                  <div class="text-slate-200 font-mono">#{{ receiptData.wallet?.buyer_tx?.id || '—' }}</div>
+                  <div class="text-slate-400 mt-1">Statut: <span class="text-slate-200">{{ receiptData.wallet?.buyer_tx?.status || '—' }}</span></div>
+                  <div class="text-slate-400">Réf: <span class="text-slate-200 break-all">{{ receiptData.wallet?.buyer_tx?.external_reference || '—' }}</span></div>
+                </div>
+                <div class="bg-slate-700/30 border border-slate-600 rounded-lg p-3">
+                  <div class="text-slate-400 mb-1">Tx wallet (vendeur)</div>
+                  <div class="text-slate-200 font-mono">#{{ receiptData.wallet?.seller_tx?.id || '—' }}</div>
+                  <div class="text-slate-400 mt-1">Statut: <span class="text-slate-200">{{ receiptData.wallet?.seller_tx?.status || '—' }}</span></div>
+                  <div class="text-slate-400">Réf: <span class="text-slate-200 break-all">{{ receiptData.wallet?.seller_tx?.external_reference || '—' }}</span></div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1149,12 +1421,14 @@
             notification.type === 'warning' ? 'bg-yellow-600' : 
             'bg-blue-600'
           ]"
+          @click="notification.onClick ? notification.onClick() : null"
+          :style="notification.onClick ? 'cursor: pointer' : ''"
         >
           <div class="flex-1">
             <p class="text-white font-medium">{{ notification.message }}</p>
           </div>
           <button
-            @click="removeNotification(notification.id)"
+            @click.stop="removeNotification(notification.id)"
             class="text-white hover:text-gray-200 transition-colors"
           >
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1301,18 +1575,27 @@
       </div>
     </div>
 
-    <!-- Modal de tous les messages -->
+    <!-- ✅ AMÉLIORATION : Modal de conversation avec historique complet -->
     <div
-      v-if="showAllMessagesModal && selectedOffer"
-      class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
-      @click.self="showAllMessagesModal = false"
+      v-if="showAllMessagesModal"
+      class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-hidden"
+      @click.self="closeConversationModal"
     >
-      <div class="bg-slate-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div class="sticky top-0 bg-slate-800 border-b border-slate-700 p-6 flex items-center justify-between">
-          <h2 class="text-2xl font-bold text-white">Tous les messages</h2>
+      <div class="bg-slate-800 rounded-2xl shadow-2xl max-w-4xl w-full h-[90vh] flex flex-col">
+        <!-- Header avec informations de l'annonce -->
+        <div class="sticky top-0 bg-slate-800 border-b border-slate-700 p-4 sm:p-6 flex items-center justify-between z-10">
+          <div class="flex-1 min-w-0">
+            <h2 class="text-xl sm:text-2xl font-bold text-white truncate">Conversation</h2>
+            <div class="mt-1">
+              <p v-if="conversationOffer" class="text-sm text-slate-300 font-medium truncate">{{ conversationOffer.title }}</p>
+              <p v-if="conversationOtherUser" class="text-xs text-slate-400 mt-1">
+                Avec {{ conversationOtherUser.name }}
+              </p>
+            </div>
+          </div>
           <button
-            @click="showAllMessagesModal = false"
-            class="text-slate-400 hover:text-white transition-colors"
+            @click="closeConversationModal"
+            class="ml-4 text-slate-400 hover:text-white transition-colors flex-shrink-0"
           >
             <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -1320,66 +1603,88 @@
           </button>
         </div>
 
-        <div class="p-6">
-          <div v-if="offerMessages.length > 0" class="space-y-4">
+        <!-- Zone de messages avec scroll -->
+        <div ref="messagesContainer" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-slate-900/50">
+          <div v-if="offerMessages.length > 0">
             <div
               v-for="message in offerMessages"
               :key="message.id"
               :class="[
-                'rounded-lg p-4',
-                message.sender_id === user?.id ? 'bg-sky-600/30 ml-auto max-w-[80%]' : 'bg-slate-700/50 mr-auto max-w-[80%]'
+                'flex',
+                message.sender_id === user?.id ? 'justify-end' : 'justify-start'
               ]"
             >
-              <div class="flex items-start justify-between mb-2">
-                <div>
-                  <div class="font-semibold text-white">{{ message.sender_name }}</div>
-                  <div class="text-xs text-slate-400 mt-1">À {{ message.receiver_name }}</div>
+              <div
+                :class="[
+                  'rounded-2xl px-4 py-3 max-w-[75%] sm:max-w-[65%]',
+                  message.sender_id === user?.id 
+                    ? 'bg-gradient-to-r from-sky-500 to-indigo-500 text-white' 
+                    : 'bg-slate-700 text-slate-100'
+                ]"
+              >
+                <!-- En-tête du message -->
+                <div class="flex items-center gap-2 mb-1">
+                  <span :class="[
+                    'text-xs font-semibold',
+                    message.sender_id === user?.id ? 'text-white/90' : 'text-slate-300'
+                  ]">
+                    {{ message.sender_id === user?.id ? 'Vous' : message.sender_name }}
+                  </span>
+                  <span :class="[
+                    'text-xs',
+                    message.sender_id === user?.id ? 'text-white/70' : 'text-slate-400'
+                  ]">
+                    {{ formatMessageTime(message.created_at) }}
+                  </span>
                 </div>
-                <span class="text-xs text-slate-500">{{ formatDate(message.created_at) }}</span>
+                
+                <!-- Contenu du message -->
+                <p :class="[
+                  'text-sm whitespace-pre-wrap break-words',
+                  message.sender_id === user?.id ? 'text-white' : 'text-slate-200'
+                ]">
+                  {{ message.message }}
+                </p>
               </div>
-              <p class="text-slate-300 text-sm">{{ message.message }}</p>
-              
-              <!-- Bouton pour répondre (si on n'est pas l'expéditeur) -->
-              <button
-                v-if="message.sender_id !== user?.id"
-                @click="replyToMessage(message)"
-                class="mt-3 text-sky-400 hover:text-sky-300 text-sm font-medium"
-              >
-                Répondre →
-              </button>
             </div>
           </div>
-          <div v-else class="text-center py-12 text-slate-500">
-            Aucun message pour le moment
+          <div v-else class="flex items-center justify-center h-full">
+            <div class="text-center text-slate-500">
+              <svg class="w-16 h-16 mx-auto mb-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              <p class="text-lg font-medium">Aucun message pour le moment</p>
+              <p class="text-sm mt-2">Commencez la conversation en envoyant un message ci-dessous</p>
+            </div>
           </div>
+        </div>
 
-          <!-- Formulaire de réponse -->
-          <div v-if="replyingToMessage" class="mt-6 bg-slate-700/50 rounded-lg p-4">
-            <div class="mb-3">
-              <label class="block text-slate-300 font-medium mb-2">Répondre à {{ replyingToMessage.sender_name }}</label>
-              <textarea
-                v-model="replyMessage"
-                rows="3"
-                placeholder="Votre réponse..."
-                class="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
-              ></textarea>
-            </div>
-            <div class="flex gap-3">
-              <button
-                @click="cancelReply"
-                class="flex-1 bg-slate-600 hover:bg-slate-500 text-white py-2 px-4 rounded-lg transition-colors font-medium"
-              >
-                Annuler
-              </button>
-              <button
-                @click="sendReply"
-                :disabled="!replyMessage.trim() || isSendingReply"
-                class="flex-1 bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 px-4 rounded-lg transition-all font-semibold"
-              >
-                {{ isSendingReply ? 'Envoi...' : 'Envoyer la réponse' }}
-              </button>
-            </div>
+        <!-- Zone de saisie de message (toujours visible en bas) -->
+        <div class="sticky bottom-0 bg-slate-800 border-t border-slate-700 p-4 sm:p-6">
+          <div class="flex gap-3">
+            <textarea
+              v-model="newMessageText"
+              @keydown.enter.exact.prevent="sendNewMessage"
+              @keydown.enter.shift.exact="newMessageText += '\n'"
+              rows="2"
+              placeholder="Tapez votre message..."
+              class="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 resize-none"
+            ></textarea>
+            <button
+              @click="sendNewMessage"
+              :disabled="!newMessageText.trim() || isSendingMessage"
+              class="bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg transition-all font-semibold flex-shrink-0"
+            >
+              <svg v-if="!isSendingMessage" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              </svg>
+              <svg v-else class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </button>
           </div>
+          <p class="text-xs text-slate-500 mt-2 text-center">Appuyez sur Entrée pour envoyer, Shift+Entrée pour une nouvelle ligne</p>
         </div>
       </div>
     </div>
@@ -1443,10 +1748,30 @@
               ref="cropper"
               class="marketplace-cropper"
               :src="imageToCrop.preview"
-              :stencil-props="{ aspectRatio: 1 }"
-              :resize-image="{ touch: true, wheel: { ratio: 0.1 }, adjustStencil: false }"
+              :stencil-props="{ 
+                aspectRatio: 1,
+                movable: true,
+                resizable: true
+              }"
+              :default-boundaries="{
+                type: 'fit'
+              }"
+              :default-size="{
+                width: (minWidth, maxWidth) => Math.min(minWidth, maxWidth),
+                height: (minHeight, maxHeight) => Math.min(minHeight, maxHeight)
+              }"
+              :resize-image="{ 
+                touch: true, 
+                wheel: { ratio: 0.1 }, 
+                adjustStencil: false 
+              }"
               :move-image="{ touch: true, mouse: true }"
-              :canvas="{ width: 1200, height: 1200, imageSmoothingEnabled: true, imageSmoothingQuality: 'high' }"
+              :canvas="{ 
+                width: 1200, 
+                height: 1200, 
+                imageSmoothingEnabled: true, 
+                imageSmoothingQuality: 'high' 
+              }"
             />
           </div>
 
@@ -1481,7 +1806,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuth } from '@/composables/useAuth';
 import apiClient from '@/api';
 import { Cropper } from 'vue-advanced-cropper';
@@ -1489,6 +1814,7 @@ import 'vue-advanced-cropper/dist/style.css';
 import Cookies from 'js-cookie';
 
 const router = useRouter();
+const route = useRoute();
 const { logout, user } = useAuth();
 
 // États
@@ -1520,31 +1846,87 @@ const imageToCrop = ref(null);
 const cropImageIndex = ref(-1);
 const cropper = ref(null);
 
-// Computed - Les offres sont déjà filtrées côté backend
+// Solde (header)
+const walletCurrency = ref('GNF');
+const walletBalance = ref(0);
+const isWalletBalanceLoading = ref(false);
+
+// Recherche/filtre spécifique pour l'onglet Messages
+const messagesSearchQuery = ref('');
+const messagesUnreadOnly = ref(false);
+
+const activeSearchQuery = computed({
+  get() {
+    return activeTab.value === 'messages' ? messagesSearchQuery.value : searchQuery.value;
+  },
+  set(v) {
+    if (activeTab.value === 'messages') messagesSearchQuery.value = v;
+    else searchQuery.value = v;
+  },
+});
+
+// Computed - Les offres sont déjà filtrées côté backend (sauf Messages: filtre local)
 const filteredOffers = computed(() => {
-  return offers.value;
+  const list = Array.isArray(offers.value) ? offers.value : [];
+
+  // Filtrage/tri local uniquement pour l'onglet messages (conversations)
+  if (activeTab.value === 'messages') {
+    const q = (messagesSearchQuery.value || '').trim().toLowerCase();
+
+    let out = list;
+
+    if (messagesUnreadOnly.value) {
+      out = out.filter((o) => Number(o?.unread_count || 0) > 0);
+    }
+
+    if (q) {
+      out = out.filter((o) => {
+        const title = String(o?.title || '').toLowerCase();
+        const seller = String(o?.seller_name || '').toLowerCase();
+        const desc = String(o?.description || '').toLowerCase(); // last_message
+        return title.includes(q) || seller.includes(q) || desc.includes(q);
+      });
+    }
+
+    // Tri: non lus d'abord, puis plus récents
+    out = [...out].sort((a, b) => {
+      const au = Number(a?.unread_count || 0);
+      const bu = Number(b?.unread_count || 0);
+      if (bu !== au) return bu - au;
+
+      const ad = new Date(a?.last_message_created_at || a?.created_at || 0).getTime();
+      const bd = new Date(b?.last_message_created_at || b?.created_at || 0).getTime();
+      return bd - ad;
+    });
+
+    return out;
+  }
+
+  return list;
 });
 
 // Méthodes
 const loadOffers = async () => {
   isLoading.value = true;
   try {
-    // Si on est sur l'onglet "Mes Messages", charger les messages
+    // ✅ AMÉLIORATION : Si on est sur l'onglet "Mes Messages", charger les conversations groupées
     if (activeTab.value === 'messages') {
       const response = await apiClient.get('/api/marketplace/messages');
-      // Transformer les messages en format "offre" pour l'affichage
-      offers.value = response.data.map(msg => ({
-        id: msg.offer_id,
-        title: msg.offer_title,
-        description: `Message de ${msg.is_from_me ? msg.receiver_name : msg.sender_name}`,
+      // Transformer les conversations en format "offre" pour l'affichage
+      offers.value = response.data.map(conv => ({
+        id: conv.offer_id,
+        title: conv.offer_title,
+        description: conv.last_message,
         type: 'message',
         price: 0,
         currency: '',
-        image_url: null,
-        seller_name: msg.is_from_me ? msg.receiver_name : msg.sender_name,
+        image_url: conv.offer_image_url,
+        seller_name: conv.other_user_name,
         is_message: true,
-        message_data: msg,
-        created_at: msg.created_at,
+        message_data: conv,
+        unread_count: conv.unread_count,
+        last_message_created_at: conv.last_message_created_at,
+        created_at: conv.last_message_created_at,
       }));
     } else {
       // Envoyer le filtre actif et la recherche au backend
@@ -1564,8 +1946,38 @@ const loadOffers = async () => {
   }
 };
 
+const loadWalletBalance = async () => {
+  isWalletBalanceLoading.value = true;
+  try {
+    const res = await apiClient.get('/api/wallet', { params: { currency: walletCurrency.value } });
+    walletBalance.value = res.data?.balance ?? 0;
+  } catch (e) {
+    // Ne pas bloquer la page si le solde échoue
+  } finally {
+    isWalletBalanceLoading.value = false;
+  }
+};
+
+const applyRouteIntent = async () => {
+  // Support: /marketplace?tab=messages&offer=123
+  const tab = route.query?.tab;
+  const offerIdRaw = route.query?.offer;
+  const offerId = offerIdRaw ? Number(offerIdRaw) : null;
+
+  if (tab === 'messages' && offerId && Number.isFinite(offerId)) {
+    activeTab.value = 'messages';
+    await loadOffers();
+    await openConversation(offerId);
+  } else if (tab === 'messages') {
+    activeTab.value = 'messages';
+    await loadOffers();
+  }
+};
+
 // Recherche en temps réel (dès la première lettre)
 const onSearchInput = () => {
+  // Pour l'onglet Messages, la recherche est locale (pas d'appel backend)
+  if (activeTab.value === 'messages') return;
   // Annuler le timeout précédent
   if (searchTimeout.value) {
     clearTimeout(searchTimeout.value);
@@ -1579,8 +1991,16 @@ const onSearchInput = () => {
 
 // Effacer la recherche
 const clearSearch = () => {
+  if (activeTab.value === 'messages') {
+    messagesSearchQuery.value = '';
+    return;
+  }
   searchQuery.value = '';
   loadOffers();
+};
+
+const goToWallet = () => {
+  router.push({ name: 'Wallet' });
 };
 
 const viewOfferDetails = async (offerId) => {
@@ -1621,17 +2041,21 @@ const viewOfferDetails = async (offerId) => {
 
 const toggleFavorite = async (offerId) => {
   try {
+    const offer = offers.value.find(o => o.id === offerId) || selectedOffer.value;
+    if (offer?.is_active === false) {
+      showNotification('Offre indisponible: favoris désactivés.', 'warning');
+      return;
+    }
     await apiClient.post(`/api/marketplace/offers/${offerId}/toggle-favorite`);
     // Mettre à jour l'état local
-    const offer = offers.value.find(o => o.id === offerId);
-    if (offer) {
-      offer.is_favorite = !offer.is_favorite;
-    }
+    const listOffer = offers.value.find(o => o.id === offerId);
+    if (listOffer) listOffer.is_favorite = !listOffer.is_favorite;
     if (selectedOffer.value && selectedOffer.value.id === offerId) {
       selectedOffer.value.is_favorite = !selectedOffer.value.is_favorite;
     }
   } catch (error) {
     console.error('Erreur lors de l\'ajout aux favoris:', error);
+    showNotification(error.response?.data?.message || 'Erreur lors des favoris', 'error');
   }
 };
 
@@ -1650,6 +2074,23 @@ const offerMessages = ref([]);
 const replyingToMessage = ref(null);
 const replyMessage = ref('');
 const isSendingReply = ref(false);
+// ✅ FIX: badge + polling pour "Mes Messages"
+const totalUnreadMessages = ref(0);
+const messagesPollingInterval = ref(null);
+const conversationOffer = ref(null);
+const conversationOtherUser = ref(null);
+const newMessageText = ref('');
+const messagesContainer = ref(null);
+const showMatchNotificationsModal = ref(false);
+const marketplaceNotifications = ref([]);
+const marketplaceNotificationsUnreadCount = ref(0);
+const marketplaceNotificationsPollingInterval = ref(null);
+const lastUnreadMessagesCount = ref(0);
+
+// Reçu achat/vente
+const showReceiptModal = ref(false);
+const receiptData = ref(null);
+const isLoadingReceipt = ref(false);
 
 // Galerie d'images
 const showImageGallery = ref(false);
@@ -1666,9 +2107,9 @@ const touchEndY = ref(0);
 const notifications = ref([]);
 let notificationIdCounter = 0;
 
-const showNotification = (message, type = 'info') => {
+const showNotification = (message, type = 'info', onClick = null) => {
   const id = ++notificationIdCounter;
-  notifications.value.push({ id, message, type });
+  notifications.value.push({ id, message, type, onClick });
   
   // Supprimer automatiquement après 5 secondes
   setTimeout(() => {
@@ -1681,6 +2122,139 @@ const removeNotification = (id) => {
   if (index > -1) {
     notifications.value.splice(index, 1);
   }
+};
+
+const viewReceipt = async (purchaseId) => {
+  if (!purchaseId) return;
+  isLoadingReceipt.value = true;
+  receiptData.value = null;
+  showReceiptModal.value = true;
+  try {
+    const res = await apiClient.get(`/api/marketplace/purchases/${purchaseId}`);
+    receiptData.value = res.data;
+  } catch (error) {
+    console.error('Erreur lors du chargement du reçu:', error);
+    showNotification(error.response?.data?.message || 'Erreur lors du chargement du reçu', 'error');
+    showReceiptModal.value = false;
+  } finally {
+    isLoadingReceipt.value = false;
+  }
+};
+
+const closeReceiptModal = () => {
+  showReceiptModal.value = false;
+  receiptData.value = null;
+};
+
+const copyReceiptReference = async () => {
+  const refValue = receiptData.value?.reference;
+  if (!refValue) return;
+  try {
+    await navigator.clipboard.writeText(String(refValue));
+    showNotification('Référence copiée.', 'success');
+  } catch (e) {
+    showNotification('Impossible de copier la référence.', 'warning');
+  }
+};
+
+const escapeHtml = (str) => {
+  return String(str ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+};
+
+const printReceipt = () => {
+  if (!receiptData.value) return;
+  const r = receiptData.value;
+
+  const html = `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Reçu ${escapeHtml(r.reference || '')}</title>
+    <style>
+      :root { color-scheme: light; }
+      body { font-family: Arial, sans-serif; padding: 24px; color: #0b1220; }
+      .header { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
+      .title { font-size: 20px; font-weight: 700; margin: 0; }
+      .muted { color: #475569; font-size: 12px; }
+      .box { border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; margin-top: 12px; }
+      .grid { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .k { font-size: 12px; color:#475569; }
+      .v { font-size: 14px; font-weight: 600; }
+      .amount { font-size: 22px; font-weight: 800; }
+      @media print { button { display:none; } body { padding: 0; } }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div>
+        <h1 class="title">Reçu</h1>
+        <div class="muted">Référence: <span style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">${escapeHtml(r.reference || '')}</span></div>
+      </div>
+      <div class="muted">${escapeHtml(r.purchase?.created_at || '')}</div>
+    </div>
+
+    <div class="box">
+      <div class="k">Offre</div>
+      <div class="v">${escapeHtml(r.offer?.title || '')}</div>
+      <div class="muted">#${escapeHtml(r.offer?.id || '')} · ${escapeHtml(r.offer?.type || '')}</div>
+    </div>
+
+    <div class="grid">
+      <div class="box">
+        <div class="k">Acheteur</div>
+        <div class="v">${escapeHtml(r.buyer?.name || '')}</div>
+        <div class="muted">#${escapeHtml(r.buyer?.id || '')}</div>
+      </div>
+      <div class="box">
+        <div class="k">Vendeur</div>
+        <div class="v">${escapeHtml(r.seller?.name || '')}</div>
+        <div class="muted">#${escapeHtml(r.seller?.id || '')}</div>
+      </div>
+    </div>
+
+    <div class="box">
+      <div class="k">Montant</div>
+      <div class="amount">${escapeHtml(r.purchase?.price || '')} ${escapeHtml(r.purchase?.currency || '')}</div>
+      <div class="muted">Statut: ${escapeHtml(r.purchase?.status || '')} · Achat #${escapeHtml(r.purchase?.id || '')}</div>
+    </div>
+
+    <div class="grid">
+      <div class="box">
+        <div class="k">Tx wallet (acheteur)</div>
+        <div class="v">#${escapeHtml(r.wallet?.buyer_tx?.id || '—')}</div>
+        <div class="muted">Réf: ${escapeHtml(r.wallet?.buyer_tx?.external_reference || '—')}</div>
+      </div>
+      <div class="box">
+        <div class="k">Tx wallet (vendeur)</div>
+        <div class="v">#${escapeHtml(r.wallet?.seller_tx?.id || '—')}</div>
+        <div class="muted">Réf: ${escapeHtml(r.wallet?.seller_tx?.external_reference || '—')}</div>
+      </div>
+    </div>
+
+    <div class="box muted">
+      Astuce: utilisez "Enregistrer en PDF" dans la fenêtre d'impression.
+    </div>
+
+    <script>
+      window.onload = () => { window.print(); };
+      window.onafterprint = () => { window.close(); };
+    <\/script>
+  </body>
+</html>`;
+
+  const w = window.open('', '_blank', 'noopener,noreferrer');
+  if (!w) {
+    showNotification('Popup bloquée: autorisez l’ouverture pour imprimer.', 'warning');
+    return;
+  }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
 };
 
 // Système de confirmation
@@ -1709,12 +2283,57 @@ const handleCancel = () => {
   confirmCallback.value = null;
 };
 
+const isPurchasing = ref(false);
+
+const generateIdempotencyKey = () => {
+  try {
+    if (crypto?.randomUUID) return crypto.randomUUID();
+  } catch (e) {}
+  return `idem-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
+
+const purchaseInternal = async (offerId) => {
+  if (isPurchasing.value) return;
+  isPurchasing.value = true;
+  try {
+    const idempotencyKey = generateIdempotencyKey();
+    await apiClient.post(
+      `/api/marketplace/offers/${offerId}/purchase-internal`,
+      null,
+      { headers: { 'Idempotency-Key': idempotencyKey } },
+    );
+
+    showNotification('Achat effectué avec succès.', 'success');
+    // Recharger pour synchroniser: offre désactivée, achats, etc.
+    await loadOffers();
+    await loadWalletBalance();
+    // Si le modal de détails est ouvert sur cette offre, le rafraîchir/fermer
+    if (selectedOffer.value?.id === offerId) {
+      selectedOffer.value = null;
+    }
+  } catch (error) {
+    const status = error?.response?.status;
+    if (status === 402) {
+      showNotification(error.response?.data?.message || 'Solde insuffisant. Rechargez votre solde.', 'warning');
+    } else if (status === 409) {
+      showNotification(error.response?.data?.message || 'Offre déjà indisponible.', 'warning');
+      await loadOffers();
+    } else {
+      showNotification(error.response?.data?.message || 'Erreur lors de l\'achat.', 'error');
+    }
+  } finally {
+    isPurchasing.value = false;
+  }
+};
+
 const addToCart = async (offerId) => {
-  // Trouver l'offre pour afficher le modal de contact
+  // Achat interne via solde : confirmation puis appel API
   const offer = offers.value.find(o => o.id === offerId) || selectedOffer.value;
   if (offer) {
-    contactSellerOffer.value = offer;
-    showContactSellerModal.value = true;
+    confirmAction(
+      `Confirmer l'achat de "${offer.title}" pour ${formatPrice(offer.price)} ${offer.currency || ''} ?`,
+      () => purchaseInternal(offerId)
+    );
   }
 };
 
@@ -1730,9 +2349,19 @@ const sendMessageToSeller = async () => {
     });
     
     showNotification('Message envoyé à l\'annonceur avec succès !', 'success');
+    const offerId = contactSellerOffer.value.id;
     contactMessage.value = '';
     showContactSellerModal.value = false;
     contactSellerOffer.value = null;
+    
+    // Rediriger vers l'onglet Messages et ouvrir la conversation liée à l'offre
+    activeTab.value = 'messages';
+    await loadOffers();
+    
+    // ✅ NOUVEAU : Recharger le nombre de messages non lus
+    await loadUnreadMessagesCount();
+
+    await openConversation(offerId);
   } catch (error) {
     console.error('Erreur lors de l\'envoi du message:', error);
     showNotification(error.response?.data?.message || 'Erreur lors de l\'envoi du message', 'error');
@@ -1887,11 +2516,35 @@ const createOffer = async () => {
     formData.append('price', newOffer.value.price);
     formData.append('currency', newOffer.value.currency || 'EUR');
     
-    // Ajouter toutes les images (toujours envoyer l'image originale, pas la rognée)
+    // ✅ CORRECTION : Ajouter toutes les images avec validation
     selectedImages.value.forEach((img, index) => {
-      // Envoyer l'image originale au backend pour qu'elle soit disponible dans la galerie
-      const imageToSend = img.originalFile || img.file;
-      formData.append(`images[${index}]`, imageToSend);
+      // Priorité : originalFile > file > croppedFile
+      let imageToSend = img.originalFile || img.file || img.croppedFile;
+      
+      // ✅ CORRECTION : S'assurer que c'est un File object valide
+      if (!imageToSend) {
+        console.error(`Image ${index} n'est pas disponible:`, img);
+        createError.value = `L'image ${index + 1} n'est pas valide. Veuillez la retéléverser.`;
+        throw new Error(`Image ${index} invalide`);
+      }
+      
+      // Si c'est un Blob, le convertir en File
+      if (imageToSend instanceof Blob && !(imageToSend instanceof File)) {
+        imageToSend = new File([imageToSend], img.name || `image-${index}.jpg`, {
+          type: imageToSend.type || 'image/jpeg',
+          lastModified: Date.now()
+        });
+      }
+      
+      // Vérifier que c'est bien un File
+      if (!(imageToSend instanceof File)) {
+        console.error(`Image ${index} n'est pas un File object:`, imageToSend);
+        createError.value = `L'image ${index + 1} n'est pas un fichier valide. Veuillez la retéléverser.`;
+        throw new Error(`Image ${index} n'est pas un File`);
+      }
+      
+      // ✅ CORRECTION : Utiliser la syntaxe Laravel pour les tableaux (images[] ou images.0)
+      formData.append('images[]', imageToSend);
     });
     
     const response = await apiClient.post('/api/marketplace/offers', formData, {
@@ -1946,11 +2599,12 @@ const submitReview = async (offerId) => {
   }
 };
 
-const formatPrice = (price) => {
-  return new Intl.NumberFormat('fr-FR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(price);
+const formatPrice = (price, ccy = walletCurrency.value) => {
+  const n = Number(price);
+  if (!Number.isFinite(n)) return '0';
+  const upper = String(ccy || '').toUpperCase();
+  const digits = (upper === 'GNF' || upper === 'XOF') ? 0 : 2;
+  return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(n);
 };
 
 const formatRating = (value) => {
@@ -2121,17 +2775,29 @@ const updateOffer = async () => {
     formData.append('price', newOffer.value.price);
     formData.append('currency', newOffer.value.currency);
     
-    // ✅ Envoyer uniquement les nouvelles images (pas les images existantes non modifiées)
-    if (selectedImages.value.length > 0) {
-      let newImageIndex = 0;
-      selectedImages.value.forEach((image) => {
-        // Envoyer uniquement les images qui ont un fichier (nouvelles images ou images remplacées)
-        const imageToSend = image.originalFile || image.file;
-        if (imageToSend) {
-          formData.append(`images[${newImageIndex}]`, imageToSend);
-          newImageIndex++;
-        }
-        // Les images existantes (isExisting: true sans file) ne sont pas envoyées
+      // ✅ CORRECTION : Envoyer uniquement les nouvelles images avec validation
+      if (selectedImages.value.length > 0) {
+        let newImageIndex = 0;
+        selectedImages.value.forEach((image) => {
+          // Envoyer uniquement les images qui ont un fichier (nouvelles images ou images remplacées)
+          let imageToSend = image.originalFile || image.file || image.croppedFile;
+          
+          if (imageToSend) {
+            // Si c'est un Blob, le convertir en File
+            if (imageToSend instanceof Blob && !(imageToSend instanceof File)) {
+              imageToSend = new File([imageToSend], image.name || `image-${newImageIndex}.jpg`, {
+                type: imageToSend.type || 'image/jpeg',
+                lastModified: Date.now()
+              });
+            }
+            
+            // Vérifier que c'est bien un File
+            if (imageToSend instanceof File) {
+              formData.append('images[]', imageToSend);
+              newImageIndex++;
+            }
+          }
+          // Les images existantes (isExisting: true sans file) ne sont pas envoyées
         // Elles restent sur le serveur
       });
     }
@@ -2256,9 +2922,25 @@ const viewAllReviews = async (offerId) => {
   }
 };
 
+// ✅ NOUVEAU : Ouvrir la conversation depuis l'onglet Messages
+const openConversation = async (offerId) => {
+  // Synchroniser l'URL pour permettre refresh/partage
+  try {
+    router.replace({
+      query: {
+        ...route.query,
+        tab: 'messages',
+        offer: String(offerId),
+      },
+    });
+  } catch (e) {}
+  await viewAllMessages(offerId);
+};
+
 const viewAllMessages = async (offerId) => {
   // Afficher immédiatement le modal avec une liste vide
   offerMessages.value = [];
+  newMessageText.value = '';
   showAllMessagesModal.value = true;
   
   // S'assurer que selectedOffer est défini
@@ -2267,14 +2949,163 @@ const viewAllMessages = async (offerId) => {
     selectedOffer.value = { ...existingOffer };
   }
   
+  // Charger les détails de l'offre
+  try {
+    const offerResponse = await apiClient.get(`/api/marketplace/offers/${offerId}`);
+    conversationOffer.value = offerResponse.data;
+    
+    // Déterminer l'autre utilisateur
+    if (offerResponse.data && user.value) {
+      const offer = offerResponse.data;
+      if (offer.user_id === user.value.id) {
+        // Si on est le vendeur, l'autre utilisateur sera déterminé depuis les messages
+        conversationOtherUser.value = null;
+      } else {
+        // Si on est l'acheteur, l'autre utilisateur est le vendeur
+        conversationOtherUser.value = {
+          id: offer.user_id,
+          name: offer.seller_name || 'Vendeur'
+        };
+      }
+    }
+  } catch (error) {
+    console.error('Erreur lors du chargement de l\'offre:', error);
+  }
+  
   // Charger les messages en arrière-plan
   try {
     const response = await apiClient.get(`/api/marketplace/offers/${offerId}/messages`);
     offerMessages.value = response.data || [];
+    
+    // Déterminer l'autre utilisateur depuis les messages si pas encore défini
+    if (!conversationOtherUser.value && offerMessages.value.length > 0 && user.value) {
+      const firstMessage = offerMessages.value[0];
+      if (firstMessage.sender_id === user.value.id) {
+        conversationOtherUser.value = {
+          id: firstMessage.receiver_id,
+          name: firstMessage.receiver_name
+        };
+      } else {
+        conversationOtherUser.value = {
+          id: firstMessage.sender_id,
+          name: firstMessage.sender_name
+        };
+      }
+    }
+    
+    // ✅ NOUVEAU : Scroller vers le bas pour voir les derniers messages
+    setTimeout(() => {
+      scrollToBottom();
+    }, 100);
+    
+    // ✅ NOUVEAU : Recharger le nombre de messages non lus après ouverture
+    await loadUnreadMessagesCount();
+    
+    // ✅ NOUVEAU : Recharger les conversations si on est sur l'onglet messages
+    if (activeTab.value === 'messages') {
+      await loadOffers();
+    }
   } catch (error) {
     console.error('Erreur lors du chargement des messages:', error);
     showNotification(error.response?.data?.message || 'Erreur lors du chargement des messages', 'error');
     // Ne pas fermer le modal, juste afficher une notification
+  }
+};
+
+// ✅ NOUVEAU : Fermer la modal de conversation
+const closeConversationModal = () => {
+  showAllMessagesModal.value = false;
+  offerMessages.value = [];
+  newMessageText.value = '';
+  conversationOffer.value = null;
+  conversationOtherUser.value = null;
+  replyingToMessage.value = null;
+  replyMessage.value = '';
+
+  // Nettoyer l'URL (garder tab=messages si présent)
+  try {
+    const nextQuery = { ...route.query };
+    delete nextQuery.offer;
+    if (!nextQuery.tab) nextQuery.tab = 'messages';
+    router.replace({ query: nextQuery });
+  } catch (e) {}
+};
+
+// ✅ NOUVEAU : Scroller vers le bas de la zone de messages
+const scrollToBottom = () => {
+  if (messagesContainer.value) {
+    setTimeout(() => {
+      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+    }, 50);
+  }
+};
+
+// ✅ NOUVEAU : Envoyer un nouveau message depuis la modal de conversation
+const sendNewMessage = async () => {
+  if (!newMessageText.value.trim() || !conversationOffer.value) return;
+  
+  isSendingMessage.value = true;
+  try {
+    // Si c'est le premier message, utiliser sendMessage, sinon replyToMessage
+    if (offerMessages.value.length === 0) {
+      // Premier message
+      await apiClient.post('/api/marketplace/send-message', {
+        offer_id: conversationOffer.value.id,
+        seller_id: conversationOffer.value.seller_id || conversationOffer.value.user_id,
+        message: newMessageText.value
+      });
+    } else {
+      // Répondre au dernier message
+      const lastMessage = offerMessages.value[offerMessages.value.length - 1];
+      await apiClient.post(`/api/marketplace/messages/${lastMessage.id}/reply`, {
+        message: newMessageText.value
+      });
+    }
+    
+    // Recharger les messages pour avoir l'historique complet
+    await viewAllMessages(conversationOffer.value.id);
+    
+    // Vider le champ de saisie
+    newMessageText.value = '';
+    
+    // ✅ NOUVEAU : Scroller vers le bas après l'envoi
+    setTimeout(() => {
+      scrollToBottom();
+    }, 200);
+    
+    showNotification('Message envoyé avec succès !', 'success');
+  } catch (error) {
+    console.error('Erreur lors de l\'envoi du message:', error);
+    showNotification(error.response?.data?.message || 'Erreur lors de l\'envoi du message', 'error');
+  } finally {
+    isSendingMessage.value = false;
+  }
+};
+
+// ✅ NOUVEAU : Formater l'heure du message (aujourd'hui, hier, ou date complète)
+const formatMessageTime = (dateString) => {
+  if (!dateString) return '';
+  
+  const date = new Date(dateString);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const time = `${hours}:${minutes}`;
+  
+  if (messageDate.getTime() === today.getTime()) {
+    return `Aujourd'hui à ${time}`;
+  } else if (messageDate.getTime() === yesterday.getTime()) {
+    return `Hier à ${time}`;
+  } else {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year} à ${time}`;
   }
 };
 
@@ -2307,6 +3138,14 @@ const sendReply = async () => {
     // Recharger les messages pour mettre à jour
     if (selectedOffer.value) {
       await viewAllMessages(selectedOffer.value.id);
+    }
+    
+    // Recharger le nombre de messages non lus
+    await loadUnreadMessagesCount();
+    
+    // Recharger les conversations si on est sur l'onglet messages
+    if (activeTab.value === 'messages') {
+      await loadOffers();
     }
   } catch (error) {
     console.error('Erreur lors de l\'envoi de la réponse:', error);
@@ -2480,6 +3319,11 @@ const previousDetailImage = () => {
 watch(activeTab, () => {
   // Réinitialiser la recherche lors du changement d'onglet
   searchQuery.value = '';
+  // Réinitialiser la recherche messages si on quitte l'onglet
+  if (activeTab.value !== 'messages') {
+    messagesSearchQuery.value = '';
+    messagesUnreadOnly.value = false;
+  }
   loadOffers();
 });
 
@@ -2490,16 +3334,157 @@ onUnmounted(() => {
   }
 });
 
+// Notifications Marketplace (matching + transactions)
+const loadMarketplaceNotifications = async () => {
+  try {
+    const response = await apiClient.get('/api/marketplace/notifications');
+    marketplaceNotifications.value = response.data.notifications || [];
+    marketplaceNotificationsUnreadCount.value = response.data.unread_count || 0;
+  } catch (error) {
+    console.error('Erreur lors du chargement des notifications marketplace:', error);
+  }
+};
+
+// ✅ FIX: Charger le nombre de messages non lus
+const loadUnreadMessagesCount = async () => {
+  try {
+    const response = await apiClient.get('/api/marketplace/messages/unread-count');
+    const nextCount = response.data?.unread_count || 0;
+
+    // Si on détecte une hausse, afficher un toast cliquable vers la conversation la plus récente
+    if (lastUnreadMessagesCount.value !== 0 && nextCount > lastUnreadMessagesCount.value) {
+      try {
+        const convRes = await apiClient.get('/api/marketplace/messages');
+        const convs = convRes.data || [];
+        const latest = convs[0];
+        if (latest?.offer_id) {
+          showNotification(
+            `Nouveau message de ${latest.other_user_name || 'un utilisateur'} sur "${latest.offer_title || 'une offre'}"`,
+            'info',
+            async () => {
+              // Naviguer via URL pour un comportement stable (refresh/partage)
+              await router.push({
+                query: {
+                  ...route.query,
+                  tab: 'messages',
+                  offer: String(latest.offer_id),
+                },
+              });
+            }
+          );
+        } else {
+          showNotification('Nouveau message reçu', 'info', async () => {
+            await router.push({
+              query: {
+                ...route.query,
+                tab: 'messages',
+              },
+            });
+          });
+        }
+      } catch (e) {
+        showNotification('Nouveau message reçu', 'info', async () => {
+          await router.push({
+            query: {
+              ...route.query,
+              tab: 'messages',
+            },
+          });
+        });
+      }
+    }
+
+    totalUnreadMessages.value = nextCount;
+    lastUnreadMessagesCount.value = nextCount;
+  } catch (error) {
+    console.error('Erreur lors du chargement du nombre de messages non lus:', error);
+  }
+};
+
+// ✅ FIX: Polling messages (conversations + badge)
+const startMessagesPolling = () => {
+  if (messagesPollingInterval.value) {
+    clearInterval(messagesPollingInterval.value);
+  }
+  messagesPollingInterval.value = setInterval(async () => {
+    await loadUnreadMessagesCount();
+    if (activeTab.value === 'messages') {
+      await loadOffers();
+    }
+    // si la modal conversation est ouverte, recharger l'historique
+    if (showAllMessagesModal.value && conversationOffer.value?.id) {
+      await viewAllMessages(conversationOffer.value.id);
+    }
+  }, 30000);
+};
+
+const stopMessagesPolling = () => {
+  if (messagesPollingInterval.value) {
+    clearInterval(messagesPollingInterval.value);
+    messagesPollingInterval.value = null;
+  }
+};
+
+const startMarketplaceNotificationsPolling = () => {
+  if (marketplaceNotificationsPollingInterval.value) {
+    clearInterval(marketplaceNotificationsPollingInterval.value);
+  }
+  marketplaceNotificationsPollingInterval.value = setInterval(() => {
+    loadMarketplaceNotifications();
+  }, 30000);
+};
+
+const stopMarketplaceNotificationsPolling = () => {
+  if (marketplaceNotificationsPollingInterval.value) {
+    clearInterval(marketplaceNotificationsPollingInterval.value);
+    marketplaceNotificationsPollingInterval.value = null;
+  }
+};
+
+const openMarketplaceNotification = async (notification) => {
+  // Marquer comme lue
+  try {
+    await apiClient.post(`/api/marketplace/notifications/${notification.id}/read`);
+    await loadMarketplaceNotifications();
+  } catch (error) {
+    console.error('Erreur lors du marquage de la notification:', error);
+  }
+
+  // Navigation selon catégorie
+  if (notification.offer_id) {
+    await viewOfferDetails(notification.offer_id);
+  } else if (notification.category === 'marketplace_transaction') {
+    router.push({ name: 'Wallet' });
+  }
+
+  showMatchNotificationsModal.value = false;
+};
+
 // Lifecycle
 onMounted(() => {
   loadOffers();
+  loadUnreadMessagesCount();
+  loadMarketplaceNotifications();
+  loadWalletBalance();
+  startMessagesPolling();
   // Ajouter les écouteurs de clavier pour la galerie
   window.addEventListener('keydown', handleKeyPress);
+  startMarketplaceNotificationsPolling();
+  applyRouteIntent();
 });
+
+watch(
+  () => route.query,
+  () => {
+    applyRouteIntent();
+  },
+);
 
 // Nettoyer les écouteurs
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyPress);
+  stopMessagesPolling();
+  stopMarketplaceNotificationsPolling();
 });
 </script>
 
