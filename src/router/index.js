@@ -110,6 +110,16 @@ const router = createRouter({
       },
     },
     {
+      path: "/mon-solde",
+      name: "Wallet",
+      component: () => import("../views/WalletView.vue"),
+      meta: {
+        requiresAuth: true,
+        hideNavbar: true,
+        hideFooter: true,
+      },
+    },
+    {
       path: "/menu-du-jour",
       name: "RestaurantMenu",
       component: () => import("../views/RestaurantMenuView.vue"),
