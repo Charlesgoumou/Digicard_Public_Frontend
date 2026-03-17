@@ -36,11 +36,34 @@ export function useOrderManagement(user) {
     // ✅ S'assurer que isLoading reste true pendant le chargement
     isLoading.value = true;
     try {
+      try {
+        // Réinitialiser le cookie CSRF avant de charger les commandes.
+        // Important après des redirections externes (paiement) ou des PATCH qui peuvent invalider le token.
+        await apiClient.get("/sanctum/csrf-cookie");
+      } catch (e) {
+        // Ne pas bloquer: le cookie peut déjà être présent.
+        console.warn("useOrderManagement: Impossible de rafraîchir le cookie CSRF:", e);
+      }
+
       const response = await apiClient.get("/api/orders");
       // S'assurer que response.data est un tableau
       orders.value = Array.isArray(response.data) ? response.data : [];
       return orders.value;
     } catch (error) {
+      // Si la session/CSRF vient d'expirer, tenter 1 retry après récupération CSRF.
+      const status = error?.response?.status;
+      if (status === 401 || status === 419) {
+        try {
+          await apiClient.get("/sanctum/csrf-cookie");
+          const retry = await apiClient.get("/api/orders");
+          orders.value = Array.isArray(retry.data) ? retry.data : [];
+          loadingError.value = "";
+          return orders.value;
+        } catch (retryErr) {
+          console.error("useOrderManagement: Retry /api/orders échoué:", retryErr);
+        }
+      }
+
       console.error("Erreur lors du chargement des commandes:", error);
       loadingError.value = "Erreur lors du chargement de vos commandes.";
       return [];
@@ -118,6 +141,11 @@ export function useOrderManagement(user) {
         // Il sera géré par useCardSettings
       }
     }
+  });
+
+  // Recharger les commandes quand une commande est configurée ailleurs dans l'app
+  window.addEventListener("order-configured", () => {
+    loadOrders();
   });
 
   // Retourner tout ce dont le composant a besoin

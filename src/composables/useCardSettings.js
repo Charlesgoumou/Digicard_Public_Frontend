@@ -692,6 +692,14 @@ export function useCardSettings(
           // Marquer la commande comme configurée
           await apiClient.patch(`/api/orders/${selectedOrderId.value}/configure`);
           console.log(`Commande ${selectedOrderId.value} marquée comme configurée.`);
+
+          // Notifier le reste de l'app (Mes Commandes / Afficher mon profil / Paramètres)
+          // pour qu'il recharge /api/orders sans nécessiter une déconnexion/reconnexion.
+          window.dispatchEvent(
+            new CustomEvent("order-configured", {
+              detail: { orderId: parseInt(selectedOrderId.value) },
+            }),
+          );
           
           // Recharger les données de la commande pour s'assurer que tout est synchronisé
           // Cela garantit que les données retournées par le backend sont bien chargées

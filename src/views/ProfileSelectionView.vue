@@ -1,26 +1,24 @@
 <template>
-  <div class="min-h-screen bg-slate-900 pt-20 sm:pt-32 text-white">
-    <div class="container mx-auto px-4 py-12">
-      <!-- Bouton Retour -->
-      <div class="mb-6">
+  <div
+    :class="[
+      'min-h-screen bg-slate-900 text-white',
+      route?.meta?.hideNavbar ? 'pt-6 sm:pt-8' : 'pt-20 sm:pt-32',
+    ]"
+  >
+    <div :class="['container mx-auto px-4', route?.meta?.hideNavbar ? 'py-6 sm:py-8' : 'py-12']">
+      <div class="max-w-6xl mx-auto mb-6 flex items-center justify-between gap-4">
+        <div class="min-w-0">
+          <h1 class="text-2xl sm:text-3xl font-bold">Choisir un profil</h1>
+          <p class="text-slate-400 text-sm">Sélectionnez le profil public que vous souhaitez ouvrir.</p>
+        </div>
         <button
           @click="goToDashboard"
           type="button"
-          class="flex items-center gap-2 text-slate-400 hover:text-white transition-colors group"
+          class="bg-slate-800 hover:bg-slate-700/60 border border-slate-700 hover:border-slate-600 text-white px-4 py-2 rounded-lg transition-colors flex-shrink-0"
         >
-          <svg
-            class="w-5 h-5 transform group-hover:-translate-x-1 transition-transform"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          <span class="font-medium">Retour au Dashboard</span>
+          Retour
         </button>
       </div>
-
-      <h1 class="text-4xl font-bold mb-8 text-center">Choisissez le profil à afficher</h1>
 
       <!-- Skeleton Screen pour la liste des profils -->
       <div v-if="isLoading" class="max-w-4xl mx-auto">
@@ -311,13 +309,14 @@
 </template>
 
 <script setup>
-  import { ref, computed, onMounted } from "vue";
-  import { useRouter } from "vue-router";
+  import { ref, computed, onMounted, onBeforeUnmount } from "vue";
+  import { useRouter, useRoute } from "vue-router";
   import { useAuth } from "@/composables/useAuth";
   import apiClient from "@/api";
   import LoadingSpinner from "@/components/layout/LoadingSpinner.vue";
 
   const router = useRouter();
+  const route = useRoute();
   const { user } = useAuth();
 
   const orders = ref([]);
@@ -497,7 +496,19 @@
 
     try {
       // Charger les commandes de l'utilisateur
-      const response = await apiClient.get("/api/orders");
+      let response;
+      try {
+        response = await apiClient.get("/api/orders");
+      } catch (err) {
+        const status = err?.response?.status;
+        // 401/419 arrivent parfois juste après une configuration/paiement → refresh CSRF puis retry
+        if (status === 401 || status === 419) {
+          await apiClient.get("/sanctum/csrf-cookie");
+          response = await apiClient.get("/api/orders");
+        } else {
+          throw err;
+        }
+      }
       let allOrders = Array.isArray(response.data) ? response.data : [];
 
       // ✅ DEBUG : Logger les commandes pour vérifier les données
@@ -620,7 +631,16 @@
     }
   };
 
+  const onOrderConfigured = () => {
+    loadOrders();
+  };
+
   onMounted(() => {
     loadOrders();
+    window.addEventListener("order-configured", onOrderConfigured);
+  });
+
+  onBeforeUnmount(() => {
+    window.removeEventListener("order-configured", onOrderConfigured);
   });
 </script>
