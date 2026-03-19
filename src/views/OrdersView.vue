@@ -1,39 +1,36 @@
 <template>
-  <div class="min-h-screen bg-slate-900 pt-20 sm:pt-32 text-white">
-    <div class="container mx-auto px-4 py-12">
-      <!-- Bouton Retour -->
-      <div class="mb-6">
-        <button
-          @click="goToDashboard"
-          type="button"
-          class="flex items-center gap-2 text-slate-400 hover:text-white transition-colors group"
-        >
-          <svg
-            class="w-5 h-5 transform group-hover:-translate-x-1 transition-transform"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
+  <div
+    :class="[
+      'min-h-screen bg-slate-900 text-white',
+      route?.meta?.hideNavbar ? 'pt-6 sm:pt-8' : 'pt-20 sm:pt-32',
+    ]"
+  >
+    <div :class="['container mx-auto px-4', route?.meta?.hideNavbar ? 'py-6 sm:py-8' : 'py-12']">
+      <div class="max-w-6xl mx-auto mb-6 flex items-center justify-between gap-4">
+        <div class="min-w-0">
+          <h1 class="text-2xl sm:text-3xl font-bold">Mes Commandes</h1>
+          <p class="text-slate-400 text-sm">Consultez et gérez vos commandes.</p>
+        </div>
+        <div class="flex items-center gap-3 flex-shrink-0">
+          <!-- Bouton Commander Une Nouvelle Carte (visible pour particuliers et business admin uniquement) -->
+          <button
+            v-if="user && user.role !== 'employee'"
+            @click="openOrderModal"
+            class="bg-gradient-to-r from-sky-500 to-blue-500 hover:from-sky-600 hover:to-blue-600 text-white font-semibold py-2.5 px-6 rounded-lg transition-all duration-300 ease-in-out hover:shadow-lg hover:shadow-sky-500/30 flex items-center gap-2 whitespace-nowrap"
           >
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          <span class="font-medium">Retour au Dashboard</span>
-        </button>
-      </div>
-
-      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-        <h1 class="text-3xl sm:text-4xl font-bold">Mes Commandes</h1>
-
-        <!-- Bouton Commander Une Nouvelle Carte (visible pour particuliers et business admin uniquement) -->
-        <button
-          v-if="user && user.role !== 'employee'"
-          @click="openOrderModal"
-          class="bg-gradient-to-r from-sky-500 to-blue-500 hover:from-sky-600 hover:to-blue-600 text-white font-semibold py-2.5 px-6 rounded-lg transition-all duration-300 ease-in-out hover:shadow-lg hover:shadow-sky-500/30 flex items-center gap-2 whitespace-nowrap"
-        >
-          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-          </svg>
-          Commander Une Nouvelle Carte
-        </button>
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Commander Une Nouvelle Carte
+          </button>
+          <button
+            @click="goToDashboard"
+            type="button"
+            class="bg-slate-800 hover:bg-slate-700/60 border border-slate-700 hover:border-slate-600 text-white px-4 py-2 rounded-lg transition-colors"
+          >
+            Retour
+          </button>
+        </div>
       </div>
 
       <!-- Skeleton Screen pour la liste des commandes -->
@@ -804,8 +801,12 @@
   const { user, fetchUser, updateUserLocally } = useAuth();
   const { openOrderModal } = useOrderModal();
 
-  const orders = ref([]);
-  const isLoading = ref(true);
+  // ✅ PERF: cache mémoire des commandes (mutualisé avec /parametres et /choisir-profil)
+  const ORDERS_CACHE = (globalThis.__DIGICARD_ORDERS_CACHE__ ||= { value: null, ts: 0, inFlight: null });
+  const ORDERS_TTL_MS = 60_000; // 60s
+
+  const orders = ref(Array.isArray(ORDERS_CACHE.value) ? ORDERS_CACHE.value : []);
+  const isLoading = ref(!(Array.isArray(ORDERS_CACHE.value) && Date.now() - ORDERS_CACHE.ts < ORDERS_TTL_MS));
   const loadingError = ref("");
   
   // ✅ CORRECTION: Flag pour éviter les réessais multiples simultanés
@@ -883,7 +884,24 @@
   };
 
   // Charger les commandes
-  const loadOrders = async () => {
+  const loadOrders = async (options = {}) => {
+    const { preferCache = true, backgroundRefresh = true } = options;
+
+    const now = Date.now();
+    const hasFreshCache = Array.isArray(ORDERS_CACHE.value) && now - ORDERS_CACHE.ts < ORDERS_TTL_MS;
+
+    // Affichage instantané depuis le cache si dispo (évite skeleton à chaque navigation)
+    if (preferCache && hasFreshCache) {
+      orders.value = ORDERS_CACHE.value;
+      loadingError.value = "";
+      isLoading.value = false;
+
+      if (!backgroundRefresh) {
+        return;
+      }
+      // On continue en arrière-plan pour rafraîchir silencieusement
+    }
+
     // ✅ CORRECTION: Éviter les appels multiples simultanés
     if (isLoadingOrders.value) {
       console.log("OrdersView: Un chargement est déjà en cours, annulation de l'appel...");
@@ -896,11 +914,23 @@
     }
     
     isLoadingOrders.value = true;
-    isLoading.value = true;
+    if (!(preferCache && hasFreshCache)) {
+      isLoading.value = true;
+    }
     loadingError.value = "";
 
     try {
       console.log("OrdersView: Début du chargement des commandes...");
+
+      // Dédupliquer aussi au niveau global (si une autre page a déjà lancé /api/orders)
+      if (ORDERS_CACHE.inFlight) {
+        const v = await ORDERS_CACHE.inFlight;
+        const arr = Array.isArray(v) ? v : [];
+        orders.value = arr;
+        ORDERS_CACHE.value = arr;
+        ORDERS_CACHE.ts = Date.now();
+        return;
+      }
       
       // ✅ CRITIQUE: Récupérer le cookie CSRF avant de charger les commandes
       // Cela garantit que la session est bien établie après une redirection depuis un service externe
@@ -942,14 +972,18 @@
       // ✅ OPTIMISATION : Ne pas ajouter de timestamp pour permettre le cache du navigateur
       // Le backend retourne déjà les données optimisées
       console.log("OrdersView: Appel API pour charger les commandes...");
-      const response = await apiClient.get(`/api/orders`);
+      ORDERS_CACHE.inFlight = apiClient.get(`/api/orders`);
+      const response = await ORDERS_CACHE.inFlight;
       
       console.log("OrdersView: Commandes reçues du backend", {
         count: Array.isArray(response.data) ? response.data.length : 0,
         data: response.data
       });
       
-      orders.value = response.data || [];
+      const allOrders = Array.isArray(response.data) ? response.data : [];
+      orders.value = allOrders;
+      ORDERS_CACHE.value = allOrders;
+      ORDERS_CACHE.ts = Date.now();
       
       // ✅ CORRECTION: Réinitialiser le compteur de réessais en cas de succès
       loadRetryCount.value = 0;
@@ -1034,6 +1068,7 @@
       }
     } finally {
       isLoading.value = false;
+      ORDERS_CACHE.inFlight = null;
       // ✅ CORRECTION: Réinitialiser le flag seulement si ce n'est pas un réessai en cours
       if (!isRetryingLoad.value) {
         isLoadingOrders.value = false;
@@ -2519,7 +2554,9 @@
         loadRetryCount.value = 0;
         isRetryingLoad.value = false;
         
-        await loadOrders();
+        // Si retour de paiement, forcer un refresh réseau (pas de cache)
+        const isPaymentReturn = route.query.payment === 'success' && (route.query.order_id || route.query.additional_payment_id);
+        await loadOrders({ preferCache: !isPaymentReturn, backgroundRefresh: true });
         console.log("OrdersView: Commandes chargées après montage");
         
         // ✅ CRITIQUE: Déclencher la vérification du retour de paiement maintenant que tout est prêt
@@ -2555,7 +2592,7 @@
             
             // ✅ Lancer le chargement des commandes maintenant que l'utilisateur est confirmé connecté
             console.log("OrdersView: Chargement des commandes...");
-            await loadOrders();
+            await loadOrders({ preferCache: false, backgroundRefresh: false });
             console.log("OrdersView: Commandes chargées après montage");
             
             // ✅ CRITIQUE: Déclencher la vérification du retour de paiement maintenant que tout est prêt
@@ -2607,11 +2644,11 @@
       
       // Charger les commandes maintenant que l'utilisateur est disponible
       try {
-        await loadOrders();
+        const isPaymentReturn = route.query.payment === 'success' && (route.query.order_id || route.query.additional_payment_id);
+        await loadOrders({ preferCache: !isPaymentReturn, backgroundRefresh: true });
         console.log("OrdersView: Commandes chargées après détection de l'utilisateur");
         
         // ✅ CRITIQUE: Gérer la logique de retour de paiement après le chargement des commandes
-        const isPaymentReturn = route.query.payment === 'success' && (route.query.order_id || route.query.additional_payment_id);
         if (isPaymentReturn) {
           console.log("OrdersView: Retour de paiement détecté dans watch, déclenchement de la vérification...");
           // Utiliser la fonction globale pour gérer le retour de paiement
@@ -2628,7 +2665,7 @@
   // MAIS seulement si l'utilisateur est disponible
   onActivated(() => {
     if (user.value) {
-      loadOrders();
+      loadOrders({ preferCache: true, backgroundRefresh: true });
     } else {
       console.log("OrdersView: onActivated appelé mais utilisateur non disponible, attente du watch...");
     }

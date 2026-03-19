@@ -66,7 +66,11 @@
       error.value = true;
 
       if (err.response && err.response.status === 404) {
-        errorMessage.value = "Cette page d'entreprise n'existe pas ou n'est pas encore publiée.";
+        const msg = err.response?.data?.message;
+        errorMessage.value =
+          typeof msg === "string" && msg.trim()
+            ? msg
+            : "Cette page d'entreprise n'existe pas ou n'est pas encore publiée.";
       } else {
         errorMessage.value = "Une erreur est survenue lors du chargement de la page.";
       }

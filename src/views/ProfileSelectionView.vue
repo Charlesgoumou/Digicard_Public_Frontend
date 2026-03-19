@@ -319,8 +319,15 @@
   const route = useRoute();
   const { user } = useAuth();
 
-  const orders = ref([]);
-  const isLoading = ref(true);
+  // ✅ PERF: réutiliser le cache global des commandes (même que /parametres)
+  const ORDERS_CACHE = (globalThis.__DIGICARD_ORDERS_CACHE__ ||= { value: null, ts: 0, inFlight: null });
+  const ORDERS_TTL_MS = 60_000;
+
+  const orders = ref(Array.isArray(ORDERS_CACHE.value) ? ORDERS_CACHE.value : []);
+  // ⚠️ Ne pas considérer un cache "vide" comme fiable (évite le flash "Aucun profil configuré")
+  const hasUsableFreshCache =
+    Array.isArray(ORDERS_CACHE.value) && ORDERS_CACHE.value.length > 0 && Date.now() - ORDERS_CACHE.ts < ORDERS_TTL_MS;
+  const isLoading = ref(!hasUsableFreshCache);
   const loadingError = ref("");
 
   // ✅ CORRECTION : Gérer les erreurs de chargement d'avatar
@@ -491,25 +498,49 @@
 
   // Charger les commandes
   const loadOrders = async () => {
-    isLoading.value = true;
+    const now = Date.now();
+    const hasFreshCache = Array.isArray(ORDERS_CACHE.value) && now - ORDERS_CACHE.ts < ORDERS_TTL_MS;
+    const hasUsableCache = hasFreshCache && Array.isArray(ORDERS_CACHE.value) && ORDERS_CACHE.value.length > 0;
+
+    // Affichage instantané depuis le cache si dispo
+    if (hasUsableCache) {
+      orders.value = ORDERS_CACHE.value;
+      loadingError.value = "";
+      isLoading.value = false;
+    } else {
+      isLoading.value = true;
+    }
     loadingError.value = "";
 
     try {
+      // Dédupliquer si /parametres ou autre a déjà lancé le fetch
+      if (ORDERS_CACHE.inFlight) {
+        const v = await ORDERS_CACHE.inFlight;
+        orders.value = Array.isArray(v) ? v : [];
+        isLoading.value = false;
+        return;
+      }
+
       // Charger les commandes de l'utilisateur
       let response;
       try {
-        response = await apiClient.get("/api/orders");
+        ORDERS_CACHE.inFlight = apiClient.get("/api/orders");
+        response = await ORDERS_CACHE.inFlight;
       } catch (err) {
         const status = err?.response?.status;
         // 401/419 arrivent parfois juste après une configuration/paiement → refresh CSRF puis retry
         if (status === 401 || status === 419) {
           await apiClient.get("/sanctum/csrf-cookie");
-          response = await apiClient.get("/api/orders");
+          ORDERS_CACHE.inFlight = apiClient.get("/api/orders");
+          response = await ORDERS_CACHE.inFlight;
         } else {
           throw err;
         }
       }
       let allOrders = Array.isArray(response.data) ? response.data : [];
+      ORDERS_CACHE.value = allOrders;
+      ORDERS_CACHE.ts = Date.now();
+      orders.value = allOrders;
 
       // ✅ DEBUG : Logger les commandes pour vérifier les données
       console.log("ProfileSelectionView - Commandes chargées:", allOrders);
@@ -627,6 +658,7 @@
       console.error("Erreur lors du chargement des commandes:", error);
       loadingError.value = "Impossible de charger vos commandes. Veuillez réessayer.";
     } finally {
+      ORDERS_CACHE.inFlight = null;
       isLoading.value = false;
     }
   };
