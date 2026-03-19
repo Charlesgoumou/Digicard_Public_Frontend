@@ -5,12 +5,57 @@ import apiClient from "@/api";
 export function useOrderManagement(user) {
   const route = useRoute();
 
+  // ✅ PERF: cache mémoire des commandes (évite re-fetch à chaque navigation vers /parametres)
+  const ORDERS_CACHE = (globalThis.__DIGICARD_ORDERS_CACHE__ ||= {
+    value: null,
+    ts: 0,
+    inFlight: null,
+  });
+  const ORDERS_TTL_MS = 60_000; // 60s
+
   // Références liées à la gestion des commandes
-  const orders = ref([]);
+  // Initialiser immédiatement depuis le cache si disponible
+  const orders = ref(Array.isArray(ORDERS_CACHE.value) ? ORDERS_CACHE.value : []);
   const selectedOrderId = ref(null);
   const showOrderSelection = ref(false);
-  const isLoading = ref(true);
+  // ⚠️ Ne pas considérer un cache "vide" comme fiable pour afficher "Aucune commande"
+  // (sinon on peut flasher cet écran alors que l'API va répondre avec des commandes).
+  const hasUsableFreshCache =
+    Array.isArray(ORDERS_CACHE.value) && ORDERS_CACHE.value.length > 0 && Date.now() - ORDERS_CACHE.ts < ORDERS_TTL_MS;
+  const isLoading = ref(!hasUsableFreshCache);
   const loadingError = ref("");
+
+  // ✅ UX: éviter un état "creux" (ni liste, ni formulaire) quand on affiche depuis le cache
+  const applySelectionLogic = () => {
+    const availableOrders = (orders.value || []).filter((o) => o?.status !== "cancelled");
+    const orderIdFromQuery = route.query.orderId;
+
+    if (orderIdFromQuery) {
+      selectedOrderId.value = parseInt(orderIdFromQuery);
+      showOrderSelection.value = false;
+      return;
+    }
+
+    if (availableOrders.length === 0) {
+      selectedOrderId.value = null;
+      showOrderSelection.value = true;
+      return;
+    }
+
+    if (availableOrders.length === 1) {
+      selectedOrderId.value = availableOrders[0].id;
+      showOrderSelection.value = false;
+      return;
+    }
+
+    selectedOrderId.value = null;
+    showOrderSelection.value = true;
+  };
+
+  // Si on a déjà des commandes via cache, déterminer tout de suite quoi afficher
+  if (Array.isArray(orders.value) && orders.value.length > 0) {
+    applySelectionLogic();
+  }
 
   // ✅ CORRECTION : Fonction utilitaire pour construire l'URL complète de l'avatar (gérer /api/storage/ et /storage/)
   const getAvatarUrl = (avatarUrl) => {
@@ -32,9 +77,39 @@ export function useOrderManagement(user) {
   };
 
   // Logique de chargement des commandes
-  const loadOrders = async () => {
-    // ✅ S'assurer que isLoading reste true pendant le chargement
-    isLoading.value = true;
+  const loadOrders = async (options = {}) => {
+    const { preferCache = true, backgroundRefresh = true } = options;
+
+    const now = Date.now();
+    const hasFreshCache = Array.isArray(ORDERS_CACHE.value) && now - ORDERS_CACHE.ts < ORDERS_TTL_MS;
+    const hasUsableCache = hasFreshCache && Array.isArray(ORDERS_CACHE.value) && ORDERS_CACHE.value.length > 0;
+
+    // Si cache frais, afficher instantanément
+    if (preferCache && hasUsableCache) {
+      orders.value = ORDERS_CACHE.value;
+      loadingError.value = "";
+      isLoading.value = false;
+      applySelectionLogic();
+
+      // Optionnel: refresh silencieux
+      if (!backgroundRefresh) {
+        return orders.value;
+      }
+    }
+
+    // Dédupliquer les appels concurrents
+    if (ORDERS_CACHE.inFlight) {
+      const v = await ORDERS_CACHE.inFlight;
+      orders.value = Array.isArray(v) ? v : [];
+      isLoading.value = false;
+      applySelectionLogic();
+      return orders.value;
+    }
+
+    // ✅ S'assurer que isLoading reste true pendant le chargement seulement si on n'a pas de cache frais
+    if (!hasUsableCache) {
+      isLoading.value = true;
+    }
     try {
       try {
         // Réinitialiser le cookie CSRF avant de charger les commandes.
@@ -45,9 +120,18 @@ export function useOrderManagement(user) {
         console.warn("useOrderManagement: Impossible de rafraîchir le cookie CSRF:", e);
       }
 
-      const response = await apiClient.get("/api/orders");
-      // S'assurer que response.data est un tableau
-      orders.value = Array.isArray(response.data) ? response.data : [];
+      ORDERS_CACHE.inFlight = (async () => {
+        const response = await apiClient.get("/api/orders");
+        const v = Array.isArray(response.data) ? response.data : [];
+        ORDERS_CACHE.value = v;
+        ORDERS_CACHE.ts = Date.now();
+        return v;
+      })();
+
+      const v = await ORDERS_CACHE.inFlight;
+      orders.value = Array.isArray(v) ? v : [];
+      loadingError.value = "";
+      applySelectionLogic();
       return orders.value;
     } catch (error) {
       // Si la session/CSRF vient d'expirer, tenter 1 retry après récupération CSRF.
@@ -56,8 +140,12 @@ export function useOrderManagement(user) {
         try {
           await apiClient.get("/sanctum/csrf-cookie");
           const retry = await apiClient.get("/api/orders");
-          orders.value = Array.isArray(retry.data) ? retry.data : [];
+          const v = Array.isArray(retry.data) ? retry.data : [];
+          ORDERS_CACHE.value = v;
+          ORDERS_CACHE.ts = Date.now();
+          orders.value = v;
           loadingError.value = "";
+          applySelectionLogic();
           return orders.value;
         } catch (retryErr) {
           console.error("useOrderManagement: Retry /api/orders échoué:", retryErr);
@@ -67,6 +155,9 @@ export function useOrderManagement(user) {
       console.error("Erreur lors du chargement des commandes:", error);
       loadingError.value = "Erreur lors du chargement de vos commandes.";
       return [];
+    } finally {
+      ORDERS_CACHE.inFlight = null;
+      isLoading.value = false;
     }
   };
 
@@ -100,7 +191,6 @@ export function useOrderManagement(user) {
   // Logique au montage (déplacée depuis SettingsView)
   onMounted(async () => {
     // ✅ CRITIQUE: S'assurer que isLoading est true dès le début pour afficher le skeleton
-    isLoading.value = true;
     loadingError.value = "";
     try {
       if (!user.value) {
@@ -110,42 +200,23 @@ export function useOrderManagement(user) {
         return;
       }
 
-      await loadOrders();
-      const availableOrders = orders.value.filter((o) => o.status !== "cancelled");
-      const orderIdFromQuery = route.query.orderId;
-
-      if (orderIdFromQuery) {
-        selectedOrderId.value = parseInt(orderIdFromQuery);
-        showOrderSelection.value = false;
-      } else if (availableOrders.length === 0) {
-        showOrderSelection.value = true;
-      } else if (availableOrders.length === 1) {
-        selectedOrderId.value = availableOrders[0].id;
-        showOrderSelection.value = false;
-      } else {
-        showOrderSelection.value = true;
-      }
+      await loadOrders({ preferCache: true, backgroundRefresh: true });
+      applySelectionLogic();
     } catch (error) {
       console.error("useOrderManagement: Error during onMounted:", error);
       loadingError.value = "Erreur lors du chargement de vos paramètres.";
     } finally {
-      // ✅ CRITIQUE: Ne mettre isLoading à false que si on affiche la sélection de commande
-      // Cela garantit que le skeleton s'affiche pendant le chargement
-      if (showOrderSelection.value) {
-        // Délai minimum pour que le skeleton "Paramétrer votre Carte" soit visible
-        setTimeout(() => {
-          isLoading.value = false;
-        }, 350);
-      } else {
-        // Si une commande est sélectionnée, isLoading reste true pour le skeleton du formulaire
-        // Il sera géré par useCardSettings
+      // ✅ PERF: si les commandes étaient déjà en cache, ne pas imposer de délai artificiel
+      // (le skeleton de SettingsView est géré par isLoadingOrderData côté useCardSettings)
+      if (!selectedOrderId.value) {
+        isLoading.value = false;
       }
     }
   });
 
   // Recharger les commandes quand une commande est configurée ailleurs dans l'app
   window.addEventListener("order-configured", () => {
-    loadOrders();
+    loadOrders({ preferCache: false, backgroundRefresh: false });
   });
 
   // Retourner tout ce dont le composant a besoin

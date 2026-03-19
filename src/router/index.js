@@ -56,6 +56,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: "/personnel",
+      name: "Personnel",
+      component: () => import("../views/PersonnelView.vue"),
+      meta: { requiresAuth: true, hideNavbar: true, hideFooter: true },
+    },
+    {
       path: "/mes-commandes",
       name: "Orders",
       component: () => {
@@ -73,19 +79,19 @@ const router = createRouter({
           return null;
         });
       },
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, hideNavbar: true, hideFooter: true },
     },
     {
       path: "/parametres",
       name: "Settings",
       component: () => import("../views/SettingsView.vue"),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, hideNavbar: true },
     },
     {
       path: "/choisir-profil",
       name: "ProfileSelection",
       component: () => import("../views/ProfileSelectionView.vue"),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, hideNavbar: true },
     },
     {
       path: "/set-password",
