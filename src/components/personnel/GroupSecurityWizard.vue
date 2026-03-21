@@ -229,6 +229,9 @@
           ref="mapContainer"
           class="h-72 sm:h-80 rounded-lg border border-slate-600 bg-slate-900/60 overflow-hidden"
         ></div>
+        <p v-if="!mapReady && !mapError" class="text-xs text-slate-400">
+          Chargement de la carte...
+        </p>
         <p v-if="mapError" class="text-xs text-red-400">{{ mapError }}</p>
       </div>
 
@@ -325,6 +328,12 @@ let googleMap = null;
 let pointsPolyline = null;
 let pointMarkers = [];
 let geofencePolygon = null;
+
+function refreshMapDisplay() {
+  if (!googleMap || !window.google?.maps) return;
+  window.google.maps.event.trigger(googleMap, "resize");
+  redrawMap();
+}
 
 const weekdayDefs = [
   { bit: 1, label: "Lun" },
@@ -538,6 +547,9 @@ async function initGoogleMap() {
       streetViewControl: false,
       fullscreenControl: false,
     });
+    googleMap.addListener("idle", () => {
+      mapReady.value = true;
+    });
     pointsPolyline = new window.google.maps.Polyline({
       map: googleMap,
       path: [],
@@ -548,6 +560,7 @@ async function initGoogleMap() {
     mapReady.value = true;
     mapError.value = "";
     redrawMap();
+    setTimeout(() => refreshMapDisplay(), 150);
   } catch (e) {
     console.error("Google Maps init error:", e);
     mapError.value = "Impossible de charger Google Maps (clé/API/connexion).";
@@ -631,10 +644,26 @@ watch(
     }
 
     if (wizardStep.value === 2) {
-      nextTick(() => initGoogleMap());
+      nextTick(() => {
+        initGoogleMap();
+        setTimeout(() => refreshMapDisplay(), 120);
+      });
     }
   },
   { immediate: true },
+);
+
+watch(
+  () => wizardStep.value,
+  (step) => {
+    if (step === 2) {
+      nextTick(() => {
+        initGoogleMap();
+        setTimeout(() => refreshMapDisplay(), 100);
+        setTimeout(() => refreshMapDisplay(), 350);
+      });
+    }
+  },
 );
 
 watch(
@@ -705,12 +734,16 @@ function onGenerateSurface() {
 }
 
 onMounted(() => {
+  window.gm_authFailure = () => {
+    mapError.value = "Google Maps a refusé la clé API (restriction de domaine ou API non activée).";
+  };
   if (wizardStep.value === 2) {
     nextTick(() => initGoogleMap());
   }
 });
 
 onUnmounted(() => {
+  delete window.gm_authFailure;
   clearMarkers();
   if (pointsPolyline) {
     pointsPolyline.setMap(null);
