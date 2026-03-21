@@ -417,6 +417,14 @@
         <div v-if="!isDashboardReady" class="h-12 w-96 max-w-full bg-slate-700 rounded animate-pulse mb-4" />
         <h1 v-else class="text-4xl font-bold text-center mb-4">Bienvenue, {{ user.name }} !</h1>
 
+        <div
+          v-if="orderDeviceTrustState.blocked"
+          class="w-full max-w-2xl mx-auto mb-6 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-red-200 text-sm text-center"
+          role="alert"
+        >
+          {{ orderDeviceTrustState.message }}
+        </div>
+
         <!-- Skeleton Screen pour les cartes employé -->
         <div
           v-if="!isDashboardReady"
@@ -722,6 +730,7 @@
   import MyAppointments from "@/components/dashboard/MyAppointments.vue";
   import MyContacts from "@/components/dashboard/MyContacts.vue";
   import Cookies from "js-cookie";
+  import { orderDeviceTrustState, syncAllEmployeeOrdersDeviceTrust } from "@/composables/useOrderDeviceTrust";
 
   const router = useRouter();
   const route = useRoute();
@@ -1212,14 +1221,21 @@
         employeeOrders.value = orders;
         // Garder la première pour compatibilité
         employeeOrder.value = orders[0];
+        await syncAllEmployeeOrdersDeviceTrust(orders, user.value);
       } else {
         employeeOrders.value = [];
         employeeOrder.value = null;
+        orderDeviceTrustState.blocked = false;
+        orderDeviceTrustState.message = "";
+        orderDeviceTrustState.orderId = null;
       }
     } catch (error) {
       console.error("Error loading employee order:", error);
       employeeOrders.value = [];
       employeeOrder.value = null;
+      orderDeviceTrustState.blocked = false;
+      orderDeviceTrustState.message = "";
+      orderDeviceTrustState.orderId = null;
     } finally {
       isLoadingEmployeeOrder.value = false;
     }
