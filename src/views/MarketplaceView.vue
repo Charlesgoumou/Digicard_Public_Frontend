@@ -1818,9 +1818,28 @@ const route = useRoute();
 const { logout, user } = useAuth();
 
 // États
-const isLoading = ref(false);
+// ✅ PERF: Cache mémoire (persiste entre navigations Marketplace dans la SPA)
+// Objectif: afficher instantanément la liste déjà connue, puis rafraîchir en arrière-plan sans reflasher le skeleton.
+const MARKET_CACHE = (globalThis.__DIGICARD_MARKET_CACHE__ ||= {
+  offersByTab: {
+    all: { value: null, ts: 0, inFlight: null },
+    purchases: { value: null, ts: 0, inFlight: null },
+    sales: { value: null, ts: 0, inFlight: null },
+    favorites: { value: null, ts: 0, inFlight: null },
+    messages: { value: null, ts: 0, inFlight: null },
+  },
+});
+const MARKET_TTL_MS = 60_000; // 60s
+
 const activeTab = ref('all');
-const offers = ref([]);
+const getTabCache = (tab) => MARKET_CACHE.offersByTab[tab] || MARKET_CACHE.offersByTab.all;
+const hasUsableFreshTabCache = (tab) => {
+  const entry = getTabCache(tab);
+  return Array.isArray(entry.value) && entry.value.length > 0 && Date.now() - entry.ts < MARKET_TTL_MS;
+};
+
+const isLoading = ref(!hasUsableFreshTabCache(activeTab.value));
+const offers = ref(hasUsableFreshTabCache(activeTab.value) ? getTabCache(activeTab.value).value : []);
 const searchQuery = ref('');
 const searchTimeout = ref(null);
 const selectedOffer = ref(null);
@@ -1906,28 +1925,71 @@ const filteredOffers = computed(() => {
 });
 
 // Méthodes
-const loadOffers = async () => {
-  isLoading.value = true;
+const loadOffers = async (options = {}) => {
+  const { preferCache = true, backgroundRefresh = true } = options;
+
+  const tab = activeTab.value;
+  const cacheEntry = getTabCache(tab);
+  const hasSearch = !!searchQuery.value.trim();
+  const hasUsableCache = !hasSearch && hasUsableFreshTabCache(tab);
+
+  // Affichage instantané depuis le cache (uniquement quand pas de recherche)
+  if (preferCache && hasUsableCache) {
+    offers.value = cacheEntry.value;
+    // Ne pas reflasher le skeleton si on a déjà du contenu
+    isLoading.value = false;
+    if (!backgroundRefresh) return;
+    // Continuer en arrière-plan
+  }
+
+  // Si une requête est déjà en cours pour cet onglet (sans recherche), la réutiliser
+  if (!hasSearch && cacheEntry.inFlight) {
+    try {
+      const v = await cacheEntry.inFlight;
+      offers.value = Array.isArray(v) ? v : [];
+    } finally {
+      isLoading.value = false;
+    }
+    return;
+  }
+
+  // N'activer le skeleton que si on n'a rien à afficher
+  if (!hasUsableCache && (!Array.isArray(offers.value) || offers.value.length === 0)) {
+    isLoading.value = true;
+  }
   try {
     // ✅ AMÉLIORATION : Si on est sur l'onglet "Mes Messages", charger les conversations groupées
     if (activeTab.value === 'messages') {
-      const response = await apiClient.get('/api/marketplace/messages');
-      // Transformer les conversations en format "offre" pour l'affichage
-      offers.value = response.data.map(conv => ({
-        id: conv.offer_id,
-        title: conv.offer_title,
-        description: conv.last_message,
-        type: 'message',
-        price: 0,
-        currency: '',
-        image_url: conv.offer_image_url,
-        seller_name: conv.other_user_name,
-        is_message: true,
-        message_data: conv,
-        unread_count: conv.unread_count,
-        last_message_created_at: conv.last_message_created_at,
-        created_at: conv.last_message_created_at,
-      }));
+      const run = async () => {
+        const response = await apiClient.get('/api/marketplace/messages');
+        // Transformer les conversations en format "offre" pour l'affichage
+        const v = (response.data || []).map((conv) => ({
+          id: conv.offer_id,
+          title: conv.offer_title,
+          description: conv.last_message,
+          type: 'message',
+          price: 0,
+          currency: '',
+          image_url: conv.offer_image_url,
+          seller_name: conv.other_user_name,
+          is_message: true,
+          message_data: conv,
+          unread_count: conv.unread_count,
+          last_message_created_at: conv.last_message_created_at,
+          created_at: conv.last_message_created_at,
+        }));
+        return v;
+      };
+
+      if (!hasSearch) {
+        cacheEntry.inFlight = run();
+      }
+      const v = await run();
+      offers.value = Array.isArray(v) ? v : [];
+      if (!hasSearch) {
+        cacheEntry.value = offers.value;
+        cacheEntry.ts = Date.now();
+      }
     } else {
       // Envoyer le filtre actif et la recherche au backend
       const filter = activeTab.value === 'all' ? 'all' : activeTab.value;
@@ -1935,14 +1997,30 @@ const loadOffers = async () => {
       if (searchQuery.value.trim()) {
         params.search = searchQuery.value.trim();
       }
-      const response = await apiClient.get('/api/marketplace/offers', { params });
-      offers.value = response.data;
+      const run = async () => {
+        const response = await apiClient.get('/api/marketplace/offers', { params });
+        return Array.isArray(response.data) ? response.data : [];
+      };
+
+      if (!hasSearch) {
+        cacheEntry.inFlight = run();
+      }
+      const v = await run();
+      offers.value = Array.isArray(v) ? v : [];
+      if (!hasSearch) {
+        cacheEntry.value = offers.value;
+        cacheEntry.ts = Date.now();
+      }
     }
   } catch (error) {
     console.error('Erreur lors du chargement des offres:', error);
     showNotification(error.response?.data?.message || 'Erreur lors du chargement', 'error');
   } finally {
     isLoading.value = false;
+    if (!searchQuery.value.trim()) {
+      const entry = getTabCache(activeTab.value);
+      entry.inFlight = null;
+    }
   }
 };
 
@@ -1985,7 +2063,8 @@ const onSearchInput = () => {
   
   // Débounce : attendre 300ms après la dernière frappe avant de rechercher
   searchTimeout.value = setTimeout(() => {
-    loadOffers();
+    // Recherche: forcer réseau, mais garder la liste visible (pas de skeleton)
+    loadOffers({ preferCache: false, backgroundRefresh: false });
   }, 300);
 };
 
@@ -1996,7 +2075,7 @@ const clearSearch = () => {
     return;
   }
   searchQuery.value = '';
-  loadOffers();
+  loadOffers({ preferCache: true, backgroundRefresh: true });
 };
 
 const goToWallet = () => {
@@ -3324,7 +3403,7 @@ watch(activeTab, () => {
     messagesSearchQuery.value = '';
     messagesUnreadOnly.value = false;
   }
-  loadOffers();
+  loadOffers({ preferCache: true, backgroundRefresh: true });
 });
 
 // Nettoyer le timeout lors du démontage
@@ -3462,7 +3541,7 @@ const openMarketplaceNotification = async (notification) => {
 
 // Lifecycle
 onMounted(() => {
-  loadOffers();
+  loadOffers({ preferCache: true, backgroundRefresh: true });
   loadUnreadMessagesCount();
   loadMarketplaceNotifications();
   loadWalletBalance();

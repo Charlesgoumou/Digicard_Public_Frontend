@@ -1,26 +1,24 @@
 <template>
-  <div class="min-h-screen bg-slate-900 pt-20 sm:pt-32 text-white overflow-x-hidden">
-    <!-- Bouton Retour -->
-    <div class="container mx-auto px-4 py-12 max-w-full overflow-x-hidden">
-      <div class="max-w-3xl mx-auto mb-6">
+  <div
+    :class="[
+      'min-h-screen bg-slate-900 text-white overflow-x-hidden',
+      route?.meta?.hideNavbar ? 'pt-6 sm:pt-8' : 'pt-20 sm:pt-32',
+    ]"
+  >
+    <div :class="['container mx-auto px-4 max-w-full overflow-x-hidden', route?.meta?.hideNavbar ? 'py-6 sm:py-8' : 'py-12']">
+      <div class="max-w-6xl mx-auto mb-6 flex items-center justify-between gap-4">
+        <div class="min-w-0">
+          <h1 class="text-2xl sm:text-3xl font-bold">Paramètres</h1>
+          <p class="text-slate-400 text-sm">Configurez votre carte et vos informations.</p>
+        </div>
         <button
           @click="goToDashboard"
           type="button"
-          class="flex items-center gap-2 text-slate-400 hover:text-white transition-colors group"
+          class="bg-slate-800 hover:bg-slate-700/60 border border-slate-700 hover:border-slate-600 text-white px-4 py-2 rounded-lg transition-colors flex-shrink-0"
         >
-          <svg
-            class="w-5 h-5 transform group-hover:-translate-x-1 transition-transform"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          <span class="font-medium">Retour au Dashboard</span>
+          Retour
         </button>
       </div>
-
-      <h1 class="text-3xl sm:text-4xl font-bold text-center mb-8">Paramétrer votre Carte</h1>
 
       <!-- Skeleton Screen "Paramétrer votre Carte" : liste des commandes (avant chargement) -->
       <div v-if="isLoading && !selectedOrderId" class="max-w-4xl mx-auto">
@@ -523,7 +521,7 @@
 
 <script setup>
   import { ref, computed, onMounted, watch } from "vue";
-  import { useRouter } from "vue-router";
+  import { useRouter, useRoute } from "vue-router";
   import { useAuth } from "@/composables/useAuth";
   import { useOrderModal } from "@/composables/useOrderModal";
   import { useCardSettings } from "@/composables/useCardSettings";
@@ -542,6 +540,7 @@
 
   // ========== ROUTER ET AUTH ==========
   const router = useRouter();
+  const route = useRoute();
   const { user, updateUserLocally, fetchUser } = useAuth();
   const { openOrderModal } = useOrderModal();
 
