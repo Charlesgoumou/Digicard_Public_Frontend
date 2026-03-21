@@ -157,6 +157,55 @@
             </div>
           </div>
 
+          <!-- Services activés (commande sélectionnée) -->
+          <div
+            v-if="selectedOrderId && orderActiveServicesState.services.length > 0"
+            class="mb-6 relative z-20"
+          >
+            <button
+              type="button"
+              @click="servicesDropdownOpen = !servicesDropdownOpen"
+              class="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-sky-500/50 bg-sky-500/10 text-sky-300 text-sm font-semibold hover:bg-sky-500/20 transition-colors flex items-center justify-center gap-2"
+            >
+              <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
+                />
+              </svg>
+              Services activés pour cette commande
+              <svg
+                class="w-4 h-4 transition-transform flex-shrink-0"
+                :class="servicesDropdownOpen ? 'rotate-180' : ''"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div
+              v-if="servicesDropdownOpen"
+              class="absolute left-0 right-0 sm:right-auto sm:min-w-[240px] mt-2 py-1 rounded-xl border border-slate-600 bg-slate-900 shadow-xl"
+            >
+              <router-link
+                v-for="svc in orderActiveServicesState.services"
+                :key="svc.slug"
+                :to="{
+                  name: 'PersonnelService',
+                  params: { serviceSlug: svc.slug },
+                  query: selectedOrderId ? { order: String(selectedOrderId) } : {},
+                }"
+                class="block px-4 py-3 text-sm text-slate-200 hover:bg-slate-800 hover:text-sky-300 transition-colors"
+                @click="servicesDropdownOpen = false"
+              >
+                {{ svc.label }}
+              </router-link>
+            </div>
+          </div>
+
           <!-- Vue Affectation -->
           <div v-if="activeSection === 'affectation'" ref="assignmentsSectionRef" class="scroll-mt-6">
             <div v-if="isLoadingSlots" class="space-y-4 animate-pulse">
@@ -297,8 +346,17 @@
                         >
                           {{ slot.is_configured ? "✓ Configuré" : "⏳ Non configuré" }}
                         </span>
+                        <span
+                          v-if="pointageLabelForSlot(slot)"
+                          class="px-2 sm:px-3 py-1 bg-cyan-500/15 text-cyan-300 rounded-full text-xs border border-cyan-500/35 max-w-full min-w-0 truncate sm:whitespace-normal sm:break-words sm:max-w-[20rem]"
+                          :title="pointageLabelForSlot(slot)"
+                        >
+                          {{ pointageLabelForSlot(slot) }}
+                        </span>
                       </div>
-                      <p class="text-slate-400 text-xs sm:text-sm break-words">{{ slot.employee_email }}</p>
+                      <p class="text-slate-400 text-xs sm:text-sm break-words">
+                        {{ slot.employee_email }}{{ employeeMatriculeDeptSuffix(slot) }}
+                      </p>
                     </div>
                     <svg class="w-5 h-5 text-slate-400 flex-shrink-0 mt-1 sm:mt-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -537,9 +595,9 @@
                 <span class="text-sm">Impossible de retirer des cartes car l'employé a déjà configuré sa carte.</span>
               </div>
 
-              <!-- Sécurité Appareil -->
+              <!-- Sécurité Appareil (lié à la commande sélectionnée) -->
               <div
-                v-if="selectedEmployee.is_configured && selectedEmployee.employee_group"
+                v-if="selectedEmployee.is_configured"
                 class="w-full bg-slate-700/30 border border-slate-600 rounded-lg p-4 space-y-3"
               >
                 <div class="flex flex-wrap items-center justify-between gap-2">
@@ -550,8 +608,8 @@
                   Statut :
                   <span class="text-slate-200 font-medium">
                     {{
-                      selectedEmployee.device_label
-                        ? `${selectedEmployee.device_label} lié`
+                      selectedEmployee.device_model
+                        ? `${selectedEmployee.device_model} lié`
                         : selectedEmployee.device_uuid
                           ? "Appareil lié"
                           : "Aucun appareil lié"
@@ -618,6 +676,7 @@ import Cookies from "js-cookie";
 import apiClient from "@/api";
 import { useAuth } from "@/composables/useAuth";
 import GroupSecurityWizard from "@/components/personnel/GroupSecurityWizard.vue";
+import { orderActiveServicesState, refreshOrderActiveServices } from "@/stores/orderActiveServices";
 
 const router = useRouter();
 const { user } = useAuth();
@@ -636,6 +695,7 @@ const isLoadingBusinessOrders = ref(!hasUsableFreshCache);
 const hasBusinessOrder = ref(false);
 const businessOrders = ref([]);
 const selectedOrderId = ref(null);
+const servicesDropdownOpen = ref(false);
 const currentOrderSlots = ref([]);
 const isLoadingSlots = ref(false);
 const slotsLoaded = ref(false);
@@ -856,10 +916,25 @@ const loadOrderSlots = async () => {
         isError: false,
         actual_card_quantity: actualCardQuantity,
         cards_quantity: actualCardQuantity,
+        employee_group: orderEmployee?.employee_group ?? slot.employee_group ?? null,
+        employee_matricule:
+          orderEmployee?.employee_matricule ??
+          orderEmployee?.employeeMatricule ??
+          slot.employee_matricule ??
+          slot.employeeMatricule ??
+          null,
+        employee_department:
+          orderEmployee?.employee_department ??
+          orderEmployee?.employeeDepartment ??
+          slot.employee_department ??
+          slot.employeeDepartment ??
+          null,
       };
     });
 
     slotsLoaded.value = true;
+    const oAfterSlots = businessOrders.value.find((x) => x.id === selectedOrderId.value);
+    refreshOrderActiveServices(oAfterSlots);
   } catch (error) {
     console.error("Error loading order slots:", error);
     currentOrderSlots.value = [];
@@ -919,7 +994,7 @@ const openEmployeeModal = async (slot) => {
     is_configured: slot.is_configured,
     slot_number: slot.slot_number,
     device_uuid: null,
-    device_label: null,
+    device_model: null,
     employee_group: null,
   };
   showEmployeeModal.value = true;
@@ -938,22 +1013,24 @@ const openEmployeeModal = async (slot) => {
         }
         if (orderEmployee && selectedEmployee.value) {
           selectedEmployee.value.employee_group = orderEmployee.employee_group || null;
+          selectedEmployee.value.device_uuid = orderEmployee.device_uuid || null;
+          selectedEmployee.value.device_model = orderEmployee.device_model || null;
         }
       }
     }
 
-    // Charger des informations complémentaires (sécurité appareil) si disponible
-    if (slot.employee_id) {
+    // Fallback legacy (users.device_*) si la ligne order_employee n’a pas encore les champs
+    if (slot.employee_id && selectedEmployee.value && !selectedEmployee.value.device_uuid) {
       try {
         const employeesResponse = await apiClient.get("/api/employees");
         const employees = Array.isArray(employeesResponse.data) ? employeesResponse.data : [];
         const found = employees.find((e) => e?.id === slot.employee_id);
         if (found && selectedEmployee.value) {
           selectedEmployee.value.device_uuid = found.device_uuid || null;
-          selectedEmployee.value.device_label = found.device_label || null;
+          selectedEmployee.value.device_model = found.device_label || found.device_model || null;
         }
       } catch {
-        // Non bloquant
+        /* non bloquant */
       }
     }
   } catch (error) {
@@ -1019,10 +1096,12 @@ const resetEmployeeDevice = async () => {
 
   try {
     setCsrfHeader();
-    const response = await apiClient.post(`/api/employees/${selectedEmployee.value.id}/reset-device`);
+    const response = await apiClient.post(`/api/employees/${selectedEmployee.value.id}/reset-device`, {
+      order_id: selectedOrderId.value,
+    });
     if (selectedEmployee.value) {
       selectedEmployee.value.device_uuid = null;
-      selectedEmployee.value.device_label = null;
+      selectedEmployee.value.device_model = null;
     }
     employeeModalFeedback.value = response.data?.message || "Appareil réinitialisé avec succès.";
     employeeModalError.value = false;
@@ -1101,6 +1180,36 @@ const getEmployeeProfileUrl = (employee) => {
   return `${backendUrl}/profil/${employee.username}`;
 };
 
+/**
+ * Libellé « Pointage : … » sur la carte employé si le groupe assigné a le pointage activé (profil enregistré).
+ */
+function pointageLabelForSlot(slot) {
+  const raw = slot?.employee_group;
+  const groupName = typeof raw === "string" ? raw.trim() : "";
+  if (!groupName) return "";
+  const order = businessOrders.value.find((o) => o.id === selectedOrderId.value);
+  if (!order) return "";
+  const groups = Array.isArray(order.security_groups) ? order.security_groups : [];
+  const configs = Array.isArray(order.group_security_configs) ? order.group_security_configs : [];
+  const idx = groups.findIndex((g) => (typeof g === "string" ? g.trim() : "") === groupName);
+  if (idx < 0) return "";
+  const cfg = configs[idx];
+  if (!cfg || typeof cfg !== "object") return "";
+  if (!cfg.services?.pointage) return "";
+  return `Pointage : ${groupName}`;
+}
+
+/** Texte à coller après l’e-mail (même style) : matricule / département saisis à l’assignation. */
+function employeeMatriculeDeptSuffix(slot) {
+  const m = (slot?.employee_matricule ?? slot?.employeeMatricule ?? "").toString().trim();
+  const d = (slot?.employee_department ?? slot?.employeeDepartment ?? "").toString().trim();
+  const parts = [];
+  if (m) parts.push(`Matricule : ${m}`);
+  if (d) parts.push(`Département : ${d}`);
+  if (!parts.length) return "";
+  return " · " + parts.join(" · ");
+}
+
 onMounted(async () => {
   // La route est protégée par le guard auth. Ici on limite juste par rôle.
   if (user.value && user.value.role !== "business_admin") {
@@ -1109,6 +1218,16 @@ onMounted(async () => {
   }
   await checkBusinessOrders({ preferCache: true, backgroundRefresh: true });
 });
+
+watch(
+  [selectedOrderId, businessOrders],
+  () => {
+    const o = businessOrders.value.find((x) => x.id === selectedOrderId.value);
+    refreshOrderActiveServices(o);
+    servicesDropdownOpen.value = false;
+  },
+  { deep: true, immediate: true },
+);
 
 watch(
   activeSection,
