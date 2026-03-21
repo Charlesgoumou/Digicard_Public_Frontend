@@ -258,6 +258,18 @@
           </div>
         </div>
 
+        <div
+          v-if="
+            user?.role === 'employee' &&
+            orderDeviceTrustState.blocked &&
+            orderDeviceTrustState.orderId === parseInt(selectedOrderId, 10)
+          "
+          class="max-w-4xl mx-auto mb-6 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-red-200 text-sm text-center"
+          role="alert"
+        >
+          {{ orderDeviceTrustState.message }}
+        </div>
+
         <!-- Onglets pour business admin -->
         <div v-if="user && user.role === 'business_admin'" class="max-w-md mx-auto mb-8">
           <div class="flex gap-2 bg-slate-800 p-2 rounded-lg border border-slate-700">
@@ -534,6 +546,7 @@
   import CardDesignSelector from "@/components/Settings/CardDesignSelector.vue";
   import LoadingSpinner from "@/components/layout/LoadingSpinner.vue";
   import AppointmentSettings from "@/components/dashboard/AppointmentSettings.vue";
+  import { orderDeviceTrustState, syncOrderDeviceTrust } from "@/composables/useOrderDeviceTrust";
 
   // ========== GESTION DES ONGLETS ==========
   const activeTab = ref("card");
@@ -713,6 +726,9 @@
     try {
       console.log("SettingsView: Reloading order data after avatar upload...");
       await loadOrderData(selectedOrderId.value);
+      if (user.value?.role === "employee" && loadedOrderData.value?.id === parseInt(selectedOrderId.value, 10)) {
+        await syncOrderDeviceTrust(loadedOrderData.value, user.value);
+      }
       console.log("SettingsView: Order data reloaded successfully after avatar upload");
       
       // ✅ NOUVEAU : Pour les employés, émettre un événement global pour que le dashboard se mette à jour
@@ -792,6 +808,17 @@
       }
     },
     { immediate: true }
+  );
+
+  // Appareil unique (commande entreprise + profil configuré)
+  watch(
+    [loadedOrderData, selectedOrderId, user],
+    async ([order, oid, u]) => {
+      if (!order?.id || !oid || parseInt(order.id, 10) !== parseInt(oid, 10)) return;
+      if (u?.role !== "employee") return;
+      await syncOrderDeviceTrust(order, u);
+    },
+    { deep: true },
   );
 
   // Réinitialiser l'onglet actif à "Ma Carte" quand on change de commande

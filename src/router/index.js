@@ -62,6 +62,12 @@ const router = createRouter({
       meta: { requiresAuth: true, hideNavbar: true, hideFooter: true },
     },
     {
+      path: "/personnel/:serviceSlug",
+      name: "PersonnelService",
+      component: () => import("../views/PersonnelServiceEntryView.vue"),
+      meta: { requiresAuth: true, hideNavbar: true, hideFooter: true },
+    },
+    {
       path: "/mes-commandes",
       name: "Orders",
       component: () => {
@@ -231,7 +237,7 @@ router.beforeEach(async (to, from, next) => {
   // L'utilisateur vient d'être défini par updateUserLocally juste avant router.push.
   // On autorise la navigation sans exiger user.value pour éviter un flash vers Home.
   const isFromSelectAccount = from.name === "SelectAccount";
-  if (isFromSelectAccount && (to.name === "Dashboard" || to.name === "FinalizeRegistration" || to.name === "Settings" || to.name === "Orders" || to.name === "Account" || to.name === "ProfileSelection")) {
+  if (isFromSelectAccount && (to.name === "Dashboard" || to.name === "FinalizeRegistration" || to.name === "Settings" || to.name === "Orders" || to.name === "Account" || to.name === "ProfileSelection" || to.name === "Personnel" || to.name === "PersonnelService")) {
     console.log("[Guard] Navigation from SelectAccount to protected route. Allowing (user was just set).");
     return next();
   }
