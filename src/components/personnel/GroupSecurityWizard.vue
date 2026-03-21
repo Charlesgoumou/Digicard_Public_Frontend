@@ -229,7 +229,7 @@
           </button>
         </div>
         <p class="text-slate-500 text-[11px] leading-relaxed">
-          Astuce : après avoir posé les points, déplacez les marqueurs pour les aligner sur votre clôture. Utilisez « Recentrer sur ma position » ou la recherche ci-dessus si la vue ne correspond pas au site.
+          <span class="text-slate-400">Mobile :</span> un doigt déplace la carte, pincer zoome ou pivote comme sur Google Maps ; un appui pose un sommet (appui long possible). Après placement, faites glisser les marqueurs pour affiner. « Recentrer » utilise le GPS haute précision (quelques secondes).
         </p>
       </div>
 
@@ -237,8 +237,9 @@
         <div
           ref="mapContainerRef"
           class="w-full min-h-[360px] h-[min(560px,60vh)] sm:min-h-[400px]"
+          style="touch-action: none"
           role="application"
-          aria-label="Carte satellite — cliquez pour placer les sommets du périmètre"
+          aria-label="Carte satellite — appui pour placer un sommet, glisser un doigt pour déplacer la carte, pincer pour zoomer ou pivoter"
         />
         <div v-if="isMapLoading" class="absolute inset-0 flex items-center justify-center bg-slate-950/80 z-[2]">
           <span class="text-slate-300 text-sm text-center px-4">Chargement de la carte…</span>
@@ -469,6 +470,7 @@ const isMapLoading = ref(false);
 let placesAutocomplete = null;
 let mapInstance = null;
 let mapClickListener = null;
+let mapRightClickListener = null;
 let mapMarkers = [];
 let mapPolyline = null;
 let mapPolygon = null;
@@ -748,6 +750,67 @@ function clearMapMarkers() {
   mapMarkers.length = 0;
 }
 
+/**
+ * Affiche le point GPS et un cercle d’incertitude (précision) après recentrage.
+ */
+function drawUserLocationOverlay(lat, lng, accuracyM) {
+  if (!mapInstance || typeof google === "undefined" || !google.maps) return;
+  clearUserLocationOverlay();
+  userLocationMarker = new google.maps.Marker({
+    position: { lat, lng },
+    map: mapInstance,
+    zIndex: 5000,
+    title: "Votre position (GPS)",
+    icon: {
+      path: google.maps.SymbolPath.CIRCLE,
+      scale: 8,
+      fillColor: "#22d3ee",
+      fillOpacity: 0.95,
+      strokeColor: "#0f172a",
+      strokeWeight: 2,
+    },
+  });
+  const acc = typeof accuracyM === "number" && Number.isFinite(accuracyM) ? accuracyM : null;
+  if (acc != null && acc > 6 && acc < 2500) {
+    const radiusM = Math.min(Math.max(acc, 8), 500);
+    userLocationCircle = new google.maps.Circle({
+      center: { lat, lng },
+      radius: radiusM,
+      map: mapInstance,
+      strokeColor: "#22d3ee",
+      strokeOpacity: 0.5,
+      strokeWeight: 1,
+      fillColor: "#22d3ee",
+      fillOpacity: 0.07,
+      zIndex: 4999,
+    });
+  }
+}
+
+let lastVertexAddAt = 0;
+let lastVertexKey = "";
+
+function addCapturePointAtLatLng(lat, lng) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+  const key = `${lat.toFixed(6)},${lng.toFixed(6)}`;
+  const t = Date.now();
+  if (key === lastVertexKey && t - lastVertexAddAt < 450) {
+    return;
+  }
+  lastVertexKey = key;
+  lastVertexAddAt = t;
+  if (capturedPoints.value.length >= maxPoints) {
+    geoError.value = `Maximum ${maxPoints} points. Réinitialisez le tracé ou supprimez un point.`;
+    return;
+  }
+  geoError.value = "";
+  capturedPoints.value = [
+    ...capturedPoints.value,
+    { lat, lng, capturedAt: new Date().toISOString() },
+  ];
+  updateBufferedPolygon();
+}
+
 function syncMapOverlays() {
   if (!mapInstance || typeof google === "undefined" || !google.maps) return;
 
@@ -873,7 +936,7 @@ function panMapToLatLng(lat, lng, zoom = 18) {
   return true;
 }
 
-/** Recentre la carte sur la position GPS actuelle (zoom 19), comme au chargement initial. */
+/** Recentre la carte sur la position GPS actuelle (zoom adapté à la précision). */
 async function recenterOnMyPosition() {
   if (!mapInstance || isMapLoading.value) return;
   if (typeof google === "undefined" || !google.maps) return;
@@ -881,15 +944,22 @@ async function recenterOnMyPosition() {
   locationNotice.value = "";
   try {
     const loc = await resolveUserMapCenter();
-    panMapToLatLng(loc.center.lat, loc.center.lng, 19);
-    if (!loc.ok) {
+    const z = typeof loc.zoom === "number" ? loc.zoom : 19;
+    panMapToLatLng(loc.center.lat, loc.center.lng, z);
+    if (loc.ok) {
+      drawUserLocationOverlay(loc.center.lat, loc.center.lng, loc.accuracyM);
+    } else {
+      clearUserLocationOverlay();
       locationNotice.value =
         "Impossible de récupérer votre position. Autorisez la géolocalisation ou utilisez la recherche / les coordonnées.";
-    } else if (loc.mode === "coarse" || (loc.accuracyM != null && loc.accuracyM > 400)) {
+    }
+    if (loc.ok && (loc.mode === "coarse" || (loc.accuracyM != null && loc.accuracyM > 400))) {
       locationNotice.value =
         "Position approximative" +
         (loc.accuracyM != null ? ` (précision ±${Math.round(loc.accuracyM)} m)` : "") +
-        ".";
+        ". Zoomez et ajustez les sommets à la main si besoin.";
+    } else if (loc.ok && loc.accuracyM != null && loc.accuracyM > 35) {
+      locationNotice.value = `Précision GPS ±${Math.round(loc.accuracyM)} m — le cercle bleu indique la marge d’incertitude.`;
     }
   } catch (e) {
     console.warn("GroupSecurityWizard: recenterOnMyPosition", e);
@@ -965,6 +1035,12 @@ function destroyGoogleMap() {
     }
     mapClickListener = null;
   }
+  if (mapRightClickListener) {
+    if (typeof google !== "undefined" && google.maps?.event) {
+      google.maps.event.removeListener(mapRightClickListener);
+    }
+    mapRightClickListener = null;
+  }
   clearUserLocationOverlay();
   clearMapMarkers();
   if (mapPolyline) {
@@ -992,7 +1068,69 @@ function geolocationGetPosition(options) {
 }
 
 /**
- * GPS haute précision d’abord, puis position réseau / cache (évite de tomber sur un centre France arbitraire).
+ * Sur mobile, plusieurs mesures GPS successives améliorent souvent la précision.
+ * @param {GeolocationPosition} initialPosition
+ * @param {number} maxMs
+ * @returns {Promise<GeolocationPosition>}
+ */
+function refinePositionWithWatch(initialPosition, maxMs = 10000) {
+  if (!navigator.geolocation?.watchPosition) {
+    return Promise.resolve(initialPosition);
+  }
+  return new Promise((resolve) => {
+    let best = initialPosition;
+    let finished = false;
+    /** @type {number|null} */
+    let watchId = null;
+    const opts = {
+      enableHighAccuracy: true,
+      maximumAge: 0,
+      timeout: 60000,
+    };
+    const done = () => {
+      if (finished) return;
+      finished = true;
+      if (watchId != null) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+      resolve(best);
+    };
+    try {
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          const a = Number(pos.coords.accuracy) || 9999;
+          const ba = Number(best.coords.accuracy) || 9999;
+          if (a < ba) best = pos;
+          if (a <= 12) {
+            done();
+          }
+        },
+        () => done(),
+        opts,
+      );
+    } catch {
+      resolve(best);
+      return;
+    }
+    setTimeout(done, maxMs);
+  });
+}
+
+function zoomFromAccuracyMeters(acc) {
+  if (acc == null || !Number.isFinite(acc)) return 19;
+  if (acc <= 15) return 20;
+  if (acc <= 35) return 19;
+  if (acc <= 80) return 18;
+  if (acc <= 200) return 17;
+  if (acc <= 400) return 16;
+  if (acc > 8000) return 11;
+  if (acc > 3000) return 13;
+  if (acc > 1000) return 15;
+  return 17;
+}
+
+/**
+ * GPS haute précision + affinage court, puis repli réseau / cache.
  */
 async function resolveUserMapCenter() {
   const worldFallback = { lat: 8, lng: 10 };
@@ -1007,34 +1145,32 @@ async function resolveUserMapCenter() {
   }
 
   try {
-    const pos = await geolocationGetPosition({
+    const first = await geolocationGetPosition({
       enableHighAccuracy: true,
-      timeout: 28000,
+      timeout: 45000,
       maximumAge: 0,
     });
+    const refined = await refinePositionWithWatch(first, 12000);
+    const acc = Number(refined.coords.accuracy) || null;
     return {
-      center: { lat: pos.coords.latitude, lng: pos.coords.longitude },
-      zoom: 19,
+      center: { lat: refined.coords.latitude, lng: refined.coords.longitude },
+      zoom: zoomFromAccuracyMeters(acc ?? undefined),
       ok: true,
       mode: "high",
-      accuracyM: Number(pos.coords.accuracy) || null,
+      accuracyM: acc,
     };
   } catch {
     try {
       const pos = await geolocationGetPosition({
         enableHighAccuracy: false,
-        timeout: 22000,
+        timeout: 25000,
         maximumAge: 120000,
       });
       const acc = Number(pos.coords.accuracy) || 9999;
-      let zoom = 19;
-      if (acc > 8000) zoom = 11;
-      else if (acc > 3000) zoom = 13;
-      else if (acc > 1000) zoom = 15;
-      else if (acc > 400) zoom = 17;
+
       return {
         center: { lat: pos.coords.latitude, lng: pos.coords.longitude },
-        zoom,
+        zoom: zoomFromAccuracyMeters(acc),
         ok: true,
         mode: "coarse",
         accuracyM: acc,
@@ -1086,9 +1222,12 @@ async function initGoogleMap() {
 
     let mapCenter = defaultCenter;
     let mapZoom = 6;
+    /** @type {{ center: { lat: number, lng: number }, zoom?: number, ok: boolean, accuracyM?: number|null }|null} */
+    let initialLoc = null;
 
     if (pts.length === 0) {
       const loc = await resolveUserMapCenter();
+      initialLoc = loc;
       mapCenter = loc.center;
       mapZoom = loc.zoom;
       if (!loc.ok) {
@@ -1099,6 +1238,8 @@ async function initGoogleMap() {
           "Position approximative" +
           (loc.accuracyM != null ? ` (précision ±${Math.round(loc.accuracyM)} m)` : "") +
           ". Si le lieu ne correspond pas, zoomez, utilisez la recherche ou « Recentrer sur ma position ».";
+      } else if (loc.ok && loc.accuracyM != null && loc.accuracyM > 35) {
+        locationNotice.value = `Précision GPS ±${Math.round(loc.accuracyM)} m — le cercle bleu indique la marge d’incertitude.`;
       }
     }
 
@@ -1110,26 +1251,29 @@ async function initGoogleMap() {
       mapTypeControl: false,
       fullscreenControl: true,
       zoomControl: true,
-      rotateControl: false,
+      rotateControl: true,
+      // Mobile : un doigt déplace la carte, deux doigts zoom / pivot (comportement proche de Google Maps)
+      gestureHandling: "greedy",
+      minZoom: 3,
+      maxZoom: 22,
       clickableIcons: false,
       styles: GOOGLE_MAP_SILENT_STYLES,
     });
 
     mapClickListener = mapInstance.addListener("click", (e) => {
       if (!e?.latLng) return;
-      if (capturedPoints.value.length >= maxPoints) {
-        geoError.value = `Maximum ${maxPoints} points. Réinitialisez le tracé ou supprimez un point.`;
-        return;
-      }
-      geoError.value = "";
-      const lat = e.latLng.lat();
-      const lng = e.latLng.lng();
-      capturedPoints.value = [
-        ...capturedPoints.value,
-        { lat, lng, capturedAt: new Date().toISOString() },
-      ];
-      updateBufferedPolygon();
+      addCapturePointAtLatLng(e.latLng.lat(), e.latLng.lng());
     });
+
+    // Appui long / clic droit : pose un sommet (utile sur mobile si le tap simple est ambigu)
+    mapRightClickListener = mapInstance.addListener("rightclick", (e) => {
+      if (!e?.latLng) return;
+      addCapturePointAtLatLng(e.latLng.lat(), e.latLng.lng());
+    });
+
+    if (pts.length === 0 && initialLoc?.ok) {
+      drawUserLocationOverlay(initialLoc.center.lat, initialLoc.center.lng, initialLoc.accuracyM);
+    }
 
     if (pts.length > 0) {
       const bounds = new google.maps.LatLngBounds();
