@@ -458,10 +458,42 @@ function formatDistanceMeters(d) {
   return `${v.toFixed(1)} m`;
 }
 
-/** Placeholder Turf.js : polygone fermé + buffer extérieur ~5 m. */
+/**
+ * Génère un polygone GeoJSON "bufferisé" (~5m) sans dépendance externe.
+ * Approche: on agrandit chaque sommet depuis le centroïde d'un facteur
+ * (distance + buffer) / distance. Suffisant pour un périmètre terrain.
+ */
 function generatePolygonWithBuffer(points) {
-  void points;
-  return null;
+  const src = Array.isArray(points) ? points : [];
+  if (src.length < 3) return null;
+
+  const centroid = src.reduce(
+    (acc, p) => ({ lat: acc.lat + p.lat / src.length, lng: acc.lng + p.lng / src.length }),
+    { lat: 0, lng: 0 },
+  );
+
+  const buffered = src.map((p) => {
+    const d = checkDistance(centroid, p);
+    // Si un point est quasi au centroïde, garder le point brut.
+    if (!Number.isFinite(d) || d < 0.01) {
+      return [p.lng, p.lat];
+    }
+    const scale = (d + 5) / d;
+    const lat = centroid.lat + (p.lat - centroid.lat) * scale;
+    const lng = centroid.lng + (p.lng - centroid.lng) * scale;
+    return [lng, lat];
+  });
+
+  // Fermer l'anneau GeoJSON
+  const first = buffered[0];
+  const last = buffered[buffered.length - 1];
+  const isClosed = first && last && first[0] === last[0] && first[1] === last[1];
+  const ring = isClosed ? buffered : [...buffered, first];
+
+  return {
+    type: "Polygon",
+    coordinates: [ring],
+  };
 }
 
 watch(
@@ -536,10 +568,9 @@ function onGenerateSurface() {
   const poly = generatePolygonWithBuffer(capturedPoints.value);
   polygonGeoJson.value = poly;
   if (!poly) {
-    surfaceHint.value =
-      "generatePolygonWithBuffer() est un placeholder : intégration Turf.js (polygone fermé + buffer +5 m) à venir.";
+    surfaceHint.value = "Capturez au moins 3 points pour générer la surface.";
   } else {
-    surfaceHint.value = "Surface GeoJSON générée (voir payload étape 3).";
+    surfaceHint.value = "Surface GeoJSON générée avec marge extérieure d'environ 5 m.";
   }
 }
 
