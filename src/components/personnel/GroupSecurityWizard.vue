@@ -223,6 +223,14 @@
           Point {{ i + 1 }} : {{ p.lat.toFixed(6) }}, {{ p.lng.toFixed(6) }}
         </li>
       </ul>
+      <div class="space-y-2">
+        <p class="text-xs text-slate-400">Aperçu cartographique du périmètre</p>
+        <div
+          ref="mapContainer"
+          class="h-72 sm:h-80 rounded-lg border border-slate-600 bg-slate-900/60 overflow-hidden"
+        ></div>
+        <p v-if="mapError" class="text-xs text-red-400">{{ mapError }}</p>
+      </div>
 
       <button
         v-if="capturedPoints.length >= 4"
@@ -280,7 +288,9 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch } from "vue";
+import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } from "vue";
+import { Loader } from "@googlemaps/js-api-loader";
+import * as turf from "@turf/turf";
 
 const props = defineProps({
   initialPayload: { type: Object, default: null },
@@ -305,9 +315,16 @@ const geoError = ref("");
 const geoAssistantMessage = ref("Validez d’abord l’étape 1, puis capturez les points GPS du périmètre.");
 const isCapturing = ref(false);
 const surfaceHint = ref("");
+const mapError = ref("");
+const mapReady = ref(false);
 
 const capturedPoints = ref([]);
 const polygonGeoJson = ref(null);
+const mapContainer = ref(null);
+let googleMap = null;
+let pointsPolyline = null;
+let pointMarkers = [];
+let geofencePolygon = null;
 
 const weekdayDefs = [
   { bit: 1, label: "Lun" },
@@ -458,42 +475,141 @@ function formatDistanceMeters(d) {
   return `${v.toFixed(1)} m`;
 }
 
-/**
- * Génère un polygone GeoJSON "bufferisé" (~5m) sans dépendance externe.
- * Approche: on agrandit chaque sommet depuis le centroïde d'un facteur
- * (distance + buffer) / distance. Suffisant pour un périmètre terrain.
- */
+function buildRawPolygon(points) {
+  if (!Array.isArray(points) || points.length < 3) return null;
+  const ring = [
+    ...points.map((p) => [p.lng, p.lat]),
+    [points[0].lng, points[0].lat],
+  ];
+  return turf.polygon([ring]);
+}
+
+function toPolygonGeometry(featureOrGeometry) {
+  if (!featureOrGeometry) return null;
+  if (featureOrGeometry.type === "Feature") {
+    return featureOrGeometry.geometry || null;
+  }
+  return featureOrGeometry;
+}
+
+function geometryToMapPaths(geometry) {
+  if (!geometry || !geometry.type || !Array.isArray(geometry.coordinates)) return [];
+  const toLatLng = (coord) => ({ lat: coord[1], lng: coord[0] });
+  if (geometry.type === "Polygon") {
+    return geometry.coordinates.map((ring) => ring.map(toLatLng));
+  }
+  if (geometry.type === "MultiPolygon") {
+    return geometry.coordinates.flatMap((poly) => poly.map((ring) => ring.map(toLatLng)));
+  }
+  return [];
+}
+
+/** Génère le polygone final avec buffer de 5m via Turf. */
 function generatePolygonWithBuffer(points) {
-  const src = Array.isArray(points) ? points : [];
-  if (src.length < 3) return null;
+  const raw = buildRawPolygon(points);
+  if (!raw) return null;
+  try {
+    const buffered = turf.buffer(raw, 5, { units: "meters" });
+    return buffered?.geometry || raw.geometry;
+  } catch (e) {
+    console.warn("Turf buffer indisponible, fallback polygone brut:", e);
+    return raw.geometry;
+  }
+}
 
-  const centroid = src.reduce(
-    (acc, p) => ({ lat: acc.lat + p.lat / src.length, lng: acc.lng + p.lng / src.length }),
-    { lat: 0, lng: 0 },
-  );
+async function initGoogleMap() {
+  if (googleMap || !mapContainer.value) return;
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  if (!apiKey) {
+    mapError.value = "Clé Google Maps absente (.env: VITE_GOOGLE_MAPS_API_KEY).";
+    return;
+  }
+  try {
+    const loader = new Loader({
+      apiKey,
+      version: "weekly",
+      libraries: ["geometry"],
+    });
+    await loader.load();
+    googleMap = new window.google.maps.Map(mapContainer.value, {
+      center: { lat: 9.63, lng: -13.58 },
+      zoom: 15,
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false,
+    });
+    pointsPolyline = new window.google.maps.Polyline({
+      map: googleMap,
+      path: [],
+      strokeColor: "#38bdf8",
+      strokeOpacity: 0.9,
+      strokeWeight: 3,
+    });
+    mapReady.value = true;
+    mapError.value = "";
+    redrawMap();
+  } catch (e) {
+    console.error("Google Maps init error:", e);
+    mapError.value = "Impossible de charger Google Maps (clé/API/connexion).";
+  }
+}
 
-  const buffered = src.map((p) => {
-    const d = checkDistance(centroid, p);
-    // Si un point est quasi au centroïde, garder le point brut.
-    if (!Number.isFinite(d) || d < 0.01) {
-      return [p.lng, p.lat];
-    }
-    const scale = (d + 5) / d;
-    const lat = centroid.lat + (p.lat - centroid.lat) * scale;
-    const lng = centroid.lng + (p.lng - centroid.lng) * scale;
-    return [lng, lat];
+function clearMarkers() {
+  pointMarkers.forEach((m) => m.setMap(null));
+  pointMarkers = [];
+}
+
+function redrawMap() {
+  if (!googleMap || !window.google?.maps) return;
+  clearMarkers();
+
+  const path = capturedPoints.value.map((p) => ({ lat: p.lat, lng: p.lng }));
+  pointsPolyline?.setPath(path);
+
+  path.forEach((pos, idx) => {
+    const marker = new window.google.maps.Marker({
+      map: googleMap,
+      position: pos,
+      label: `${idx + 1}`,
+      title: `Point ${idx + 1}`,
+    });
+    pointMarkers.push(marker);
   });
 
-  // Fermer l'anneau GeoJSON
-  const first = buffered[0];
-  const last = buffered[buffered.length - 1];
-  const isClosed = first && last && first[0] === last[0] && first[1] === last[1];
-  const ring = isClosed ? buffered : [...buffered, first];
+  if (geofencePolygon) {
+    geofencePolygon.setMap(null);
+    geofencePolygon = null;
+  }
 
-  return {
-    type: "Polygon",
-    coordinates: [ring],
-  };
+  const geom = toPolygonGeometry(polygonGeoJson.value);
+  const mapPaths = geometryToMapPaths(geom);
+  if (mapPaths.length > 0) {
+    geofencePolygon = new window.google.maps.Polygon({
+      map: googleMap,
+      paths: mapPaths,
+      strokeColor: "#22c55e",
+      strokeOpacity: 0.95,
+      strokeWeight: 2,
+      fillColor: "#22c55e",
+      fillOpacity: 0.2,
+    });
+  }
+
+  const bounds = new window.google.maps.LatLngBounds();
+  let hasBounds = false;
+  path.forEach((p) => {
+    bounds.extend(p);
+    hasBounds = true;
+  });
+  mapPaths.forEach((ring) =>
+    ring.forEach((p) => {
+      bounds.extend(p);
+      hasBounds = true;
+    }),
+  );
+  if (hasBounds) {
+    googleMap.fitBounds(bounds);
+  }
 }
 
 watch(
@@ -513,8 +629,22 @@ watch(
     } else {
       geoAssistantMessage.value = "Maximum 6 points atteint. Vous pouvez générer la surface ou passer au récapitulatif.";
     }
+
+    if (wizardStep.value === 2) {
+      nextTick(() => initGoogleMap());
+    }
   },
   { immediate: true },
+);
+
+watch(
+  () => [capturedPoints.value, polygonGeoJson.value, wizardStep.value],
+  () => {
+    if (wizardStep.value === 2) {
+      redrawMap();
+    }
+  },
+  { deep: true },
 );
 
 function validateStep1AndContinue() {
@@ -573,6 +703,25 @@ function onGenerateSurface() {
     surfaceHint.value = "Surface GeoJSON générée avec marge extérieure d'environ 5 m.";
   }
 }
+
+onMounted(() => {
+  if (wizardStep.value === 2) {
+    nextTick(() => initGoogleMap());
+  }
+});
+
+onUnmounted(() => {
+  clearMarkers();
+  if (pointsPolyline) {
+    pointsPolyline.setMap(null);
+    pointsPolyline = null;
+  }
+  if (geofencePolygon) {
+    geofencePolygon.setMap(null);
+    geofencePolygon = null;
+  }
+  googleMap = null;
+});
 
 function buildGroupSecurityPayload() {
   const weekdayBits = [1, 2, 3, 4, 5, 6, 7].filter((b) => form.calendar.weekdays[b]);
