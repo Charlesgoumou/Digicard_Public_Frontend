@@ -30,27 +30,7 @@ import router from "./router";
 const cleanUpCookies = () => {
   console.warn(
     "[Cookie Cleanup] ⚠️ ATTENTION: Cette fonction est désactivée car elle ne peut pas gérer les cookies HttpOnly",
-          document.cookie = cookieString;
-          deletedCount++;
-        });
-      });
-
-      console.log("[Cookie Cleanup] Cookie obsolète supprimé:", cookie.name);
-    });
-
-    // Attendre un peu pour que les suppressions prennent effet
-    setTimeout(() => {
-      const remainingCookies = document.cookie.split(";").filter((c) => c.trim());
-      console.log("[Cookie Cleanup] Cookies restants après nettoyage:", remainingCookies.length);
-      console.log("[Cookie Cleanup] Cookies supprimés:", deletedCount);
-
-      if (remainingCookies.length > 10) {
-        console.warn("[Cookie Cleanup] Attention: Encore " + remainingCookies.length + " cookies restants");
-      }
-    }, 100);
-  } catch (error) {
-    console.error("[Cookie Cleanup] Erreur lors du nettoyage des cookies:", error);
-  }
+  );
 };
 
 // ✅ CRITIQUE: NE PAS exécuter cleanUpCookies() - DÉSACTIVÉ POUR DES RAISONS DE SÉCURITÉ
